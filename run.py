@@ -1068,7 +1068,6 @@ class Builder:
 
         with ExitStack() as stack:
             stack.enter_context(self.worker)
-            stack.enter_context(self.root_worker)
             t = stack.enter_context(TemporaryDirectory())
 
             self.worker.check_call([
