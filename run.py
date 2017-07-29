@@ -87,6 +87,7 @@ class Builder:
         self.runtime_details = {}
         self.root_worker = None
         self.worker = None
+        self.export_bundles = False
 
     @staticmethod
     def get_flatpak_arch(arch=None):
@@ -175,6 +176,9 @@ class Builder:
             description='Build Flatpak runtimes',
         )
         parser.add_argument('--remote', default=None)
+        parser.add_argument(
+            '--export-bundles', action='store_true', default=False,
+        )
         parser.add_argument('--build-area', default=self.build_area)
         parser.add_argument(
             '--remote-build-area', default=self.remote_build_area,
@@ -216,6 +220,7 @@ class Builder:
         self.flatpak_branch = args.flatpak_branch
         self.repo = args.repo
         self.remote_repo = args.remote_repo
+        self.export_bundles = args.export_bundles
 
         if args.remote is not None:
             self.worker = SshWorker(args.remote)
@@ -472,32 +477,33 @@ class Builder:
                 self.remote_repo,
             ])
 
-            for suffix in ('.Platform', '.Sdk'):
-                self.worker.check_call([
-                    'time',
-                    'flatpak',
-                    'build-bundle',
-                    '--runtime',
-                    self.remote_repo,
-                    '{}/bundle'.format(self.worker.scratch),
-                    prefix + suffix,
-                    self.flatpak_branch,
-                ])
-
-                bundle = '{}-{}-{}.bundle'.format(
-                    prefix + suffix,
-                    self.flatpak_arch,
-                    self.flatpak_branch,
-                )
-                output = os.path.join(self.build_area, bundle)
-
-                with open(output + '.new', 'wb') as writer:
+            if self.export_bundles:
+                for suffix in ('.Platform', '.Sdk'):
                     self.worker.check_call([
-                        'cat',
+                        'time',
+                        'flatpak',
+                        'build-bundle',
+                        '--runtime',
+                        self.remote_repo,
                         '{}/bundle'.format(self.worker.scratch),
-                    ], stdout=writer)
+                        prefix + suffix,
+                        self.flatpak_branch,
+                    ])
 
-                    os.rename(output + '.new', output)
+                    bundle = '{}-{}-{}.bundle'.format(
+                        prefix + suffix,
+                        self.flatpak_arch,
+                        self.flatpak_branch,
+                    )
+                    output = os.path.join(self.build_area, bundle)
+
+                    with open(output + '.new', 'wb') as writer:
+                        self.worker.check_call([
+                            'cat',
+                            '{}/bundle'.format(self.worker.scratch),
+                        ], stdout=writer)
+
+                        os.rename(output + '.new', output)
 
     def configure_apt(self, base_chroot):
         """
@@ -1216,32 +1222,34 @@ class Builder:
                 '{}/workdir'.format(self.worker.scratch),
                 remote_manifest,
             ])
-            self.worker.check_call([
-                'time',
-                'env',
-                'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
-                'flatpak',
-                'build-bundle',
-                self.remote_repo,
-                '{}/bundle'.format(self.worker.scratch),
-                manifest['id'],
-                manifest['branch'],
-            ])
 
-            bundle = '{}-{}-{}.bundle'.format(
-                manifest['id'],
-                self.flatpak_arch,
-                manifest['branch'],
-            )
-            output = os.path.join(self.build_area, bundle)
-
-            with open(output + '.new', 'wb') as writer:
+            if self.export_bundles:
                 self.worker.check_call([
-                    'cat',
+                    'time',
+                    'env',
+                    'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                    'flatpak',
+                    'build-bundle',
+                    self.remote_repo,
                     '{}/bundle'.format(self.worker.scratch),
-                ], stdout=writer)
+                    manifest['id'],
+                    manifest['branch'],
+                ])
 
-            os.rename(output + '.new', output)
+                bundle = '{}-{}-{}.bundle'.format(
+                    manifest['id'],
+                    self.flatpak_arch,
+                    manifest['branch'],
+                )
+                output = os.path.join(self.build_area, bundle)
+
+                with open(output + '.new', 'wb') as writer:
+                    self.worker.check_call([
+                        'cat',
+                        '{}/bundle'.format(self.worker.scratch),
+                    ], stdout=writer)
+
+                os.rename(output + '.new', output)
 
 if __name__ == '__main__':
     Builder().run_command_line()
