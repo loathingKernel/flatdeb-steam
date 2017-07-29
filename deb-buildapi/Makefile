@@ -15,5 +15,6 @@ install:
 	set -e; \
 	for deb in *.deb; do \
 		dpkg-deb --fsys-tarfile "$$deb" | \
-		tar -xf- -C /app --transform='s,([.]/)?(app|usr)/,,x'; \
+		tar -xf- -C /app \
+		--transform='s,^(\.?/)?(app|usr)/,,x'; \
 	done
