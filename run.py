@@ -87,6 +87,7 @@ class Builder:
         self.runtime_details = {}
         self.root_worker = None
         self.worker = None
+        self.use_bare_user_only = False
         self.export_bundles = False
 
     @staticmethod
@@ -177,6 +178,9 @@ class Builder:
         )
         parser.add_argument('--remote', default=None)
         parser.add_argument(
+            '--use-bare-user-only', action='store_true', default=False,
+        )
+        parser.add_argument(
             '--export-bundles', action='store_true', default=False,
         )
         parser.add_argument('--build-area', default=self.build_area)
@@ -221,6 +225,7 @@ class Builder:
         self.repo = args.repo
         self.remote_repo = args.remote_repo
         self.export_bundles = args.export_bundles
+        self.use_bare_user_only = args.use_bare_user_only
 
         if args.remote is not None:
             self.worker = SshWorker(args.remote)
@@ -410,11 +415,16 @@ class Builder:
                 os.rename(output + '.new', output)
 
     def ensure_remote_repo(self):
+        if self.use_bare_user_only:
+            mode = 'bare-user-only'
+        else:
+            mode = 'bare-user'
+
         self.worker.check_call([
             'ostree',
             '--repo=' + self.remote_repo,
             'init',
-            '--mode=bare-user',
+            '--mode={}'.format(mode),
         ])
 
     def command_runtimes(self, *, prefix, **kwargs):
