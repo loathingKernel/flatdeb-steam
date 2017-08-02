@@ -98,7 +98,7 @@ class Builder:
         self.root_worker = None
         self.worker = None
         self.host_worker = HostWorker()
-        self.remote_ostree_mode = 'bare-user'
+        self.remote_ostree_mode = None
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
 
@@ -213,9 +213,6 @@ class Builder:
             '--export-bundles', action='store_true', default=False,
         )
         parser.add_argument('--build-area', default=self.build_area)
-        parser.add_argument(
-            '--remote-build-area', default=self.remote_build_area,
-        )
         parser.add_argument('--repo', default=self.repo)
         parser.add_argument('--remote-repo', default=self.remote_repo)
         parser.add_argument('--suite', '-d', default=self.apt_suite)
@@ -261,6 +258,9 @@ class Builder:
             self.worker = SshWorker(args.remote)
 
             self.remote_ostree_mode = args.remote_ostree_mode
+
+            if self.remote_ostree_mode is None:
+                self.remote_ostree_mode = self.ostree_mode
         else:
             self.worker = HostWorker()
             self.remote_build_area = self.build_area
@@ -300,16 +300,10 @@ class Builder:
 
     def ensure_build_area(self):
         if self.remote_build_area is None:
-            # With Flatpak 0.8.x this needs to be on a filesystem that
-            # supports xattrs, i.e. not tmpfs
-            self.remote_build_area = self.worker.check_output([
-                'sh', '-euc',
-                'mkdir -p "${XDG_CACHE_HOME:="$HOME/.cache"}/flatdeb"; '
-                'echo "$XDG_CACHE_HOME/flatdeb"',
-            ]).decode('utf-8').rstrip('\n')
+            self.remote_build_area = self.worker.scratch
 
         if self.remote_repo is None:
-            self.remote_repo = '{}/repo'.format(self.remote_build_area)
+            self.remote_repo = '{}/repo'.format(self.worker.scratch)
 
     def command_base(self, **kwargs):
         with ExitStack() as stack:
@@ -401,16 +395,12 @@ class Builder:
                 os.rename(output + '.new', output)
 
     def ensure_remote_repo(self):
-        argv = [
+        self.worker.check_call([
             'ostree',
             '--repo=' + self.remote_repo,
             'init',
-        ]
-
-        if self.remote_ostree_mode is not None:
-            argv.append('--mode={}'.format(self.remote_ostree_mode))
-
-        self.worker.check_call(argv)
+            '--mode={}'.format(self.remote_ostree_mode),
+        ])
 
     def ensure_local_repo(self):
         self.host_worker.check_call([
@@ -1262,7 +1252,18 @@ class Builder:
                 'mkdir', '-p', '{}/home'.format(self.remote_build_area),
             ])
 
-            if not isinstance(self.worker, HostWorker):
+            if isinstance(self.worker, SshWorker):
+                # ostree over sshfs is painfully slow so do something different
+                self.host_worker.call([
+                    'time',
+                    'rsync',
+                    '-aW',
+                    '--no-i-r',
+                    '--info=progress2',
+                    '{}/'.format(self.repo),
+                    '{}:{}/'.format(self.worker.remote, self.remote_repo),
+                ])
+            elif not isinstance(self.worker, HostWorker):
                 with self.worker.remote_dir_context(self.remote_repo) as mount:
                     self.host_worker.call([
                         'ostree',
@@ -1321,19 +1322,21 @@ class Builder:
                         self.remote_repo,
                     ])
 
-            self.worker.call([
+            self.worker.check_call([
                 'env',
                 'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
                 'flatpak', '--user',
-                'remote-delete',
+                'remote-add', '--if-not-exists', '--no-gpg-verify',
                 'flatdeb',
+                'file://{}'.format(urllib.parse.quote(self.remote_repo)),
             ])
             self.worker.check_call([
                 'env',
                 'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
                 'flatpak', '--user',
-                'remote-add', '--no-gpg-verify',
-                'flatdeb', '{}'.format(self.remote_repo),
+                'remote-modify', '--no-gpg-verify',
+                '--url=file://{}'.format(urllib.parse.quote(self.remote_repo)),
+                'flatdeb',
             ])
             self.worker.check_call([
                 'env',
