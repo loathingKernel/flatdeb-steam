@@ -96,7 +96,7 @@ class Builder:
         self.root_worker = None
         self.worker = None
         self.remote_ostree_mode = None
-        self.ostree_mode = 'bare-user'
+        self.ostree_mode = 'archive-z2'
         self.export_bundles = False
 
     @staticmethod
