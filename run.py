@@ -1215,6 +1215,13 @@ class Builder:
                     'flatdeb-worker',
                 ])
 
+            self.host_worker.check_call([
+                'time',
+                'flatpak',
+                'build-update-repo',
+                self.repo,
+            ])
+
     def command_app(self, *, app_branch, prefix, **kwargs):
         self.ensure_local_repo()
 
@@ -1251,7 +1258,7 @@ class Builder:
             )
 
             self.worker.check_call([
-                'mkdir', '-p', '{}/home'.format(self.worker.scratch),
+                'mkdir', '-p', '{}/home'.format(self.remote_build_area),
             ])
 
             if not isinstance(self.worker, HostWorker):
@@ -1313,16 +1320,23 @@ class Builder:
                         self.remote_repo,
                     ])
 
+            self.worker.call([
+                'env',
+                'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
+                'flatpak', '--user',
+                'remote-delete',
+                'flatdeb',
+            ])
             self.worker.check_call([
                 'env',
-                'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
                 'flatpak', '--user',
                 'remote-add', '--no-gpg-verify',
                 'flatdeb', '{}'.format(self.remote_repo),
             ])
             self.worker.check_call([
                 'env',
-                'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
                 'flatpak', '--user',
                 'install', 'flatdeb',
                 '{}/{}/{}'.format(
@@ -1333,7 +1347,7 @@ class Builder:
             ])
             self.worker.check_call([
                 'env',
-                'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
                 'flatpak', '--user',
                 'install', 'flatdeb',
                 '{}/{}/{}'.format(
@@ -1402,7 +1416,7 @@ class Builder:
 
                         self.worker.check_call([
                             'env',
-                            'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                            'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
                             'flatpak', 'run',
                             '--filesystem={}'.format(packages),
                             '--share=network',
@@ -1458,7 +1472,7 @@ class Builder:
             self.worker.check_call([
                 'env',
                 'DEBIAN_FRONTEND=noninteractive',
-                'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
                 'http_proxy=http://192.168.122.1:3142',
                 'flatpak-builder',
                 '--repo={}'.format(self.remote_repo),
@@ -1517,7 +1531,7 @@ class Builder:
                 self.worker.check_call([
                     'time',
                     'env',
-                    'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                    'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
                     'flatpak',
                     'build-bundle',
                     self.remote_repo,
