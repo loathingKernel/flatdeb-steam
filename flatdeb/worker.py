@@ -64,6 +64,10 @@ class Worker(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def call(self, argv, **kwargs):
+        pass
+
+    @abstractmethod
     def check_call(self, argv, **kwargs):
         pass
 
@@ -172,6 +176,12 @@ class SudoWorker(Worker):
     @property
     def scratch(self):
         return os.path.join(self.__worker.scratch, 'root')
+
+    def call(self, argv, **kwargs):
+        return self.__worker.call(
+            ['env', '-', '/usr/bin/sudo', '-H'] + argv,
+            **kwargs,
+        )
 
     def check_call(self, argv, **kwargs):
         self.__worker.check_call(
@@ -288,6 +298,17 @@ class SshWorker(Worker):
     @property
     def scratch(self):
         return self.__scratch
+
+    def call(self, argv, **kwargs):
+        print('{}:'.format(self.remote), repr(argv), file=sys.stderr)
+        if isinstance(argv, str):
+            command_line = argv
+        else:
+            command_line = ' '.join(map(shlex.quote, argv))
+        return subprocess.call(
+            ['ssh', self.remote, command_line],
+            **kwargs,
+        )
 
     def check_call(self, argv, **kwargs):
         print('{}:'.format(self.remote), repr(argv), file=sys.stderr)
