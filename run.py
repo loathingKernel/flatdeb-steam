@@ -306,6 +306,7 @@ class Builder:
                 'http_proxy=http://192.168.122.1:3142',
                 'debootstrap',
                 '--variant=minbase',
+                '--arch={}'.format(self.dpkg_arch),
             ]
 
             if self.suite_details.get('can_merge_usr', False):
