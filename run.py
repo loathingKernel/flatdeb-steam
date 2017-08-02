@@ -259,16 +259,6 @@ class Builder:
         if args.remote is not None:
             self.worker = SshWorker(args.remote)
 
-            if self.remote_build_area is None:
-                self.remote_build_area = self.worker.check_output([
-                    'sh', '-euc',
-                    'mkdir -p "${XDG_CACHE_HOME:="$HOME/.cache"}/flatdeb"; '
-                    'echo "$XDG_CACHE_HOME/flatdeb"',
-                ]).decode('utf-8').rstrip('\n')
-
-            if self.remote_repo is None:
-                self.remote_repo = '{}/repo'.format(self.remote_build_area)
-
             self.remote_ostree_mode = args.remote_ostree_mode
 
             if self.remote_ostree_mode is None:
@@ -310,9 +300,20 @@ class Builder:
         for source in self.suite_details['sources']:
             yield source['apt_uri']
 
+    def ensure_build_area(self):
+        if self.remote_build_area is None:
+            self.remote_build_area = self.worker.scratch + '/build-area'
+            self.worker.check_call([
+                'mkdir', '-p', self.remote_build_area,
+            ])
+
+        if self.remote_repo is None:
+            self.remote_repo = '{}/repo'.format(self.remote_build_area)
+
     def command_base(self, **kwargs):
         with ExitStack() as stack:
             stack.enter_context(self.worker)
+            self.ensure_build_area()
             stack.enter_context(self.root_worker)
 
             base_chroot = '{}/base'.format(self.root_worker.scratch)
@@ -416,7 +417,6 @@ class Builder:
 
     def command_runtimes(self, *, prefix, **kwargs):
         self.ensure_local_repo()
-        self.ensure_remote_repo()
 
         if self.runtime_branch is None:
             self.runtime_branch = self.apt_suite
@@ -435,6 +435,8 @@ class Builder:
 
         with ExitStack() as stack:
             stack.enter_context(self.worker)
+            self.ensure_build_area()
+            self.ensure_remote_repo()
             stack.enter_context(self.root_worker)
 
             base_chroot = '{}/base'.format(self.root_worker.scratch)
@@ -1212,7 +1214,6 @@ class Builder:
 
     def command_app(self, *, app_branch, prefix, **kwargs):
         self.ensure_local_repo()
-        self.ensure_remote_repo()
 
         # Be nice to people using tab-completion
         if prefix.endswith('.yaml'):
@@ -1240,6 +1241,8 @@ class Builder:
 
         with ExitStack() as stack:
             stack.enter_context(self.worker)
+            self.ensure_build_area()
+            self.ensure_remote_repo()
             t = stack.enter_context(
                 TemporaryDirectory(prefix='flatpak-app.')
             )
