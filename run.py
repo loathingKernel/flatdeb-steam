@@ -32,6 +32,8 @@
 Create Flatpak runtimes from Debian packages.
 
 Requires (on host):
+    - flatpak
+    - ostree
     - python3
     - python3-gi
     - python3-yaml
@@ -39,6 +41,7 @@ Requires (on host):
 Requires (on worker, possibly the same machine as the host):
     - Debian 9 'stretch'
     - debootstrap
+    - flatpak
     - flatpak-builder
     - ostree
     - sudo
@@ -50,6 +53,7 @@ import json
 import os
 import re
 import subprocess
+import urllib.parse
 from contextlib import ExitStack, suppress
 from tempfile import TemporaryDirectory
 
@@ -68,8 +72,10 @@ class Builder:
     def __init__(self):
         #: The Debian suite to use
         self.apt_suite = 'stretch'
-        #: The Flatpak branch to use, or None to use the suite name
-        self.flatpak_branch = None
+        #: The Flatpak branch to use for the runtime, or None for apt_suite
+        self.runtime_branch = None
+        #: The Flatpak branch to use for the app
+        self.app_branch = 'master'
         #: The freedesktop.org cache directory
         self.xdg_cache_dir = os.getenv(
             'XDG_CACHE_DIR', os.path.expanduser('~/.cache'))
@@ -89,7 +95,8 @@ class Builder:
         self.runtime_details = {}
         self.root_worker = None
         self.worker = None
-        self.use_bare_user_only = False
+        self.remote_ostree_mode = None
+        self.ostree_mode = 'bare-user'
         self.export_bundles = False
 
     @staticmethod
@@ -180,7 +187,10 @@ class Builder:
         )
         parser.add_argument('--remote', default=None)
         parser.add_argument(
-            '--use-bare-user-only', action='store_true', default=False,
+            '--ostree-mode', default=self.ostree_mode,
+        )
+        parser.add_argument(
+            '--remote-ostree-mode', default=None,
         )
         parser.add_argument(
             '--export-bundles', action='store_true', default=False,
@@ -194,7 +204,7 @@ class Builder:
         parser.add_argument('--suite', '-d', default=self.apt_suite)
         parser.add_argument(
             '--architecture', '--arch', '-a', default=self.dpkg_arch)
-        parser.add_argument('--flatpak-branch', default=self.flatpak_branch)
+        parser.add_argument('--runtime-branch', default=self.runtime_branch)
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         subparser = subparsers.add_parser(
@@ -212,6 +222,7 @@ class Builder:
             'app',
             help='Build an app',
         )
+        parser.add_argument('--app-branch', default=self.app_branch)
         subparser.add_argument('prefix')
 
         subparser = subparsers.add_parser(
@@ -223,11 +234,11 @@ class Builder:
 
         self.build_area = args.build_area
         self.apt_suite = args.suite
-        self.flatpak_branch = args.flatpak_branch
+        self.runtime_branch = args.runtime_branch
         self.repo = args.repo
         self.remote_repo = args.remote_repo
         self.export_bundles = args.export_bundles
-        self.use_bare_user_only = args.use_bare_user_only
+        self.ostree_mode = args.ostree_mode
 
         if args.remote is not None:
             self.worker = SshWorker(args.remote)
@@ -241,10 +252,16 @@ class Builder:
 
             if self.remote_repo is None:
                 self.remote_repo = '{}/repo'.format(self.remote_build_area)
+
+            self.remote_ostree_mode = args.remote_ostree_mode
+
+            if self.remote_ostree_mode is None:
+                self.remote_ostree_mode = self.ostree_mode
         else:
             self.worker = HostWorker()
             self.remote_build_area = self.build_area
             self.remote_repo = self.repo
+            self.remote_ostree_mode = self.ostree_mode
 
         self.root_worker = SudoWorker(self.worker)
 
@@ -259,9 +276,6 @@ class Builder:
 
         os.makedirs(self.build_area, exist_ok=True)
         os.makedirs(os.path.dirname(self.repo), exist_ok=True)
-
-        if self.flatpak_branch is None:
-            self.flatpak_branch = self.apt_suite
 
         if args.command is None:
             parser.error('A command is required')
@@ -417,20 +431,27 @@ class Builder:
                 os.rename(output + '.new', output)
 
     def ensure_remote_repo(self):
-        if self.use_bare_user_only:
-            mode = 'bare-user-only'
-        else:
-            mode = 'bare-user'
-
         self.worker.check_call([
             'ostree',
             '--repo=' + self.remote_repo,
             'init',
-            '--mode={}'.format(mode),
+            '--mode={}'.format(self.remote_ostree_mode),
+        ])
+
+    def ensure_local_repo(self):
+        subprocess.check_call([
+            'ostree',
+            '--repo=' + self.repo,
+            'init',
+            '--mode={}'.format(self.ostree_mode),
         ])
 
     def command_runtimes(self, *, prefix, **kwargs):
+        self.ensure_local_repo()
         self.ensure_remote_repo()
+
+        if self.runtime_branch is None:
+            self.runtime_branch = self.apt_suite
 
         # Be nice to people using tab-completion
         if prefix.endswith('.yaml'):
@@ -499,13 +520,13 @@ class Builder:
                         self.remote_repo,
                         '{}/bundle'.format(self.worker.scratch),
                         prefix + suffix,
-                        self.flatpak_branch,
+                        self.runtime_branch,
                     ])
 
                     bundle = '{}-{}-{}.bundle'.format(
                         prefix + suffix,
                         self.flatpak_arch,
-                        self.flatpak_branch,
+                        self.runtime_branch,
                     )
                     output = os.path.join(self.build_area, bundle)
 
@@ -967,7 +988,7 @@ class Builder:
         ])
 
         ref = 'runtime/{}/{}/{}'.format(
-            runtime, self.flatpak_arch, self.flatpak_branch,
+            runtime, self.flatpak_arch, self.runtime_branch,
         )
 
         with TemporaryDirectory(prefix='flatdeb-ostreeify.') as t:
@@ -980,7 +1001,7 @@ class Builder:
                 '{}.Platform/{}/{}\n'.format(
                     prefix,
                     self.flatpak_arch,
-                    self.flatpak_branch,
+                    self.runtime_branch,
                 )
             )
             keyfile.set_string(
@@ -988,7 +1009,7 @@ class Builder:
                 '{}.Sdk/{}/{}\n'.format(
                     prefix,
                     self.flatpak_arch,
-                    self.flatpak_branch,
+                    self.runtime_branch,
                 )
             )
 
@@ -1027,7 +1048,7 @@ class Builder:
         tarball = '{}-ostree-{}-{}.tar.gz'.format(
             runtime,
             self.flatpak_arch,
-            self.flatpak_branch,
+            self.runtime_branch,
         )
 
         self.root_worker.check_call([
@@ -1064,6 +1085,54 @@ class Builder:
         ])
 
         if not isinstance(self.worker, HostWorker):
+            self.worker.check_call([
+                'time',
+                'flatpak',
+                'build-update-repo',
+                self.remote_repo,
+            ])
+
+            with self.worker.remote_dir_context(self.remote_repo) as mount:
+                subprocess.call([
+                    'ostree',
+                    '--repo={}'.format(self.repo),
+                    'remote',
+                    'delete',
+                    'flatdeb-worker',
+                ])
+                print('^ It is OK if that failed with "remote not found"')
+                subprocess.check_call([
+                    'ostree',
+                    '--repo={}'.format(self.repo),
+                    'remote',
+                    'add',
+                    '--no-gpg-verify',
+                    'flatdeb-worker',
+                    'file://' + urllib.parse.quote(mount),
+                ])
+                subprocess.check_call([
+                    'ostree',
+                    '--repo={}'.format(self.repo),
+                    'pull',
+                    '--depth=1',
+                    '--disable-fsync',
+                    '--mirror',
+                    '--untrusted',
+                    'flatdeb-worker',
+                    'runtime/{}/{}/{}'.format(
+                        runtime,
+                        self.flatpak_arch,
+                        self.runtime_branch,
+                    ),
+                ])
+                subprocess.check_call([
+                    'ostree',
+                    '--repo={}'.format(self.repo),
+                    'remote',
+                    'delete',
+                    'flatdeb-worker',
+                ])
+
             output = os.path.join(self.build_area, tarball)
 
             with open(output + '.new', 'wb') as writer:
@@ -1074,7 +1143,8 @@ class Builder:
 
             os.rename(output + '.new', output)
 
-    def command_app(self, *, prefix, **kwargs):
+    def command_app(self, *, app_branch, prefix, **kwargs):
+        self.ensure_local_repo()
         self.ensure_remote_repo()
 
         # Be nice to people using tab-completion
@@ -1083,6 +1153,23 @@ class Builder:
 
         with open(prefix + '.yaml') as reader:
             manifest = yaml.safe_load(reader)
+
+        if self.runtime_branch is None:
+            self.runtime_branch = manifest.get('runtime-version')
+
+        if self.runtime_branch is None:
+            self.runtime_branch = self.apt_suite
+
+        self.app_branch = app_branch
+
+        if self.app_branch is None:
+            self.app_branch = manifest.get('branch')
+
+        if self.app_branch is None:
+            self.app_branch = 'master'
+
+        manifest['branch'] = self.app_branch
+        manifest['runtime-version'] = self.runtime_branch
 
         with ExitStack() as stack:
             stack.enter_context(self.worker)
@@ -1093,6 +1180,62 @@ class Builder:
             self.worker.check_call([
                 'mkdir', '-p', '{}/home'.format(self.worker.scratch),
             ])
+
+            if not isinstance(self.worker, HostWorker):
+                with self.worker.remote_dir_context(self.remote_repo) as mount:
+                    subprocess.call([
+                        'ostree',
+                        '--repo={}'.format(mount),
+                        'remote',
+                        'delete',
+                        'flatdeb-host',
+                    ])
+                    print('^ It is OK if that failed with "remote not found"')
+                    subprocess.check_call([
+                        'ostree',
+                        '--repo={}'.format(mount),
+                        'remote',
+                        'add',
+                        '--no-gpg-verify',
+                        'flatdeb-host',
+                        'file://' + urllib.parse.quote(self.repo),
+                    ])
+                    subprocess.check_call([
+                        'ostree',
+                        '--repo={}'.format(mount),
+                        'pull',
+                        '--depth=1',
+                        '--disable-fsync',
+                        '--mirror',
+                        'flatdeb-host',
+                        'runtime/{}/{}/{}'.format(
+                            manifest['sdk'],
+                            self.flatpak_arch,
+                            manifest['runtime-version'],
+                        ),
+                    ])
+                    subprocess.check_call([
+                        'ostree',
+                        '--repo={}'.format(mount),
+                        'pull',
+                        '--depth=1',
+                        '--disable-fsync',
+                        '--mirror',
+                        'flatdeb-host',
+                        'runtime/{}/{}/{}'.format(
+                            manifest['runtime'],
+                            self.flatpak_arch,
+                            manifest['runtime-version'],
+                        ),
+                    ])
+                    subprocess.check_call([
+                        'ostree',
+                        '--repo={}'.format(mount),
+                        'remote',
+                        'delete',
+                        'flatdeb-host',
+                    ])
+
             self.worker.check_call([
                 'env',
                 'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
@@ -1108,7 +1251,7 @@ class Builder:
                 '{}/{}/{}'.format(
                     manifest['sdk'],
                     self.flatpak_arch,
-                    manifest['runtime-version'],
+                    self.runtime_branch,
                 ),
             ])
             self.worker.check_call([
@@ -1190,7 +1333,7 @@ class Builder:
                             '{}/{}/{}'.format(
                                 manifest['sdk'],
                                 self.flatpak_arch,
-                                self.flatpak_branch,
+                                self.runtime_branch,
                             ),
                             'http_proxy=http://192.168.122.1:3142',
                             'export={}'.format(packages),
@@ -1242,6 +1385,53 @@ class Builder:
                 '{}/workdir'.format(self.worker.scratch),
                 remote_manifest,
             ])
+
+            if not isinstance(self.worker, HostWorker):
+                self.worker.check_call([
+                    'time',
+                    'flatpak',
+                    'build-update-repo',
+                    self.remote_repo,
+                ])
+
+                with self.worker.remote_dir_context(self.remote_repo) as mount:
+                    subprocess.call([
+                        'ostree',
+                        '--repo={}'.format(self.repo),
+                        'remote',
+                        'delete',
+                        'flatdeb-worker',
+                    ])
+                    subprocess.check_call([
+                        'ostree',
+                        '--repo={}'.format(self.repo),
+                        'remote',
+                        'add',
+                        '--no-gpg-verify',
+                        'flatdeb-worker',
+                        'file://' + urllib.parse.quote(mount),
+                    ])
+                    subprocess.check_call([
+                        'ostree',
+                        '--repo={}'.format(self.repo),
+                        'pull',
+                        '--depth=1',
+                        '--disable-fsync',
+                        '--mirror',
+                        '--untrusted',
+                        'app/{}/{}/{}'.format(
+                            manifest['id'],
+                            self.flatpak_arch,
+                            manifest['branch'],
+                        ),
+                    ])
+                    subprocess.check_call([
+                        'ostree',
+                        '--repo={}'.format(self.repo),
+                        'remote',
+                        'delete',
+                        'flatdeb-worker',
+                    ])
 
             if self.export_bundles:
                 self.worker.check_call([
