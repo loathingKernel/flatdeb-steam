@@ -148,15 +148,16 @@ class SudoWorker(Worker):
             lambda:
             self.check_call([
                 'rm', '-fr', '--one-file-system',
-                os.path.join(self.scratch, 'base'),
-                os.path.join(self.scratch, 'platform'),
-                os.path.join(self.scratch, 'sdk'),
+                os.path.join(self.scratch),
             ]),
         )
+        self.__worker.check_call([
+            'mkdir', '-p', os.path.join(self.__worker.scratch, 'root')
+        ])
 
     @property
     def scratch(self):
-        return self.__worker.scratch
+        return os.path.join(self.__worker.scratch, 'root')
 
     def check_call(self, argv, **kwargs):
         print(repr(argv))
