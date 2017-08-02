@@ -1532,6 +1532,13 @@ class Builder:
                         'flatdeb-worker',
                     ])
 
+                self.host_worker.check_call([
+                    'time',
+                    'flatpak',
+                    'build-update-repo',
+                    self.repo,
+                ])
+
             if self.export_bundles:
                 self.worker.check_call([
                     'time',
