@@ -41,6 +41,7 @@ Requires (on host):
 
 Requires (on worker, possibly the same machine as the host):
     - Debian 9 'stretch'
+    - /tmp not a tmpfs, or flatpak >= 0.9.6
     - debootstrap
     - flatpak
     - flatpak-builder
