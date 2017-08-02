@@ -31,14 +31,16 @@
 """
 Create Flatpak runtimes from Debian packages.
 
-Requires:
+Requires (on host):
+    - python3
+    - python3-gi
+    - python3-yaml
+
+Requires (on worker, possibly the same machine as the host):
     - Debian 9 'stretch'
     - debootstrap
     - flatpak-builder
     - ostree
-    - python3
-    - python3-gi
-    - python3-yaml
     - sudo
     - systemd-container
 """
