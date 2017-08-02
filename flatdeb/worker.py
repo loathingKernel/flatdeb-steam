@@ -99,6 +99,17 @@ class NspawnWorker(Worker):
     def _open(self):
         pass
 
+    def call(self, argv, **kwargs):
+        return self.worker.check_call(
+            [
+                'systemd-nspawn',
+                '--directory={}'.format(self.path),
+                '--as-pid2',
+                'env',
+            ] + self.env + list(argv),
+            **kwargs,
+        )
+
     def check_call(self, argv, **kwargs):
         self.worker.check_call(
             [
