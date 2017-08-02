@@ -26,6 +26,7 @@
 import os
 import shlex
 import subprocess
+import sys
 from abc import abstractmethod, ABCMeta
 from contextlib import ExitStack, contextmanager
 from tempfile import TemporaryDirectory
@@ -228,22 +229,22 @@ class HostWorker(Worker):
 
     @staticmethod
     def check_call(argv, **kwargs):
-        print(repr(argv))
+        print('host:', repr(argv), file=sys.stderr)
         subprocess.check_call(argv, **kwargs)
 
     @staticmethod
     def Popen(argv, **kwargs):
-        print(repr(argv))
+        print('host:', repr(argv), file=sys.stderr)
         return subprocess.Popen(argv, **kwargs)
 
     @staticmethod
     def call(argv, **kwargs):
-        print(repr(argv))
+        print('host:', repr(argv), file=sys.stderr)
         return subprocess.call(argv, **kwargs)
 
     @staticmethod
     def check_output(argv, **kwargs):
-        print(repr(argv))
+        print('host:', repr(argv), file=sys.stderr)
         return subprocess.check_output(argv, **kwargs)
 
     def install_file(self, source, destination, permissions=0o644):
@@ -289,7 +290,7 @@ class SshWorker(Worker):
         return self.__scratch
 
     def check_call(self, argv, **kwargs):
-        print(repr(argv))
+        print('{}:'.format(self.remote), repr(argv), file=sys.stderr)
         if isinstance(argv, str):
             command_line = argv
         else:
@@ -300,7 +301,7 @@ class SshWorker(Worker):
         )
 
     def check_output(self, argv, **kwargs):
-        print(repr(argv))
+        print('{}:'.format(self.remote), repr(argv), file=sys.stderr)
         command_line = ' '.join(map(shlex.quote, argv))
         return subprocess.check_output(
             ['ssh', self.remote, command_line],
