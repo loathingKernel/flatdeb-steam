@@ -98,7 +98,7 @@ class Builder:
         self.root_worker = None
         self.worker = None
         self.host_worker = HostWorker()
-        self.remote_ostree_mode = None
+        self.remote_ostree_mode = 'bare-user'
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
 
@@ -261,9 +261,6 @@ class Builder:
             self.worker = SshWorker(args.remote)
 
             self.remote_ostree_mode = args.remote_ostree_mode
-
-            if self.remote_ostree_mode is None:
-                self.remote_ostree_mode = self.ostree_mode
         else:
             self.worker = HostWorker()
             self.remote_build_area = self.build_area
@@ -404,12 +401,16 @@ class Builder:
                 os.rename(output + '.new', output)
 
     def ensure_remote_repo(self):
-        self.worker.check_call([
+        argv = [
             'ostree',
             '--repo=' + self.remote_repo,
             'init',
-            '--mode={}'.format(self.remote_ostree_mode),
-        ])
+        ]
+
+        if self.remote_ostree_mode is not None:
+            argv.append('--mode={}'.format(self.remote_ostree_mode))
+
+        self.worker.check_call(argv)
 
     def ensure_local_repo(self):
         self.host_worker.check_call([
