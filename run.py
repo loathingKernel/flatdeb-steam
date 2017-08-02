@@ -764,6 +764,13 @@ class Builder:
                     'apt-get', '-q', '-y', 'install',
                 ] + packages)
 
+            script = sdk_details.get('post_script', [])
+
+            if script:
+                nspawn.check_call([
+                    'sh', '-c', script,
+                ])
+
             nspawn.write_manifest()
 
             installed = set(nspawn.check_output([
