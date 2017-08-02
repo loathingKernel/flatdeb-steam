@@ -523,7 +523,7 @@ class Builder:
         created from the same base have their version numbers
         aligned.
         """
-        with TemporaryDirectory() as t:
+        with TemporaryDirectory(prefix='flatdeb-apt.') as t:
             # Set up the apt sources
 
             to_copy = os.path.join(t, 'sources.list')
@@ -584,7 +584,7 @@ class Builder:
         Platform and the Sdk.
         """
 
-        with TemporaryDirectory() as t:
+        with TemporaryDirectory(prefix='flatdeb-base-install.') as t:
             # Disable starting services. This container has no init
             # anyway.
 
@@ -970,7 +970,7 @@ class Builder:
             runtime, self.flatpak_arch, self.flatpak_branch,
         )
 
-        with TemporaryDirectory() as t:
+        with TemporaryDirectory(prefix='flatdeb-ostreeify.') as t:
             metadata = os.path.join(t, 'metadata')
 
             keyfile = GLib.KeyFile()
@@ -1086,7 +1086,9 @@ class Builder:
 
         with ExitStack() as stack:
             stack.enter_context(self.worker)
-            t = stack.enter_context(TemporaryDirectory())
+            t = stack.enter_context(
+                TemporaryDirectory(prefix='flatpak-app.')
+            )
 
             self.worker.check_call([
                 'mkdir', '-p', '{}/home'.format(self.worker.scratch),
@@ -1129,7 +1131,9 @@ class Builder:
                         if 'path' in source:
                             if source.get('type') == 'git':
                                 clone = self.worker.check_output([
-                                    'mktemp', '-d', '-p', self.worker.scratch,
+                                    'mktemp', '-d',
+                                    '-p', self.worker.scratch,
+                                    'flatdeb-git.XXXXXX',
                                 ]).decode('utf-8').rstrip('\n')
                                 uploader = subprocess.Popen([
                                     'tar',
@@ -1146,7 +1150,9 @@ class Builder:
                                 source['path'] = clone
                             else:
                                 d = self.worker.check_output([
-                                    'mktemp', '-d', '-p', self.worker.scratch,
+                                    'mktemp', '-d',
+                                    '-p', self.worker.scratch,
+                                    'flatdeb-path.XXXXXX',
                                 ]).decode('utf-8').rstrip('\n')
                                 clone = '{}/{}'.format(
                                     d, os.path.basename(source['path']),
@@ -1169,7 +1175,9 @@ class Builder:
 
                     if 'x-flatdeb-apt-packages' in module:
                         packages = self.worker.check_output([
-                            'mktemp', '-d', '-p', self.worker.scratch,
+                            'mktemp', '-d',
+                            '-p', self.worker.scratch,
+                            'flatdeb-debs.XXXXXX',
                         ]).decode('utf-8').rstrip('\n')
 
                         self.worker.check_call([
@@ -1216,7 +1224,7 @@ class Builder:
 
             remote_manifest = '{}/{}.json'.format(self.worker.scratch, prefix)
 
-            with TemporaryDirectory() as t:
+            with TemporaryDirectory(prefix='flatdeb-manifest.') as t:
                 json_manifest = os.path.join(t, prefix + '.json')
 
                 with open(

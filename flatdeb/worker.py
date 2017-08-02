@@ -115,7 +115,7 @@ class NspawnWorker(Worker):
         )
 
     def write_manifest(self):
-        with TemporaryDirectory() as t:
+        with TemporaryDirectory(prefix='flatdeb-manifest.') as t:
             manifest = os.path.join(t, 'manifest')
 
             with open(manifest, 'w') as writer:
@@ -202,7 +202,9 @@ class HostWorker(Worker):
         self.__scratch = None
 
     def _open(self):
-        self.__scratch = self.stack.enter_context(TemporaryDirectory())
+        self.__scratch = self.stack.enter_context(
+            TemporaryDirectory(prefix='flatdeb-host.')
+        )
 
     @property
     def scratch(self):
@@ -251,7 +253,7 @@ class SshWorker(Worker):
 
     def _open(self):
         self.__scratch = self.check_output(
-            ['mktemp', '-d'],
+            ['mktemp', '-d', '-p', '/tmp', 'flatdeb-ssh-worker.XXXXXX'],
             universal_newlines=True,
         ).rstrip('\n')
         self.stack.callback(
