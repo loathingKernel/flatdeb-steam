@@ -319,6 +319,7 @@ class Builder:
 
             argv = [
                 'env',
+                'DEBIAN_FRONTEND=noninteractive',
                 'http_proxy=http://192.168.122.1:3142',
                 'debootstrap',
                 '--variant=minbase',
@@ -562,12 +563,16 @@ class Builder:
         with NspawnWorker(
             self.root_worker,
             base_chroot,
-            env=['http_proxy=http://192.168.122.1:3142'],
+            env=[
+                'DEBIAN_FRONTEND=noninteractive',
+                'http_proxy=http://192.168.122.1:3142',
+            ],
         ) as nspawn:
             nspawn.check_call([
                 'apt-get', '-y', '-q', 'update',
             ])
             nspawn.check_call([
+                'DEBIAN_FRONTEND=noninteractive',
                 'apt-get', '-y', '-q', 'dist-upgrade',
             ])
 
@@ -676,7 +681,10 @@ class Builder:
         with NspawnWorker(
             self.root_worker,
             base_chroot,
-            env=['http_proxy=http://192.168.122.1:3142'],
+            env=[
+                'http_proxy=http://192.168.122.1:3142',
+                'DEBIAN_FRONTEND=noninteractive',
+            ],
         ) as nspawn:
             nspawn.check_call([
                 'install', '-d',
@@ -758,7 +766,10 @@ class Builder:
         with NspawnWorker(
             self.root_worker,
             sdk_chroot,
-            env=['http_proxy=http://192.168.122.1:3142'],
+            env=[
+                'http_proxy=http://192.168.122.1:3142',
+                'DEBIAN_FRONTEND=noninteractive',
+            ],
         ) as nspawn:
             packages = sdk_details.get('add_packages', [])
 
@@ -793,8 +804,9 @@ class Builder:
             self.root_worker,
             platform_chroot,
             env=[
+                'DEBIAN_FRONTEND=noninteractive',
                 'SUDO_FORCE_REMOVE=yes',
-                'http_proxy=http://192.168.122.1:3142'
+                'http_proxy=http://192.168.122.1:3142',
             ],
         ) as nspawn:
             # TODO: For the SteamRuntime this removes dbus,
@@ -1417,6 +1429,7 @@ class Builder:
                                 self.flatpak_arch,
                                 self.runtime_branch,
                             ),
+                            'DEBIAN_FRONTEND=noninteractive',
                             'http_proxy=http://192.168.122.1:3142',
                             'export={}'.format(packages),
                             'sh',
@@ -1461,7 +1474,9 @@ class Builder:
 
             self.worker.check_call([
                 'env',
+                'DEBIAN_FRONTEND=noninteractive',
                 'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                'http_proxy=http://192.168.122.1:3142',
                 'flatpak-builder',
                 '--repo={}'.format(self.remote_repo),
                 '{}/workdir'.format(self.worker.scratch),
