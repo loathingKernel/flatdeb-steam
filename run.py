@@ -1309,6 +1309,12 @@ class Builder:
                         'delete',
                         'flatdeb-host',
                     ])
+                    self.worker.check_call([
+                        'time',
+                        'flatpak',
+                        'build-update-repo',
+                        self.remote_repo,
+                    ])
 
             self.worker.check_call([
                 'env',
