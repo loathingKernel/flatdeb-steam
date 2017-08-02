@@ -97,6 +97,7 @@ class Builder:
         self.runtime_details = {}
         self.root_worker = None
         self.worker = None
+        self.host_worker = HostWorker()
         self.remote_ostree_mode = None
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
@@ -408,7 +409,7 @@ class Builder:
         ])
 
     def ensure_local_repo(self):
-        subprocess.check_call([
+        self.host_worker.check_call([
             'ostree',
             '--repo=' + self.repo,
             'init',
@@ -1172,7 +1173,7 @@ class Builder:
             ])
 
             with self.worker.remote_dir_context(self.remote_repo) as mount:
-                subprocess.call([
+                self.host_worker.call([
                     'ostree',
                     '--repo={}'.format(self.repo),
                     'remote',
@@ -1180,7 +1181,7 @@ class Builder:
                     'flatdeb-worker',
                 ])
                 print('^ It is OK if that failed with "remote not found"')
-                subprocess.check_call([
+                self.host_worker.check_call([
                     'ostree',
                     '--repo={}'.format(self.repo),
                     'remote',
@@ -1189,7 +1190,7 @@ class Builder:
                     'flatdeb-worker',
                     'file://' + urllib.parse.quote(mount),
                 ])
-                subprocess.check_call([
+                self.host_worker.check_call([
                     'ostree',
                     '--repo={}'.format(self.repo),
                     'pull',
@@ -1204,7 +1205,7 @@ class Builder:
                         self.runtime_branch,
                     ),
                 ])
-                subprocess.check_call([
+                self.host_worker.check_call([
                     'ostree',
                     '--repo={}'.format(self.repo),
                     'remote',
@@ -1253,7 +1254,7 @@ class Builder:
 
             if not isinstance(self.worker, HostWorker):
                 with self.worker.remote_dir_context(self.remote_repo) as mount:
-                    subprocess.call([
+                    self.host_worker.call([
                         'ostree',
                         '--repo={}'.format(mount),
                         'remote',
@@ -1261,7 +1262,7 @@ class Builder:
                         'flatdeb-host',
                     ])
                     print('^ It is OK if that failed with "remote not found"')
-                    subprocess.check_call([
+                    self.host_worker.check_call([
                         'ostree',
                         '--repo={}'.format(mount),
                         'remote',
@@ -1270,7 +1271,7 @@ class Builder:
                         'flatdeb-host',
                         'file://' + urllib.parse.quote(self.repo),
                     ])
-                    subprocess.check_call([
+                    self.host_worker.check_call([
                         'ostree',
                         '--repo={}'.format(mount),
                         'pull',
@@ -1284,7 +1285,7 @@ class Builder:
                             manifest['runtime-version'],
                         ),
                     ])
-                    subprocess.check_call([
+                    self.host_worker.check_call([
                         'ostree',
                         '--repo={}'.format(mount),
                         'pull',
@@ -1298,7 +1299,7 @@ class Builder:
                             manifest['runtime-version'],
                         ),
                     ])
-                    subprocess.check_call([
+                    self.host_worker.check_call([
                         'ostree',
                         '--repo={}'.format(mount),
                         'remote',
@@ -1348,7 +1349,7 @@ class Builder:
                                     '-p', self.worker.scratch,
                                     'flatdeb-git.XXXXXX',
                                 ]).decode('utf-8').rstrip('\n')
-                                uploader = subprocess.Popen([
+                                uploader = self.host_worker.Popen([
                                     'tar',
                                     '-cf-',
                                     '-C', source['path'],
@@ -1468,14 +1469,14 @@ class Builder:
                 ])
 
                 with self.worker.remote_dir_context(self.remote_repo) as mount:
-                    subprocess.call([
+                    self.host_worker.call([
                         'ostree',
                         '--repo={}'.format(self.repo),
                         'remote',
                         'delete',
                         'flatdeb-worker',
                     ])
-                    subprocess.check_call([
+                    self.host_worker.check_call([
                         'ostree',
                         '--repo={}'.format(self.repo),
                         'remote',
@@ -1484,7 +1485,7 @@ class Builder:
                         'flatdeb-worker',
                         'file://' + urllib.parse.quote(mount),
                     ])
-                    subprocess.check_call([
+                    self.host_worker.check_call([
                         'ostree',
                         '--repo={}'.format(self.repo),
                         'pull',
@@ -1498,7 +1499,7 @@ class Builder:
                             manifest['branch'],
                         ),
                     ])
-                    subprocess.check_call([
+                    self.host_worker.check_call([
                         'ostree',
                         '--repo={}'.format(self.repo),
                         'remote',

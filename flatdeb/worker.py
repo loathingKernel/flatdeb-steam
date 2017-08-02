@@ -232,7 +232,18 @@ class HostWorker(Worker):
         subprocess.check_call(argv, **kwargs)
 
     @staticmethod
+    def Popen(argv, **kwargs):
+        print(repr(argv))
+        return subprocess.Popen(argv, **kwargs)
+
+    @staticmethod
+    def call(argv, **kwargs):
+        print(repr(argv))
+        return subprocess.call(argv, **kwargs)
+
+    @staticmethod
     def check_output(argv, **kwargs):
+        print(repr(argv))
         return subprocess.check_output(argv, **kwargs)
 
     def install_file(self, source, destination, permissions=0o644):
