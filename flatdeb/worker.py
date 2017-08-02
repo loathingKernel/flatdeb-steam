@@ -27,7 +27,7 @@ import os
 import shlex
 import subprocess
 from abc import abstractmethod, ABCMeta
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from tempfile import TemporaryDirectory
 
 
@@ -73,6 +73,15 @@ class Worker(metaclass=ABCMeta):
     @abstractmethod
     def install_file(self, source, destination, permissions=0o644):
         pass
+
+    @abstractmethod
+    def remote_dir_context(self, path):
+        """
+        Return a context manager. Entering the context manager makes path
+        available as a filesystem directory for the caller, returning
+        the transformed path (possibly a sshfs or similar). Leaving the
+        context manager cleans up.
+        """
 
 
 class NspawnWorker(Worker):
@@ -129,6 +138,10 @@ class NspawnWorker(Worker):
                 ], stdout=writer)
 
             self.install_file(manifest, '/usr/manifest.dpkg')
+
+    @contextmanager
+    def remote_dir_context(self, path):
+        yield os.path.normpath(os.path.join(self.path, './' + path))
 
 
 class SudoWorker(Worker):
@@ -190,6 +203,10 @@ class SudoWorker(Worker):
             destination,
         ])
 
+    @contextmanager
+    def remote_dir_context(self, path):
+        yield path
+
 
 class HostWorker(Worker):
 
@@ -238,6 +255,10 @@ class HostWorker(Worker):
         self.check_call([
             'install', '-m' + permissions, source, destination,
         ])
+
+    @contextmanager
+    def remote_dir_context(self, path):
+        yield path
 
 
 class SshWorker(Worker):
@@ -311,3 +332,20 @@ class SshWorker(Worker):
             '{}/install'.format(self.scratch),
             destination,
         ])
+
+    @contextmanager
+    def remote_dir_context(self, path):
+        with TemporaryDirectory(prefix='flatdeb-mount.') as t:
+            subprocess.check_call([
+                'sshfs',
+                '{}:{}'.format(self.remote, path),
+                t,
+            ])
+            try:
+                yield t
+            finally:
+                subprocess.check_call([
+                    'fusermount',
+                    '-u',
+                    t,
+                ])
