@@ -599,7 +599,7 @@ class Builder:
 
             self.root_worker.install_file(
                 to_copy,
-                '{}/usr/sbin/initctl'.format(base_chroot),
+                '{}/sbin/initctl'.format(base_chroot),
                 permissions=0o755,
             )
 
