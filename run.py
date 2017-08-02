@@ -652,6 +652,8 @@ class Builder:
                 writer.write('Acquire::Languages "none";\n')
                 writer.write('Acquire::GzipIndexes "true";\n')
                 writer.write('Acquire::CompressionTypes::Order:: "gz";\n')
+                # TODO: This doesn't seem to be working in precise,
+                # is it newer?
                 writer.write('APT::InstallRecommends "false";\n')
                 writer.write(
                     'APT::AutoRemove::SuggestsImportant "false";\n')
@@ -708,7 +710,9 @@ class Builder:
             # We use aptitude to help prepare the Platform runtime, and
             # it's a useful thing to have in the Sdk runtime
             nspawn.check_call([
-                'apt-get', '-y', 'install', 'aptitude',
+                'apt-get', '-q', '-y',
+                '--no-install-recommends',
+                'install', 'aptitude',
             ])
 
             # All packages will be removed from the platform runtime
@@ -733,6 +737,7 @@ class Builder:
                 ]
                 nspawn.check_call([
                     'apt-get', '-q', '-y', 'install',
+                    '--no-install-recommends',
                 ] + packages)
 
             packages = self.runtime_details.get('add_packages', [])
@@ -740,6 +745,7 @@ class Builder:
             if packages:
                 nspawn.check_call([
                     'apt-get', '-q', '-y', 'install',
+                    '--no-install-recommends',
                 ] + packages)
 
 
@@ -759,6 +765,7 @@ class Builder:
             if packages:
                 nspawn.check_call([
                     'apt-get', '-q', '-y', 'install',
+                    '--no-install-recommends',
                 ] + packages)
 
             script = sdk_details.get('post_script', [])
