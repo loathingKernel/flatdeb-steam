@@ -312,7 +312,7 @@ class Builder:
             ]).decode('utf-8').rstrip('\n')
 
         if self.remote_repo is None:
-            self.remote_repo = '{}/repo'.format(self.worker.scratch)
+            self.remote_repo = '{}/repo'.format(self.remote_build_area)
 
     def command_base(self, **kwargs):
         with ExitStack() as stack:
