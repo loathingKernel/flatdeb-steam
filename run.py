@@ -1498,6 +1498,7 @@ class Builder:
                         '--disable-fsync',
                         '--mirror',
                         '--untrusted',
+                        'flatdeb-worker',
                         'app/{}/{}/{}'.format(
                             manifest['id'],
                             self.flatpak_arch,
