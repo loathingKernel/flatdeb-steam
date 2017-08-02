@@ -12,8 +12,8 @@ add_packages:
   - libsdl2-2.0-0
   - libvorbis0a
   - libvorbisfile3
-  - x11-utils
   - zlib1g
+  - x11-utils
 
 platform:
   null: null
