@@ -17,7 +17,7 @@ sources:
       - main
   - apt_uri: 'http://repo.steampowered.com/steam'
     apt_suite: 'precise'
-    keyring: 'valve-archive-keyring.gpg'
+    keyring: 'valve-steam-keyring.gpg'
     apt_components:
       - steam
 ...
