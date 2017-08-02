@@ -441,14 +441,13 @@ class Builder:
             self.root_worker.check_call([
                 'install', '-d', base_chroot,
             ])
-            # TODO: Upload tarball from host to remote worker
             self.root_worker.check_call([
                 'time',
                 'tar', '-zxf',
-                '{}/{}'.format(self.remote_build_area, tarball),
+                '-',
                 '-C', base_chroot,
                 '.',
-            ])
+            ], stdin=open(os.path.join(self.build_area, tarball), 'rb'))
 
             # We do common steps for both the Platform and the Sdk
             # in the base directory, then copy it.
