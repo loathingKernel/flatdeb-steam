@@ -25,6 +25,7 @@ sdk:
     - debhelper
     - dh-exec
     - dpkg-dev
+    - fakeroot
     - libcurl4-gnutls-dev
     - libgl1-mesa-dev
     - libjpeg-dev

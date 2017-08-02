@@ -240,6 +240,7 @@ sdk:
     - cmake
     - debhelper
     - dpkg-dev
+    - fakeroot
     - g++-4.8
     - gcc-4.8
     - gdb
