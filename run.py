@@ -359,61 +359,6 @@ class Builder:
                     ])
                 raise
 
-            # Merge /usr the hard way, if necessary. We are counting on
-            # the assumption that most packages are actually usrmergeable,
-            # and those that historically weren't are not upgraded often
-            # enough to be a practical problem...
-            if not self.suite_details.get('can_merge_usr', False):
-                self.root_worker.check_call([
-                    'time',
-                    'chroot', base_chroot,
-                    'sh',
-                    '-euc',
-
-                    'usrmerge () {\n'
-                    '    local f="$1"\n'
-                    '\n'
-                    '    ls -dl "$f" "/usr/$f" >&2 || true\n'
-                    '    if [ "$(readlink "$f")" = "/usr$f" ]; then\n'
-                    '        echo "Removing $f in favour of /usr$f" >&2\n'
-                    '        rm -v -f "$f"\n'
-                    '    elif [ "$(readlink "/usr$f")" = "$f" ]; then\n'
-                    '        echo "Removing /usr$f in favour of $f" >&2\n'
-                    '        rm -v -f "/usr$f"\n'
-                    '    else\n'
-                    '        echo "Cannot merge $f with /usr$f" >&2\n'
-                    '        exit 1\n'
-                    '    fi\n'
-                    '}\n'
-                    '\n'
-                    'find /bin /sbin /lib* -not -xtype d |\n'
-                    'while read f; do\n'
-                    '    if [ -e /usr/"$f" ]; then\n'
-                    '        usrmerge "$f"\n'
-                    '    fi\n'
-                    'done\n'
-                    '',
-
-                    'sh',   # argv[0]
-                    base_chroot,
-                ])
-                self.root_worker.check_call([
-                    'time',
-                    'sh', '-euc',
-                    'cd "$1"; tar -cf- bin sbin lib* | tar -C usr -xf-',
-                    'sh', base_chroot,
-                ])
-                self.root_worker.check_call([
-                    'time',
-                    'sh', '-euc', 'cd "$1"; rm -fr bin sbin lib*',
-                    'sh', base_chroot,
-                ])
-                self.root_worker.check_call([
-                    'time',
-                    'sh', '-euc', 'cd "$1"; ln -vs usr/bin usr/sbin usr/lib* .',
-                    'sh', base_chroot,
-                ])
-
             self.configure_base(base_chroot)
             self.configure_apt(base_chroot)
 
@@ -991,6 +936,58 @@ class Builder:
             'rm', '-fr', '--one-file-system',
             '{}/usr/local'.format(chroot),
         ])
+
+        # Merge /usr the hard way, if necessary.
+        if not self.suite_details.get('can_merge_usr', False):
+            self.root_worker.check_call([
+                'time',
+                'chroot', chroot,
+                'sh',
+                '-euc',
+
+                'usrmerge () {\n'
+                '    local f="$1"\n'
+                '\n'
+                '    ls -dl "$f" "/usr/$f" >&2 || true\n'
+                '    if [ "$(readlink "$f")" = "/usr$f" ]; then\n'
+                '        echo "Removing $f in favour of /usr$f" >&2\n'
+                '        rm -v -f "$f"\n'
+                '    elif [ "$(readlink "/usr$f")" = "$f" ]; then\n'
+                '        echo "Removing /usr$f in favour of $f" >&2\n'
+                '        rm -v -f "/usr$f"\n'
+                '    else\n'
+                '        echo "Cannot merge $f with /usr$f" >&2\n'
+                '        exit 1\n'
+                '    fi\n'
+                '}\n'
+                '\n'
+                'find /bin /sbin /lib* -not -xtype d |\n'
+                'while read f; do\n'
+                '    if [ -e /usr/"$f" ]; then\n'
+                '        usrmerge "$f"\n'
+                '    fi\n'
+                'done\n'
+                '',
+
+                'sh',   # argv[0]
+                chroot,
+            ])
+            self.root_worker.check_call([
+                'time',
+                'sh', '-euc',
+                'cd "$1"; tar -cf- bin sbin lib* | tar -C usr -xf-',
+                'sh', chroot,
+            ])
+            self.root_worker.check_call([
+                'time',
+                'sh', '-euc', 'cd "$1"; rm -fr bin sbin lib*',
+                'sh', chroot,
+            ])
+            self.root_worker.check_call([
+                'time',
+                'sh', '-euc', 'cd "$1"; ln -vs usr/bin usr/sbin usr/lib* .',
+                'sh', chroot,
+            ])
 
         if sdk:
             runtime = prefix + '.Sdk'
