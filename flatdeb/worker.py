@@ -173,7 +173,6 @@ class SudoWorker(Worker):
         return os.path.join(self.__worker.scratch, 'root')
 
     def check_call(self, argv, **kwargs):
-        print(repr(argv))
         self.__worker.check_call(
             ['env', '-', '/usr/bin/sudo', '-H'] + argv,
             **kwargs,
@@ -229,18 +228,8 @@ class HostWorker(Worker):
 
     @staticmethod
     def check_call(argv, **kwargs):
-        try:
-            subprocess.check_call(argv, **kwargs)
-        except Exception as e:
-            print(e)
-            print('Exit shell to continue')
-            subprocess.check_call(
-                ['/bin/bash', '-i'],
-                stdin=open('/dev/tty'),
-                stdout=open('/dev/tty', 'w'),
-                stderr=subprocess.STDOUT,
-            )
-            raise
+        print(repr(argv))
+        subprocess.check_call(argv, **kwargs)
 
     @staticmethod
     def check_output(argv, **kwargs):
@@ -294,20 +283,10 @@ class SshWorker(Worker):
             command_line = argv
         else:
             command_line = ' '.join(map(shlex.quote, argv))
-        try:
-            subprocess.check_call(
-                ['ssh', self.remote, command_line],
-                **kwargs,
-            )
-        except Exception as e:
-            print(e)
-            subprocess.check_call(
-                ['ssh', self.remote],
-                stdin=open('/dev/tty'),
-                stdout=open('/dev/tty', 'w'),
-                stderr=subprocess.STDOUT,
-            )
-            raise
+        subprocess.check_call(
+            ['ssh', self.remote, command_line],
+            **kwargs,
+        )
 
     def check_output(self, argv, **kwargs):
         print(repr(argv))
