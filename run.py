@@ -37,6 +37,7 @@ Requires (on host):
     - python3
     - python3-gi
     - python3-yaml
+    - sshfs (if worker is remote)
 
 Requires (on worker, possibly the same machine as the host):
     - Debian 9 'stretch'
@@ -46,6 +47,7 @@ Requires (on worker, possibly the same machine as the host):
     - ostree
     - sudo
     - systemd-container
+    - time
 """
 
 import argparse
