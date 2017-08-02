@@ -349,6 +349,7 @@ class Builder:
             # enough to be a practical problem...
             if not self.suite_details.get('can_merge_usr', False):
                 self.root_worker.check_call([
+                    'time',
                     'chroot', base_chroot,
                     'sh',
                     '-euc',
@@ -381,15 +382,18 @@ class Builder:
                     base_chroot,
                 ])
                 self.root_worker.check_call([
+                    'time',
                     'sh', '-euc',
                     'cd "$1"; tar -cf- bin sbin lib* | tar -C usr -xf-',
                     'sh', base_chroot,
                 ])
                 self.root_worker.check_call([
+                    'time',
                     'sh', '-euc', 'cd "$1"; rm -fr bin sbin lib*',
                     'sh', base_chroot,
                 ])
                 self.root_worker.check_call([
+                    'time',
                     'sh', '-euc', 'cd "$1"; ln -vs usr/bin usr/sbin usr/lib* .',
                     'sh', base_chroot,
                 ])
@@ -403,6 +407,7 @@ class Builder:
             )
 
             self.root_worker.check_call([
+                'time',
                 'tar', '-zcf', '{}/{}'.format(
                     self.remote_build_area, tarball,
                 ),
@@ -475,6 +480,7 @@ class Builder:
                 'install', '-d', base_chroot,
             ])
             self.root_worker.check_call([
+                'time',
                 'tar', '-zxf',
                 '{}/{}'.format(self.remote_build_area, tarball),
                 '-C', base_chroot,
@@ -489,6 +495,7 @@ class Builder:
             sdk_chroot = '{}/sdk'.format(self.root_worker.scratch)
 
             self.root_worker.check_call([
+                'time',
                 'cp', '-a', '--reflink=auto', base_chroot, platform_chroot,
             ])
             self.root_worker.check_call([
@@ -506,6 +513,7 @@ class Builder:
             )
 
             self.worker.check_call([
+                'time',
                 'flatpak',
                 'build-update-repo',
                 self.remote_repo,
@@ -533,6 +541,7 @@ class Builder:
 
                     with open(output + '.new', 'wb') as writer:
                         self.worker.check_call([
+                            'time',
                             'cat',
                             '{}/bundle'.format(self.worker.scratch),
                         ], stdout=writer)
