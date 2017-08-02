@@ -129,6 +129,20 @@ class Builder:
         return arch
 
     @staticmethod
+    def other_multiarch(arch):
+        """
+        Return the other architecture that accompanies the given Debian
+        architecture in a multiarch setup, or None.
+        """
+
+        if arch == 'amd64':
+            return 'i386'
+        elif arch == 'arm64':
+            return 'armhf'
+        else:
+            return None
+
+    @staticmethod
     def dpkg_to_flatpak_arch(arch):
         """
         Return the Flatpak architecture name corresponding to the given
@@ -723,6 +737,29 @@ class Builder:
                 '/var/lock',
             ])
 
+            other_arch = self.other_multiarch(self.dpkg_arch)
+
+            if ('add_packages_multiarch' in self.runtime_details and
+                    other_arch is not None):
+                try:
+                    nspawn.check_call([
+                        'dpkg', '--add-architecture', other_arch,
+                    ])
+                except subprocess.CalledProcessError:
+                    # Older syntax for Ubuntu precise
+                    # https://wiki.debian.org/Multiarch/HOWTO
+                    nspawn.check_call([
+                        'sh', '-euc',
+                        'echo "foreign-architecture $1" > ' +
+                        '/etc/dpkg/dpkg.cfg.d/architectures',
+                        'sh', # argv[0]
+                        other_arch,
+                    ])
+
+                nspawn.check_call([
+                    'apt-get', '-y', 'update',
+                ])
+
             # We use aptitude to help prepare the Platform runtime, and
             # it's a useful thing to have in the Sdk runtime
             nspawn.check_call([
@@ -740,12 +777,26 @@ class Builder:
                 'aptitude', '-y', 'unmarkauto', 'apt'
             ])
 
+            if ('add_packages_multiarch' in self.runtime_details and
+                    other_arch is not None):
+                packages = [
+                    p + ':' + other_arch
+                    for p in self.runtime_details['add_packages_multiarch']
+                ] + [
+                    p + ':' + self.dpkg_arch
+                    for p in self.runtime_details['add_packages_multiarch']
+                ]
+                nspawn.check_call([
+                    'apt-get', '-q', '-y', 'install',
+                ] + packages)
+
             packages = self.runtime_details.get('add_packages', [])
 
             if packages:
                 nspawn.check_call([
                     'apt-get', '-q', '-y', 'install',
                 ] + packages)
+
 
     def sdkize(self, sdk_chroot):
         """
@@ -794,11 +845,13 @@ class Builder:
                 'http_proxy=http://192.168.122.1:3142'
             ],
         ) as nspawn:
-            nspawn.check_call([
-                'aptitude', '-y', 'purge',
-                '?and(?installed,?section(devel))',
-                '?and(?installed,?section(libdevel))',
-            ])
+            # TODO: For the SteamRuntime this removes dbus,
+            # libsasl2-modules and python-debian and I have no idea why
+            #nspawn.check_call([
+            #    'aptitude', '-y', 'purge',
+            #    '?and(?installed,?section(devel))',
+            #    '?and(?installed,?section(libdevel))',
+            #])
 
             installed = set(nspawn.check_output([
                 'dpkg-query', '--show', '-f', '${Package}\\n',
