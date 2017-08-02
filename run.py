@@ -1138,22 +1138,6 @@ class Builder:
                 '{}/ostree/main/metadata'.format(chroot),
             )
 
-        tarball = '{}-ostree-{}-{}.tar.gz'.format(
-            runtime,
-            self.flatpak_arch,
-            self.runtime_branch,
-        )
-
-        self.root_worker.check_call([
-            'tar', '-zcf',
-            '{}/{}'.format(
-                self.remote_build_area,
-                tarball,
-            ),
-            '-C', '{}/ostree/main'.format(chroot),
-            '.',
-        ])
-
         self.worker.check_call([
             'time',
             'ostree',
@@ -1161,7 +1145,7 @@ class Builder:
             'commit',
             '--branch=' + ref,
             '--subject=Update',
-            '--tree=tar={}/{}'.format(self.remote_build_area, tarball),
+            '--tree=dir={}/ostree/main'.format(chroot),
             '--fsync=false',
         ])
 
@@ -1225,16 +1209,6 @@ class Builder:
                     'delete',
                     'flatdeb-worker',
                 ])
-
-            output = os.path.join(self.build_area, tarball)
-
-            with open(output + '.new', 'wb') as writer:
-                self.worker.check_call([
-                    'cat',
-                    '{}/{}'.format(self.remote_build_area, tarball),
-                ], stdout=writer)
-
-            os.rename(output + '.new', output)
 
     def command_app(self, *, app_branch, prefix, **kwargs):
         self.ensure_local_repo()
