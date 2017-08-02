@@ -481,6 +481,7 @@ class Builder:
             self.root_worker.check_call([
                 'install', '-d', base_chroot,
             ])
+            # TODO: Upload tarball from host to remote worker
             self.root_worker.check_call([
                 'time',
                 'tar', '-zxf',
