@@ -213,6 +213,7 @@ add_packages_multiarch:
   - zlib1g
 
   # Not in the real Runtime, but needed for Intel gfx
+  - libgl1-mesa-dri
   - libgl1-mesa-glx
   - libtxc-dxtn-s2tc0
 
@@ -229,6 +230,13 @@ add_packages:
   - libnm-util2
   - libtbb2
   - libvpx1
+
+  # Not in the real Runtime, but steam-launcher dependencies
+  - curl
+  - python
+  - python-apt
+  - xterm
+  - xz-utils
 
 platform:
   null: null
