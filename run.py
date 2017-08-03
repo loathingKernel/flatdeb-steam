@@ -1440,7 +1440,8 @@ class Builder:
                             'cp -a /usr/var /\n'
                             'install -d /var/cache/apt/archives/partial\n'
                             'fakeroot apt-get update\n'
-                            'fakeroot apt-get -y --download-only install "$@"\n'
+                            'fakeroot apt-get -y --download-only \\\n'
+                            '    --no-install-recommends install "$@"\n'
                             'mv /var/cache/apt/archives/*.deb "$export"\n'
                             'mv /var/lib/apt/lists "$export"\n'
                             '',
