@@ -18,8 +18,8 @@ modules:
     sources:
       - type: git
         dest: src
-        path: /home/smcv/src/debian/ioquake3    # TODO
-        branch: debian/master
+        path: /home/smcv/src/debian/ioquake3    # TODO: edit me
+        branch: wip/flatpak-app
       - type: file
         path: deb-buildapi/configure
       - type: file
@@ -31,8 +31,8 @@ modules:
     sources:
       - type: git
         dest: src
-        path: /home/smcv/src/debian/openarena   # TODO
-        branch: debian/master
+        path: /home/smcv/src/debian/openarena   # TODO: edit me
+        branch: wip/flatpak-app
       - type: file
         path: deb-buildapi/configure
       - type: file
