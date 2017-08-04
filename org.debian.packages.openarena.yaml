@@ -49,5 +49,5 @@ modules:
         path: deb-buildapi/Makefile
 rename-desktop-file: openarena.desktop
 rename-icon: openarena128
-desktop-file-name-prefix: "Debian "
+desktop-file-name-prefix: "flatdeb "
 ...

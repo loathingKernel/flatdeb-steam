@@ -40,5 +40,5 @@ cleanup-commands:
   - sed -i -e 's,/usr/bin/steam,/app/bin/steam,g' /app/share/applications/*.desktop
 rename-desktop-file: steam.desktop
 rename-icon: steam
-desktop-file-name-suffix: " (Flatpak)"
+desktop-file-name-prefix: "flatdeb "
 ...
