@@ -3,6 +3,7 @@ add_packages:
   # This package list is suspiciously similar to the dependencies of
   # ioquake3 and openarena. There's a reason for that :-)
   - libcurl3-gnutls
+  - libgl1-mesa-dri
   - libgl1-mesa-glx
   - libjpeg62-turbo
   - libogg0
