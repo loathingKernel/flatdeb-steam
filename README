@@ -1,0 +1,54 @@
+flatdeb
+=======
+
+flatdeb is a proof of concept for building Flatpak runtimes and apps
+from Debian packages.
+
+Walkthrough
+-----------
+
+On a Debian 9 VM (assuming username "user"):
+
+    adduser user sudo
+    apt install debootstrap flatpak flatpak-builder openssh-server \
+        sudo systemd-container time
+    passwd user     # and have a password
+
+You need an apt-cacher-ng on http://192.168.122.1:3142 (currently
+hard-coded), visible to both the host system and the VM. If you don't
+have that, edit run.py accordingly.
+
+Also edit org.debian.packages.openarena.yaml to specify where you have
+put your clones of ioquake3 and openarena (the way flatdeb currently
+handles http_proxy means cloning over https is probably not going to
+work so well).
+
+Finally, put a copy of debian-archive-keyring.gpg in this directory.
+
+On the host (assuming VM is "ikea.virt"):
+
+    ssh-copy-id ikea.virt
+    ./run.py --remote=ikea.virt --suite=stretch --arch=amd64 base
+    ./run.py --remote=ikea.virt --suite=stretch --arch=amd64 runtimes \
+        net.debian.flatpak.Games
+    ./run.py --remote=ikea.virt --arch=amd64 app \
+        org.debian.packages.openarena
+
+    flatpak --user add-remote --no-gpg-verify flatdeb $HOME/.cache/flatdeb/repo
+    flatpak --user install flatdeb org.debian.packages.openarena
+    flatpak run org.debian.packages.openarena
+
+(Or run it all on the VM, without `--remote` - less well-tested.)
+
+Bonus content: Steam as a Flatpak
+---------------------------------
+
+Put `ubuntu-archive-keyring` and `valve-archive-keyring.gpg` in this
+directory. Also get the Steam trusted key and put it in
+`valve-steam-keyring.gpg`. Then run:
+
+    ./run.py --remote=ikea.virt --suite=scout --arch=amd64 base
+    ./run.py --remote=ikea.virt --suite=scout --arch=amd64 runtimes \
+        com.valvesoftware.SteamRuntime
+    ./run.py --remote=ikea.virt --arch=amd64 app \
+        com.valvesoftware.Steam
