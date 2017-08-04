@@ -5,5 +5,5 @@ sdk:
     - ccache
     - debhelper
     - dpkg-dev
-    - fakechroot
+    - fakeroot
 ...
