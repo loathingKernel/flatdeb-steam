@@ -10,4 +10,9 @@ sources:
   - apt_uri: 'http://deb.debian.org/debian'
     apt_suite: 'jessie'
     keyring: 'debian-archive-keyring.gpg'
+  - apt_uri: 'http://repo.steampowered.com/steam'
+    apt_suite: 'precise'
+    keyring: 'valve-steam-keyring.gpg'
+    apt_components:
+      - steam
 ...
