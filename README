@@ -10,6 +10,7 @@ Walkthrough
 On a Debian 9 VM (assuming username "user"):
 
     adduser user sudo
+    visudo          # and set %sudo ALL=(ALL:ALL) NOPASSWD: ALL
     apt install debootstrap flatpak flatpak-builder openssh-server \
         sudo systemd-container time
     passwd user     # and have a password
