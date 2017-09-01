@@ -1,5 +1,6 @@
 ---
 # Based on
+# https://github.com/ValveSoftware/steam-runtime/blob/master/packages.txt
 # https://github.com/ValveSoftware/steam-runtime/blob/master/setup_chroot.sh
 #
 # Copyright © 2013-2016 Valve Corporation
@@ -159,6 +160,7 @@ add_packages_multiarch:
   - libvorbis0a
   - libvorbisenc2
   - libvorbisfile3
+  - libvulkan1
   - libwind0-heimdal
   - libwrap0
   - libx11-6
@@ -217,10 +219,7 @@ add_packages_multiarch:
   - libgl1-mesa-glx
   - libtxc-dxtn-s2tc0
 
-# The real Runtime also has libstdc++6-4.6-pic but that seems likely
-# to be a mistake?
 add_packages:
-  - nvidia-cg-toolkit
   - zenity
 
   # TODO: These should be multiarch but they don't seem to be ready
@@ -246,18 +245,191 @@ sdk:
     - build-essential
     - clang-3.6
     - cmake
+    - comerr-dev
     - debhelper
     - dpkg-dev
+    - dummygl-dev
     - fakeroot
+    - freeglut3-dev
     - g++-4.8
     - gcc-4.8
     - gdb
+    - krb5-multidev
+    - libacl1-dev
+    - libappindicator-dev
+    - libasound2-dev
+    - libasyncns-dev
+    - libatk1.0-dev
+    - libattr1-dev
+    - libavahi-client-dev
+    - libavahi-common-dev
+    - libavcodec-dev
+    - libavfilter-dev
+    - libavformat-dev
+    - libavutil-dev
+    - libbz2-dev
+    - libcairo2-dev
+    - libcanberra-dev
+    - libcanberra-gtk-dev
+    - libcap-dev
+    - libcups2-dev
+    - libcurl4-gnutls-dev
+    - libdbus-1-dev
+    - libdbus-glib-1-dev
+    - libexif-dev
+    - libexpat1-dev
+    - libffi-dev
+    - libflac-dev
+    - libfltk1.1-dev
+    - libfontconfig1-dev
+    - libfreetype6-dev
+    - libgconf2-dev
+    - libgcrypt11-dev
+    - libgdk-pixbuf2.0-dev
+    - libglew-dev
+    - libglib2.0-dev
+    - libglu1-mesa-dev
+    - libgmp-dev
+    - libgnutls-dev
+    - libgpg-error-dev
+    - libgstreamer-plugins-base0.10-dev
+    - libgstreamer0.10-dev
+    - libgtk2.0-dev
+    - libgudev-1.0-dev
+    - libice-dev
+    - libidn11-dev
+    - libindicator-dev
+    - libjack-jackd2-dev
+    - libjpeg-turbo8-dev
+    - libjson0-dev
+    - libkeyutils-dev
+    - libkrb5-dev
+    - liblcms2-dev
+    - libldap2-dev
+    - libltdl-dev
+    - libmikmod2-dev
+    - libncurses5-dev
+    - libncursesw5-dev
+    - libnm-glib-dev
+    - libnm-util-dev
+    - libnotify-dev
+    - libnspr4-dev
+    - libnss3-dev
+    - libogg-dev
+    - libopenal-dev
+    - liborc-0.4-dev
+    - libp11-kit-dev
+    - libpango1.0-dev
+    - libpci-dev
+    - libpcre3-dev
+    - libpixman-1-dev
+    - libpng12-dev
+    - libpulse-dev
+    - librtmp-dev
+    - libsamplerate0-dev
+    - libsasl2-dev
+    - libsdl-image1.2-dev
+    - libsdl-mixer1.2-dev
+    - libsdl-ttf2.0-dev
+    - libsdl1.2-dev
+    - libsdl2-dev
+    - libsdl2-image-dev
+    - libsdl2-mixer-dev
+    - libsdl2-net-dev
+    - libsdl2-ttf-dev
+    - libselinux1-dev
+    - libsm-dev
+    - libsndfile1-dev
+    - libspeex-dev
+    - libspeexdsp-dev
+    - libsqlite3-dev
+    - libssl-dev
+    - libstdc++6-4.6-dev
     - libstdc++6-4.6-pic
+    - libswscale-dev
+    - libtasn1-3-dev
+    - libtbb-dev
+    - libtdb-dev
+    - libtheora-dev
+    - libtiff4-dev
+    - libtinfo-dev
+    - libudev-dev
+    - libusb-1.0-0-dev
+    - libva-dev
+    - libvdpau-dev
+    - libvorbis-dev
+    - libvpx-dev
+    - libvulkan-dev
+    - libwrap0-dev
+    - libx11-dev
+    - libx11-xcb-dev
+    - libxau-dev
+    - libxaw7-dev
+    - libxcb-composite0-dev
+    - libxcb-damage0-dev
+    - libxcb-dpms0-dev
+    - libxcb-dri2-0-dev
+    - libxcb-dri3-dev
+    - libxcb-glx0-dev
+    - libxcb-present-dev
+    - libxcb-randr0-dev
+    - libxcb-record0-dev
+    - libxcb-render0-dev
+    - libxcb-res0-dev
+    - libxcb-screensaver0-dev
+    - libxcb-shape0-dev
+    - libxcb-shm0-dev
+    - libxcb-sync-dev
+    - libxcb-xevie0-dev
+    - libxcb-xf86dri0-dev
+    - libxcb-xfixes0-dev
+    - libxcb-xinerama0-dev
+    - libxcb-xkb-dev
+    - libxcb-xprint0-dev
+    - libxcb-xtest0-dev
+    - libxcb-xv0-dev
+    - libxcb-xvmc0-dev
+    - libxcb1-dev
+    - libxcomposite-dev
+    - libxcursor-dev
+    - libxdamage-dev
+    - libxdmcp-dev
+    - libxext-dev
+    - libxfixes-dev
+    - libxft-dev
+    - libxi-dev
+    - libxinerama-dev
+    - libxml2-dev
+    - libxmu-dev
+    - libxpm-dev
+    - libxrandr-dev
+    - libxrender-dev
+    - libxss-dev
+    - libxt-dev
+    - libxtst-dev
+    - libxxf86vm-dev
     - lldb-3.6
+    - network-manager-dev
+    - nvidia-cg-toolkit
     - pkg-config
     - steamrt-dev
     - time
     - ubuntu-minimal
+    - uuid-dev
+    - x11proto-composite-dev
+    - x11proto-core-dev
+    - x11proto-damage-dev
+    - x11proto-fixes-dev
+    - x11proto-input-dev
+    - x11proto-kb-dev
+    - x11proto-randr-dev
+    - x11proto-render-dev
+    - x11proto-scrnsaver-dev
+    - x11proto-xext-dev
+    - x11proto-xf86vidmode-dev
+    - x11proto-xinerama-dev
+    - xtrans-dev
+    - zlib1g-dev
 
   # TODO: also
   #  - lldb-3.4
