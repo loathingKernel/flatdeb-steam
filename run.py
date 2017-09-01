@@ -330,6 +330,7 @@ class Builder:
                 'debootstrap',
                 '--variant=minbase',
                 '--arch={}'.format(self.primary_dpkg_arch),
+                '--include=apt-transport-https',
             ]
 
             if self.suite_details.get('can_merge_usr', False):
