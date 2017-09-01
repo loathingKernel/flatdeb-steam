@@ -248,7 +248,6 @@ sdk:
     - comerr-dev
     - debhelper
     - dpkg-dev
-    - dummygl-dev
     - fakeroot
     - freeglut3-dev
     - g++-4.8
