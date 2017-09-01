@@ -2,7 +2,10 @@
 apt_components:
   - main
 debootstrap_script: 'precise'
-can_merge_usr: true
+# The precise debootstrap script isn't compatible with merged /usr, and
+# neither is the precise package set, but we can do it after upgrading to
+# scout.
+can_merge_usr: after_debootstrap
 sources:
   - apt_uri: 'http://archive.ubuntu.com/ubuntu'
     apt_suite: 'precise'
