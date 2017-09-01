@@ -2,6 +2,7 @@
 apt_components:
   - main
 debootstrap_script: 'precise'
+can_merge_usr: true
 sources:
   - apt_uri: 'http://archive.ubuntu.com/ubuntu'
     apt_suite: 'precise'
@@ -20,4 +21,9 @@ sources:
     keyring: 'valve-steam-keyring.gpg'
     apt_components:
       - steam
+  - apt_uri: 'https://people.collabora.com/~smcv/steamos'
+    apt_trusted: true
+    apt_suite: 'scout-multiarch'
+    apt_components:
+      - main
 ...
