@@ -47,7 +47,7 @@ On the host (assuming VM is "ikea.virt"):
 
 (Or run it all on the VM, without `--remote` - less well-tested.)
 
-Bonus content: Steam as a Flatpak
----------------------------------
+Bonus content: Steam as a Flatpak, with multiarch
+-------------------------------------------------
 
 https://github.com/smcv/flatdeb-steam

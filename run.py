@@ -90,10 +90,10 @@ class Builder:
         self.remote_build_area = None
         self.repo = os.path.join(self.build_area, 'repo')
 
-        self.__dpkg_arch = None
+        self.__dpkg_archs = []
         self.flatpak_arch = None
 
-        self.__dpkg_arch_matches_cache = {}
+        self.__primary_dpkg_arch_matches_cache = {}
         self.suite_details = {}
         self.runtime_details = {}
         self.root_worker = None
@@ -169,32 +169,40 @@ class Builder:
         return arch
 
     @property
-    def dpkg_arch(self):
+    def primary_dpkg_arch(self):
         """
         The Debian architecture we are building a runtime for, such as
         i386 or amd64.
         """
-        return self.__dpkg_arch
+        return self.__dpkg_archs[0]
 
-    @dpkg_arch.setter
-    def dpkg_arch(self, value):
-        self.__dpkg_arch_matches_cache = {}
-        self.__dpkg_arch = value
-
-    def dpkg_arch_matches(self, arch_spec):
+    @property
+    def dpkg_archs(self):
         """
-        Return True if arch_spec matches dpkg_arch (or
-        equivalently, if dpkg_arch is one of the architectures
+        The Debian architectures we support via multiarch, such as
+        ['amd64', 'i386'].
+        """
+        return self.__dpkg_archs
+
+    @dpkg_archs.setter
+    def dpkg_archs(self, value):
+        self.__primary_dpkg_arch_matches_cache = {}
+        self.__dpkg_archs = value
+
+    def primary_dpkg_arch_matches(self, arch_spec):
+        """
+        Return True if arch_spec matches primary_dpkg_arch (or
+        equivalently, if primary_dpkg_arch is one of the architectures
         described by arch_spec). For example, any-amd64 matches amd64
         but not i386.
         """
-        if arch_spec not in self.__dpkg_arch_matches_cache:
+        if arch_spec not in self.__primary_dpkg_arch_matches_cache:
             exit_code = self.worker.call(
-                ['dpkg-architecture', '--host-arch', self.dpkg_arch,
+                ['dpkg-architecture', '--host-arch', self.primary_dpkg_arch,
                  '--is', arch_spec])
-            self.__dpkg_arch_matches_cache[arch_spec] = (exit_code == 0)
+            self.__primary_dpkg_arch_matches_cache[arch_spec] = (exit_code == 0)
 
-        return self.__dpkg_arch_matches_cache[arch_spec]
+        return self.__primary_dpkg_arch_matches_cache[arch_spec]
 
     def run_command_line(self):
         """
@@ -217,8 +225,7 @@ class Builder:
         parser.add_argument('--repo', default=self.repo)
         parser.add_argument('--remote-repo', default=self.remote_repo)
         parser.add_argument('--suite', '-d', default=self.apt_suite)
-        parser.add_argument(
-            '--architecture', '--arch', '-a', default=self.dpkg_arch)
+        parser.add_argument('--architecture', '--arch', '-a')
         parser.add_argument('--runtime-branch', default=self.runtime_branch)
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
@@ -271,13 +278,15 @@ class Builder:
         self.root_worker = SudoWorker(self.worker)
 
         if args.architecture is None:
-            self.dpkg_arch = self.worker.check_output(
-                ['dpkg-architecture', '-q', 'DEB_HOST_ARCH'],
-            ).decode('utf-8').rstrip('\n')
+            self.dpkg_archs = [
+                self.worker.check_output(
+                    ['dpkg-architecture', '-q', 'DEB_HOST_ARCH'],
+                ).decode('utf-8').rstrip('\n')
+            ]
         else:
-            self.dpkg_arch = args.architecture
+            self.dpkg_archs = args.architecture.split(',')
 
-        self.flatpak_arch = self.dpkg_to_flatpak_arch(self.dpkg_arch)
+        self.flatpak_arch = self.dpkg_to_flatpak_arch(self.primary_dpkg_arch)
 
         os.makedirs(self.build_area, exist_ok=True)
         os.makedirs(os.path.dirname(self.repo), exist_ok=True)
@@ -320,7 +329,7 @@ class Builder:
                 'http_proxy=http://192.168.122.1:3142',
                 'debootstrap',
                 '--variant=minbase',
-                '--arch={}'.format(self.dpkg_arch),
+                '--arch={}'.format(self.primary_dpkg_arch),
             ]
 
             if self.suite_details.get('can_merge_usr', False):
@@ -362,7 +371,7 @@ class Builder:
 
             tarball = 'base-{}-{}.tar.gz'.format(
                 self.apt_suite,
-                self.dpkg_arch,
+                ','.join(self.dpkg_archs),
             )
 
             self.root_worker.check_call([
@@ -426,7 +435,7 @@ class Builder:
 
         tarball = 'base-{}-{}.tar.gz'.format(
             self.apt_suite,
-            self.dpkg_arch,
+            ','.join(self.dpkg_archs),
         )
 
         with ExitStack() as stack:
@@ -576,6 +585,22 @@ class Builder:
                 'http_proxy=http://192.168.122.1:3142',
             ],
         ) as nspawn:
+            for other_arch in self.dpkg_archs[1:]:
+                try:
+                    nspawn.check_call([
+                        'dpkg', '--add-architecture', other_arch,
+                    ])
+                except subprocess.CalledProcessError:
+                    # Older syntax for Ubuntu precise
+                    # https://wiki.debian.org/Multiarch/HOWTO
+                    nspawn.check_call([
+                        'sh', '-euc',
+                        'echo "foreign-architecture $1" > ' +
+                        '/etc/dpkg/dpkg.cfg.d/architectures',
+                        'sh', # argv[0]
+                        other_arch,
+                    ])
+
             nspawn.check_call([
                 'apt-get', '-y', '-q', 'update',
             ])
@@ -700,29 +725,6 @@ class Builder:
                 '/var/lock',
             ])
 
-            other_arch = self.other_multiarch(self.dpkg_arch)
-
-            if ('add_packages_multiarch' in self.runtime_details and
-                    other_arch is not None):
-                try:
-                    nspawn.check_call([
-                        'dpkg', '--add-architecture', other_arch,
-                    ])
-                except subprocess.CalledProcessError:
-                    # Older syntax for Ubuntu precise
-                    # https://wiki.debian.org/Multiarch/HOWTO
-                    nspawn.check_call([
-                        'sh', '-euc',
-                        'echo "foreign-architecture $1" > ' +
-                        '/etc/dpkg/dpkg.cfg.d/architectures',
-                        'sh', # argv[0]
-                        other_arch,
-                    ])
-
-                nspawn.check_call([
-                    'apt-get', '-y', 'update',
-                ])
-
             # We use aptitude to help prepare the Platform runtime, and
             # it's a useful thing to have in the Sdk runtime
             nspawn.check_call([
@@ -742,21 +744,11 @@ class Builder:
                 'aptitude', '-y', 'unmarkauto', 'apt'
             ])
 
-            if ('add_packages_multiarch' in self.runtime_details and
-                    other_arch is not None):
-                packages = [
-                    p + ':' + other_arch
-                    for p in self.runtime_details['add_packages_multiarch']
-                ] + [
-                    p + ':' + self.dpkg_arch
-                    for p in self.runtime_details['add_packages_multiarch']
-                ]
-                nspawn.check_call([
-                    'apt-get', '-q', '-y', 'install',
-                    '--no-install-recommends',
-                ] + packages)
+            packages = list(self.runtime_details.get('add_packages', []))
 
-            packages = self.runtime_details.get('add_packages', [])
+            for p in self.runtime_details.get('add_packages_multiarch', []):
+                for a in self.dpkg_archs:
+                    packages.append(p + ':' + a)
 
             if packages:
                 nspawn.check_call([
@@ -779,7 +771,11 @@ class Builder:
                 'DEBIAN_FRONTEND=noninteractive',
             ],
         ) as nspawn:
-            packages = sdk_details.get('add_packages', [])
+            packages = list(sdk_details.get('add_packages', []))
+
+            for p in sdk_details.get('add_packages_multiarch', []):
+                for a in self.dpkg_archs:
+                    packages.append(p + ':' + a)
 
             if packages:
                 nspawn.check_call([
