@@ -529,9 +529,20 @@ class Builder:
                             'apt_components',
                             ['main']))
 
+                    options = []
+
+                    if source.get('apt_trusted', False):
+                        options.append('trusted=yes')
+
+                    if options:
+                        options_str = ' [' + ' '.join(options) + ']'
+                    else:
+                        options_str = ''
+
                     for prefix in ('deb', 'deb-src'):
-                        writer.write('{} {} {} {}\n'.format(
+                        writer.write('{}{} {} {} {}\n'.format(
                             prefix,
+                            options_str,
                             source['apt_uri'],
                             suite,
                             ' '.join(components),
