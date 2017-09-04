@@ -54,9 +54,11 @@ Requires (on worker, possibly the same machine as the host):
 
 import argparse
 import json
+import logging
 import os
 import re
 import subprocess
+import sys
 import urllib.parse
 from contextlib import ExitStack, suppress
 from tempfile import TemporaryDirectory
@@ -65,6 +67,9 @@ import yaml
 from gi.repository import GLib
 
 from flatdeb.worker import HostWorker, NspawnWorker, SshWorker, SudoWorker
+
+
+logger = logging.getLogger('flatdeb')
 
 
 class Builder:
@@ -103,6 +108,8 @@ class Builder:
         self.remote_ostree_mode = None
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
+
+        self.logger = logger.getChild('Builder')
 
     @staticmethod
     def get_flatpak_arch(arch=None):
@@ -766,6 +773,8 @@ class Builder:
         """
         Transform a copy of the chroot into a Sdk runtime.
         """
+        logger = self.logger.getChild('sdkize')
+
         sdk_details = self.runtime_details.get('sdk', {})
 
         with NspawnWorker(
@@ -783,6 +792,11 @@ class Builder:
                     packages.append(p + ':' + a)
 
             if packages:
+                logger.info('Installing extra packages for SDK:')
+
+                for p in sorted(packages):
+                    logger.info('- %s', p)
+
                 nspawn.check_call([
                     'apt-get', '-q', '-y', 'install',
                     '--no-install-recommends',
@@ -791,12 +805,19 @@ class Builder:
             script = sdk_details.get('post_script', [])
 
             if script:
+                logger.info('Running custom SDK script...')
                 nspawn.check_call([
                     'sh', '-c', script,
                 ])
+                logger.info('... done')
 
             nspawn.write_manifest()
             installed = nspawn.list_packages_ignore_arch()
+
+            logger.info('Packages included in SDK:')
+
+            for p in sorted(installed):
+                logger.info('- %s', p)
 
         return installed
 
@@ -804,6 +825,7 @@ class Builder:
         """
         Transform a copy of the chroot into a Platform runtime.
         """
+        logger = self.logger.getChild('platformize')
         platform_details = self.runtime_details.get('platform', {})
 
         with NspawnWorker(
@@ -825,6 +847,11 @@ class Builder:
 
             installed = nspawn.list_packages_ignore_arch()
 
+            logger.info('Packages installed at the moment:')
+
+            for p in sorted(installed):
+                logger.info('- %s', p)
+
             unwanted = []
 
             for package in [
@@ -836,16 +863,24 @@ class Builder:
                     unwanted.append(package)
 
             if unwanted:
+                logger.info('Removing unwanted packages')
+
                 nspawn.check_call([
                     'apt-get', '-y', 'purge', unwanted,
                 ])
 
+            logger.info('Autoremoving packages')
             nspawn.check_call([
                 'apt-get', '-y', '--purge', 'autoremove',
             ])
 
             installed = nspawn.list_packages_ignore_arch()
             unwanted = []
+
+            logger.info('Packages installed before destroying Essential set:')
+
+            for p in sorted(installed):
+                logger.info('- %s', p)
 
             # These are Essential (or at least important) but serve no
             # purpose in an immutable runtime with no init. Note that
@@ -893,6 +928,11 @@ class Builder:
                 unwanted.append('python-minimal')
                 unwanted.append('python2.7-minimal')
 
+            logger.info('Packages we will forcibly remove:')
+
+            for p in sorted(unwanted):
+                logger.info('- %s', p)
+
             if unwanted:
                 nspawn.check_call([
                     'dpkg', '--purge', '--force-remove-essential',
@@ -900,6 +940,12 @@ class Builder:
                 ] + unwanted)
 
             installed = nspawn.list_packages_ignore_arch()
+
+            logger.info('Packages included in platform:')
+
+            for p in sorted(installed):
+                if p != 'dpkg':
+                    logger.info('- %s', p)
 
             # We have to do this before removing dpkg :-)
             nspawn.write_manifest()
@@ -1576,4 +1622,24 @@ class Builder:
         ])
 
 if __name__ == '__main__':
-    Builder().run_command_line()
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    if sys.stderr.isatty():
+        try:
+            import colorlog
+        except ImportError:
+            pass
+        else:
+            formatter = colorlog.ColoredFormatter(
+                '%(log_color)s%(levelname)s:%(name)s:%(reset)s %(message)s')
+            handler = logging.StreamHandler()
+            handler.setFormatter(formatter)
+            logging.getLogger().addHandler(handler)
+
+    try:
+        Builder().run_command_line()
+    except KeyboardInterrupt:
+        raise SystemExit(130)
+    except subprocess.CalledProcessError as e:
+        logger.error('%s', e)
+        raise SystemExit(1)

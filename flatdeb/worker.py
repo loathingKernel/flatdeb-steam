@@ -23,6 +23,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import logging
 import os
 import shlex
 import subprocess
@@ -32,6 +33,9 @@ from contextlib import ExitStack, contextmanager
 from tempfile import TemporaryDirectory
 
 from debian.debian_support import Version
+
+
+logger = logging.getLogger(__name__)
 
 
 class Worker(metaclass=ABCMeta):
@@ -286,22 +290,22 @@ class HostWorker(Worker):
 
     @staticmethod
     def check_call(argv, **kwargs):
-        print('host:', repr(argv), file=sys.stderr)
+        logger.debug('host:%r', argv)
         subprocess.check_call(argv, **kwargs)
 
     @staticmethod
     def Popen(argv, **kwargs):
-        print('host:', repr(argv), file=sys.stderr)
+        logger.debug('host:%r', argv)
         return subprocess.Popen(argv, **kwargs)
 
     @staticmethod
     def call(argv, **kwargs):
-        print('host:', repr(argv), file=sys.stderr)
+        logger.debug('host:%r', argv)
         return subprocess.call(argv, **kwargs)
 
     @staticmethod
     def check_output(argv, **kwargs):
-        print('host:', repr(argv), file=sys.stderr)
+        logger.debug('host:%r', argv)
         return subprocess.check_output(argv, **kwargs)
 
     def install_file(self, source, destination, permissions=0o644):
@@ -347,7 +351,7 @@ class SshWorker(Worker):
         return self.__scratch
 
     def call(self, argv, **kwargs):
-        print('{}:'.format(self.remote), repr(argv), file=sys.stderr)
+        logger.debug('%s:%r', self.remote, argv)
         if isinstance(argv, str):
             command_line = argv
         else:
@@ -358,7 +362,7 @@ class SshWorker(Worker):
         )
 
     def check_call(self, argv, **kwargs):
-        print('{}:'.format(self.remote), repr(argv), file=sys.stderr)
+        logger.debug('%s:%r', self.remote, argv)
         if isinstance(argv, str):
             command_line = argv
         else:
@@ -369,7 +373,7 @@ class SshWorker(Worker):
         )
 
     def check_output(self, argv, **kwargs):
-        print('{}:'.format(self.remote), repr(argv), file=sys.stderr)
+        logger.debug('%s:%r', self.remote, argv)
         command_line = ' '.join(map(shlex.quote, argv))
         return subprocess.check_output(
             ['ssh', self.remote, command_line],
