@@ -796,10 +796,7 @@ class Builder:
                 ])
 
             nspawn.write_manifest()
-
-            installed = set(nspawn.check_output([
-                'dpkg-query', '--show', '-f', '${Package}\\n',
-            ]).split())
+            installed = nspawn.list_packages_ignore_arch()
 
         return installed
 
@@ -826,9 +823,8 @@ class Builder:
             #    '?and(?installed,?section(libdevel))',
             #])
 
-            installed = set(nspawn.check_output([
-                'dpkg-query', '--show', '-f', '${Package}\\n',
-            ]).split())
+            installed = nspawn.list_packages_ignore_arch()
+
             unwanted = []
 
             for package in [
@@ -848,9 +844,7 @@ class Builder:
                 'apt-get', '-y', '--purge', 'autoremove',
             ])
 
-            installed = set(nspawn.check_output([
-                'dpkg-query', '--show', '-f', '${Package}\\n',
-            ]).split())
+            installed = nspawn.list_packages_ignore_arch()
             unwanted = []
 
             # These are Essential (or at least important) but serve no
@@ -905,9 +899,7 @@ class Builder:
                     '--force-depends',
                 ] + unwanted)
 
-            installed = set(nspawn.check_output([
-                'dpkg-query', '--show', '-f', '${Package}\\n',
-            ]).split())
+            installed = nspawn.list_packages_ignore_arch()
 
             # We have to do this before removing dpkg :-)
             nspawn.write_manifest()

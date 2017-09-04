@@ -90,6 +90,17 @@ class Worker(metaclass=ABCMeta):
         context manager cleans up.
         """
 
+    def list_packages_ignore_arch(self):
+        installed = set()
+
+        for line in self.check_output([
+                    'dpkg-query', '--show', '-f',
+                    '${Package}\\n',
+        ]).splitlines():
+            installed.add(line.strip())
+
+        return installed
+
 
 class NspawnWorker(Worker):
     def __init__(self, worker, path, env=()):
