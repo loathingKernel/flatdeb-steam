@@ -5,7 +5,8 @@ runtime: com.valvesoftware.SteamRuntime.Platform
 runtime-version: scout
 sdk: com.valvesoftware.SteamRuntime.Sdk
 command: steam
-tags: proprietary
+tags:
+  - proprietary
 modules:
   - name: steam-launcher
     x-flatdeb-apt-packages:
