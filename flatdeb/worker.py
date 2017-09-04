@@ -101,7 +101,7 @@ class Worker(metaclass=ABCMeta):
                     'dpkg-query', '--show', '-f',
                     '${Package}\\n',
         ]).splitlines():
-            installed.add(line.strip())
+            installed.add(line.strip().decode('utf-8'))
 
         return installed
 
