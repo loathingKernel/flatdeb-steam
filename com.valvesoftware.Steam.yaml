@@ -33,6 +33,8 @@ finish-args:
   # to detect which flavour of GL driver selection is in use. Maybe one
   # day glvnd will save us all.
   - --env=LD_LIBRARY_PATH=/app/lib:/usr/lib/x86_64-linux-gnu/mesa:/usr/lib/i386-linux-gnu/mesa
+  # Assume the Flatpak runtime provides all the libraries needed
+  - --env=STEAM_RUNTIME=0
 
 cleanup-commands:
   - sed -i -e '2,$s,/usr/,/app/,g' /app/bin/steam
