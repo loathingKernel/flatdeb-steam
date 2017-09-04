@@ -20,7 +20,6 @@ modules:
 finish-args:
   - --allow=multiarch
   - --device=all
-  - --persist=.local
   - --persist=.steam
   - --share=ipc
   - --share=network
