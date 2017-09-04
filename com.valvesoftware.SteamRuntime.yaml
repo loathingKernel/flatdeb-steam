@@ -234,6 +234,23 @@ add_packages:
   - xterm
   - xz-utils
 
+  # Not in the real Runtime, but Steam tries to run lspci
+  - pciutils
+
+  # Not in the real Runtime, but Steam tries to run xdg-open; also
+  # strings(1) says steamui.so runs xdg-icon-resource forceupdate,
+  # and libcef.so mentions xdg-mime, xdg-desktop-menu,
+  # xdg-icon-resource, xdg-settings.
+  #
+  # For now we assume a GNOME environment, so gvfs-bin.
+  # TODO: force use of that code path
+  - gvfs-bin
+  - xdg-utils
+
+  # Not in the real Runtime, but Steam tries to run "xdg-user-dir %s".
+  # So does libcef.so.
+  - xdg-user-dirs
+
 platform:
   null: null
 
