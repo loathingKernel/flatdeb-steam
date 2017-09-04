@@ -980,8 +980,9 @@ class Builder:
 
                 'set -e\n'
                 'while [ $# -gt 0 ]; do\n'
+                '    old="$(readlink "$1")"\n'
                 '    if target="$(readlink -f "$1")"; then\n'
-                '        echo "Making $1 a hard link to $target"\n'
+                '        echo "Making $1 a hard link to $target (was $old)"\n'
                 '        rm -f "$1"\n'
                 '        cp -al "$target" "$1"\n'
                 '    fi\n'
