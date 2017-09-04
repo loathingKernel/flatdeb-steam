@@ -31,6 +31,8 @@ from abc import abstractmethod, ABCMeta
 from contextlib import ExitStack, contextmanager
 from tempfile import TemporaryDirectory
 
+from debian.debian_support import Version
+
 
 class Worker(metaclass=ABCMeta):
 
@@ -143,15 +145,38 @@ class NspawnWorker(Worker):
         with TemporaryDirectory(prefix='flatdeb-manifest.') as t:
             manifest = os.path.join(t, 'manifest')
 
+            dpkg_version = self.check_output([
+                'dpkg-query', '-W', '-f', '${Version}', 'dpkg',
+            ]).decode('utf-8')
+
             with open(manifest, 'w') as writer:
-                self.check_call([
-                    'dpkg-query', '-W',
-                    '-f', (
-                        r'${binary:Package}\t${Version}\t'
-                        r'${source:Package}\t${source:Version}\t'
-                        r'${Installed-Size}\t${Status}\n'
-                    ),
-                ], stdout=writer)
+                writer.write(
+                    '#Package[:Architecture]\t'
+                    '#Version\t'
+                    '#Source\t'
+                    '#Installed-Size\n'
+                )
+
+                if Version(dpkg_version) >= Version('1.16.2'):
+                    self.check_call([
+                        'dpkg-query', '-W',
+                        '-f', (
+                            r'${binary:Package}\t'
+                            r'${Version}\t'
+                            r'${Source}\t'
+                            r'${Installed-Size}\n'
+                        ),
+                    ], stdout=writer)
+                else:
+                    self.check_call([
+                        'dpkg-query', '-W',
+                        '-f', (
+                            r'${Package}:${Architecture}\t'
+                            r'${Version}\t'
+                            r'${Source}\t'
+                            r'${Installed-Size}\n'
+                        ),
+                    ], stdout=writer)
 
             self.install_file(manifest, '/usr/manifest.dpkg')
 

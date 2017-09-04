@@ -35,6 +35,7 @@ Requires (on host):
     - flatpak
     - ostree
     - python3
+    - python3-debian
     - python3-gi
     - python3-yaml
     - sshfs (if worker is remote)
