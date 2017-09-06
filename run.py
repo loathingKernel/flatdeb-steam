@@ -878,8 +878,8 @@ class Builder:
                 logger.info('Removing unwanted packages')
 
                 nspawn.check_call([
-                    'apt-get', '-y', 'purge', unwanted,
-                ])
+                    'apt-get', '-y', 'purge',
+                ] + unwanted)
 
             logger.info('Autoremoving packages')
             nspawn.check_call([
