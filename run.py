@@ -664,6 +664,11 @@ class Builder:
                 '{}/sbin/initctl'.format(base_chroot),
                 permissions=0o755,
             )
+            self.root_worker.install_file(
+                to_copy,
+                '{}/usr/local/sbin/initctl'.format(base_chroot),
+                permissions=0o755,
+            )
 
             # There is some cleanup that we can do in the base
             # tarball rather than in every runtime individually.
