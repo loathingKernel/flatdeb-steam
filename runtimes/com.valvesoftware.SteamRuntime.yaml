@@ -25,6 +25,8 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+id_prefix: com.valvesoftware.SteamRuntime
+
 add_packages_multiarch:
   - dconf-gsettings-backend
   - freeglut3
