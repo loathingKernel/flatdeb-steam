@@ -670,6 +670,16 @@ class Builder:
                 permissions=0o755,
             )
 
+            with open(to_copy, 'w') as writer:
+                writer.write('#!/bin/sh\n')
+                writer.write('exit 0\n')
+
+            self.root_worker.install_file(
+                to_copy,
+                '{}/usr/local/sbin/update-rc.d'.format(base_chroot),
+                permissions=0o755,
+            )
+
             # There is some cleanup that we can do in the base
             # tarball rather than in every runtime individually.
             # See https://github.com/debuerreotype/debuerreotype
