@@ -251,6 +251,10 @@ add_packages:
   # So does libcef.so.
   - xdg-user-dirs
 
+  # Not in the real Runtime, but Steam tries to run it. Since Ubuntu
+  # 14.10 (utopic) and Debian 8 (jessie) it's in coreutils instead.
+  - realpath
+
 platform:
   null: null
 
