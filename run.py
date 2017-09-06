@@ -1526,6 +1526,7 @@ class Builder:
                 'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
                 'http_proxy=http://192.168.122.1:3142',
                 'flatpak-builder',
+                '--arch={}'.format(self.flatpak_arch),
                 '--repo={}'.format(self.remote_repo),
                 '{}/workdir'.format(self.worker.scratch),
                 remote_manifest,
