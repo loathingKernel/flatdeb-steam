@@ -302,7 +302,7 @@ class Builder:
         if args.command is None:
             parser.error('A command is required')
 
-        with open(self.apt_suite + '.yaml') as reader:
+        with open(os.path.join('suites', self.apt_suite + '.yaml')) as reader:
             self.suite_details = yaml.safe_load(reader)
 
         getattr(
@@ -347,6 +347,13 @@ class Builder:
             keyring = self.suite_details['sources'][0].get('keyring')
 
             if keyring is not None:
+                if os.path.exists(os.path.join('suites', keyring)):
+                    keyring = os.path.join('suites', keyring)
+                elif os.path.exists(keyring):
+                    pass
+                else:
+                    raise RuntimeError('Cannot open {}'.format(keyring))
+
                 dest = '{}/{}'.format(
                     self.root_worker.scratch,
                     os.path.basename(keyring),
@@ -439,10 +446,12 @@ class Builder:
             self.runtime_branch = self.apt_suite
 
         # Be nice to people using tab-completion
+        prefix = os.path.basename(prefix)
+
         if prefix.endswith('.yaml'):
             prefix = prefix[:-5]
 
-        with open(prefix + '.yaml') as reader:
+        with open(os.path.join('runtimes', prefix + '.yaml')) as reader:
             self.runtime_details = yaml.safe_load(reader)
 
         tarball = 'base-{}-{}.tar.gz'.format(
@@ -572,6 +581,13 @@ class Builder:
                     keyring = source.get('keyring')
 
                     if keyring is not None:
+                        if os.path.exists(os.path.join('suites', keyring)):
+                            keyring = os.path.join('suites', keyring)
+                        elif os.path.exists(keyring):
+                            pass
+                        else:
+                            raise RuntimeError('Cannot open {}'.format(keyring))
+
                         self.root_worker.install_file(
                             os.path.abspath(keyring),
                             '{}/etc/apt/trusted.gpg.d/{}'.format(
@@ -1217,10 +1233,12 @@ class Builder:
         self.ensure_local_repo()
 
         # Be nice to people using tab-completion
+        prefix = os.path.basename(prefix)
+
         if prefix.endswith('.yaml'):
             prefix = prefix[:-5]
 
-        with open(prefix + '.yaml') as reader:
+        with open(os.path.join('apps', prefix + '.yaml')) as reader:
             manifest = yaml.safe_load(reader)
 
         if self.runtime_branch is None:
