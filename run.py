@@ -902,44 +902,68 @@ class Builder:
             ])
 
             installed = nspawn.list_packages_ignore_arch()
-            unwanted = []
 
             logger.info('Packages installed before destroying Essential set:')
 
             for p in sorted(installed):
                 logger.info('- %s', p)
 
+            unwanted = []
+
             # These are Essential (or at least important) but serve no
             # purpose in an immutable runtime with no init. Note that
             # order is important: adduser needs to be removed before
-            # debconf.
+            # debconf. We remove these particular packages first because
+            # they try to invoke other packages we want to remove in
+            # their postrm maintainer scripts.
             for package in [
                     'adduser',
                     'apt',
+                    'gnupg',
+                    'ifupdown',
+                    'initramfs-tools',
+                    'initramfs-tools-bin',
+                    'initscripts',
+                    'lsb-base',
+                    'module-init-tools',
+                    'plymouth',
+                    'tcpd',
+            ]:
+                if package in installed:
+                    unwanted.append(package)
+
+            if 'python' not in installed:
+                unwanted.append('python-minimal')
+                unwanted.append('python2.7-minimal')
+
+            logger.info('Packages we will forcibly remove (first round):')
+
+            for p in sorted(unwanted):
+                logger.info('- %s', p)
+
+            if unwanted:
+                nspawn.check_call([
+                    'dpkg', '--purge', '--force-remove-essential',
+                    '--force-depends',
+                ] + unwanted)
+
+            # Second round of removals.
+            for package in [
                     'busybox-initramfs',
                     'debconf',
                     'debian-archive-keyring',
                     'e2fsprogs',
-                    'gnupg',
-                    'ifupdown',
                     'init',
                     'init-system-helpers',
-                    'initramfs-tools',
-                    'initramfs-tools-bin',
-                    'initscripts',
                     'insserv',
                     'iproute',
                     'login',
-                    'lsb-base',
-                    'module-init-tools',
                     'mount',
                     'mountall',
                     'passwd',
-                    'plymouth',
                     'systemd',
                     'systemd-sysv',
                     'sysv-rc',
-                    'tcpd',
                     'ubuntu-archive-keyring',
                     'ubuntu-keyring',
                     'udev',
@@ -951,11 +975,7 @@ class Builder:
             if 'perl' not in installed:
                 unwanted.append('perl-base')
 
-            if 'python' not in installed:
-                unwanted.append('python-minimal')
-                unwanted.append('python2.7-minimal')
-
-            logger.info('Packages we will forcibly remove:')
+            logger.info('Packages we will forcibly remove (second round):')
 
             for p in sorted(unwanted):
                 logger.info('- %s', p)
