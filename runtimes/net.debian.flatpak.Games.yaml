@@ -1,4 +1,6 @@
 ---
+id_prefix: net.debian.flatpak.Games
+
 add_packages_multiarch:
   - libcurl3-gnutls
   - libgl1-mesa-dri

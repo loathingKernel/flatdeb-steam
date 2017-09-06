@@ -1,4 +1,6 @@
 ---
+id_prefix: net.debian.flatpak.Base
+
 sdk:
   add_packages:
     - build-essential

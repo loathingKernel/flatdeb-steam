@@ -246,14 +246,14 @@ class Builder:
             'runtimes',
             help='Build runtimes',
         )
-        subparser.add_argument('prefix')
+        subparser.add_argument('yaml_file')
 
         subparser = subparsers.add_parser(
             'app',
             help='Build an app',
         )
         parser.add_argument('--app-branch', default=self.app_branch)
-        subparser.add_argument('prefix')
+        subparser.add_argument('yaml_manifest')
 
         subparser = subparsers.add_parser(
             'print-flatpak-architecture',
@@ -439,19 +439,13 @@ class Builder:
             '--mode={}'.format(self.ostree_mode),
         ])
 
-    def command_runtimes(self, *, prefix, **kwargs):
+    def command_runtimes(self, *, yaml_file, **kwargs):
         self.ensure_local_repo()
 
         if self.runtime_branch is None:
             self.runtime_branch = self.apt_suite
 
-        # Be nice to people using tab-completion
-        prefix = os.path.basename(prefix)
-
-        if prefix.endswith('.yaml'):
-            prefix = prefix[:-5]
-
-        with open(os.path.join('runtimes', prefix + '.yaml')) as reader:
+        with open(yaml_file) as reader:
             self.runtime_details = yaml.safe_load(reader)
 
         tarball = 'base-{}-{}.tar.gz'.format(
@@ -491,6 +485,8 @@ class Builder:
             self.root_worker.check_call([
                 'mv', base_chroot, sdk_chroot,
             ])
+
+            prefix = self.runtime_details['id_prefix']
 
             self.ostreeify(
                 prefix,
@@ -1229,16 +1225,10 @@ class Builder:
                 self.repo,
             ])
 
-    def command_app(self, *, app_branch, prefix, **kwargs):
+    def command_app(self, *, app_branch, yaml_manifest, **kwargs):
         self.ensure_local_repo()
 
-        # Be nice to people using tab-completion
-        prefix = os.path.basename(prefix)
-
-        if prefix.endswith('.yaml'):
-            prefix = prefix[:-5]
-
-        with open(os.path.join('apps', prefix + '.yaml')) as reader:
+        with open(yaml_manifest) as reader:
             manifest = yaml.safe_load(reader)
 
         if self.runtime_branch is None:
@@ -1480,10 +1470,13 @@ class Builder:
                                     'path': path,
                                 })
 
-            remote_manifest = '{}/{}.json'.format(self.worker.scratch, prefix)
+            remote_manifest = '{}/{}.json'.format(
+                self.worker.scratch,
+                manifest['id'],
+            )
 
             with TemporaryDirectory(prefix='flatdeb-manifest.') as t:
-                json_manifest = os.path.join(t, prefix + '.json')
+                json_manifest = os.path.join(t, manifest['id'] + '.json')
 
                 with open(
                         json_manifest, 'w', encoding='utf-8',
