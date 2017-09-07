@@ -13,10 +13,10 @@ modules:
       - steam-launcher
     sources:
       - type: file
-        path: deb-buildapi/configure
+        path: flatdeb/deb-buildapi/configure
         dest: '.'
       - type: file
-        path: deb-buildapi/Makefile
+        path: flatdeb/deb-buildapi/Makefile
 
 finish-args:
   - --allow=multiarch
