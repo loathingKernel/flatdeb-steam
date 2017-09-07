@@ -63,6 +63,6 @@ On the host (assuming VM is "ikea.virt"):
 
 and then
 
-    flatpak --user add-remote --no-gpg-verify flatdeb $HOME/.cache/flatdeb/repo
+    flatpak --user remote-add --no-gpg-verify flatdeb $HOME/.cache/flatdeb/repo
     flatpak --user install flatdeb com.valvesoftware.Steam
     flatpak run com.valvesoftware.Steam
