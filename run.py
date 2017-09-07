@@ -333,7 +333,7 @@ class Builder:
                 '--include=apt-transport-https',
             ]
 
-            if self.suite_details.get('can_merge_usr', False):
+            if self.suite_details.get('can_merge_usr', False) is True:
                 argv.append('--merged-usr')
 
             keyring = self.suite_details['sources'][0].get('keyring')
@@ -369,6 +369,9 @@ class Builder:
 
             self.configure_base(base_chroot)
             self.configure_apt(base_chroot)
+
+            if self.suite_details.get('can_merge_usr', False) == 'after_debootstrap':
+                self.usrmerge(base_chroot)
 
             tarball = 'base-{}-{}.tar.gz'.format(
                 self.apt_suite,
@@ -963,59 +966,7 @@ class Builder:
 
         # Merge /usr the hard way, if necessary.
         if not self.suite_details.get('can_merge_usr', False):
-            self.root_worker.check_call([
-                'time',
-                'chroot', chroot,
-                'sh',
-                '-euc',
-
-                'usrmerge () {\n'
-                '    local f="$1"\n'
-                '\n'
-                '    ls -dl "$f" "/usr$f" >&2 || true\n'
-                '    if [ "$(readlink "$f")" = "/usr$f" ]; then\n'
-                '        echo "Removing $f in favour of /usr$f" >&2\n'
-                '        rm -v -f "$f"\n'
-                '    elif [ "$(readlink "/usr$f")" = "$f" ]; then\n'
-                '        echo "Removing /usr$f in favour of $f" >&2\n'
-                '        rm -v -f "/usr$f"\n'
-                '    elif [ "$(readlink -f "/usr$f")" = \\\n'
-                '           "$(readlink -f "$f")" ]; then\n'
-                '        echo "/usr$f and $f are functionally identical" >&2\n'
-                '        rm -v -f "$f"\n'
-                '    else\n'
-                '        echo "Cannot merge $f with /usr$f" >&2\n'
-                '        exit 1\n'
-                '    fi\n'
-                '}\n'
-                '\n'
-                'find /bin /sbin /lib* -not -xtype d |\n'
-                'while read f; do\n'
-                '    if [ -e "/usr$f" ]; then\n'
-                '        usrmerge "$f"\n'
-                '    fi\n'
-                'done\n'
-                '',
-
-                'sh',   # argv[0]
-                chroot,
-            ])
-            self.root_worker.check_call([
-                'time',
-                'sh', '-euc',
-                'cd "$1"; tar -cf- bin sbin lib* | tar -C usr -xf-',
-                'sh', chroot,
-            ])
-            self.root_worker.check_call([
-                'time',
-                'sh', '-euc', 'cd "$1"; rm -fr bin sbin lib*',
-                'sh', chroot,
-            ])
-            self.root_worker.check_call([
-                'time',
-                'sh', '-euc', 'cd "$1"; ln -vs usr/bin usr/sbin usr/lib* .',
-                'sh', chroot,
-            ])
+            self.usrmerge(chroot)
 
         if sdk:
             runtime = prefix + '.Sdk'
@@ -1575,6 +1526,61 @@ class Builder:
                     ], stdout=writer)
 
                 os.rename(output + '.new', output)
+
+    def usrmerge(self, chroot):
+        self.root_worker.check_call([
+            'time',
+            'chroot', chroot,
+            'sh',
+            '-euc',
+
+            'usrmerge () {\n'
+            '    local f="$1"\n'
+            '\n'
+            '    ls -dl "$f" "/usr$f" >&2 || true\n'
+            '    if [ "$(readlink "$f")" = "/usr$f" ]; then\n'
+            '        echo "Removing $f in favour of /usr$f" >&2\n'
+            '        rm -v -f "$f"\n'
+            '    elif [ "$(readlink "/usr$f")" = "$f" ]; then\n'
+            '        echo "Removing /usr$f in favour of $f" >&2\n'
+            '        rm -v -f "/usr$f"\n'
+            '    elif [ "$(readlink -f "/usr$f")" = \\\n'
+            '           "$(readlink -f "$f")" ]; then\n'
+            '        echo "/usr$f and $f are functionally identical" >&2\n'
+            '        rm -v -f "$f"\n'
+            '    else\n'
+            '        echo "Cannot merge $f with /usr$f" >&2\n'
+            '        exit 1\n'
+            '    fi\n'
+            '}\n'
+            '\n'
+            'find /bin /sbin /lib* -not -xtype d |\n'
+            'while read f; do\n'
+            '    if [ -e "/usr$f" ]; then\n'
+            '        usrmerge "$f"\n'
+            '    fi\n'
+            'done\n'
+            '',
+
+            'sh',   # argv[0]
+            chroot,
+        ])
+        self.root_worker.check_call([
+            'time',
+            'sh', '-euc',
+            'cd "$1"; tar -cf- bin sbin lib* | tar -C usr -xf-',
+            'sh', chroot,
+        ])
+        self.root_worker.check_call([
+            'time',
+            'sh', '-euc', 'cd "$1"; rm -fr bin sbin lib*',
+            'sh', chroot,
+        ])
+        self.root_worker.check_call([
+            'time',
+            'sh', '-euc', 'cd "$1"; ln -vs usr/bin usr/sbin usr/lib* .',
+            'sh', chroot,
+        ])
 
 if __name__ == '__main__':
     Builder().run_command_line()
