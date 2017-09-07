@@ -31,13 +31,13 @@ On the host (assuming VM is "ikea.virt"):
     ssh-copy-id ikea.virt
     ./run.py --remote=ikea.virt --suite=stretch --arch=amd64 base
     ./run.py --remote=ikea.virt --suite=stretch --arch=amd64 runtimes \
-        net.debian.flatpak.Base
+        runtimes/net.debian.flatpak.Base.yaml
     ./run.py --remote=ikea.virt --suite=stretch --arch=amd64 runtimes \
-        net.debian.flatpak.Games
+        runtimes/net.debian.flatpak.Games.yaml
     ./run.py --remote=ikea.virt --arch=amd64 app \
-        org.debian.packages.hello
+        apps/org.debian.packages.hello.yaml
     ./run.py --remote=ikea.virt --arch=amd64 app \
-        org.debian.packages.openarena
+        apps/org.debian.packages.openarena.yaml
 
     flatpak --user add-remote --no-gpg-verify flatdeb $HOME/.cache/flatdeb/repo
     flatpak --user install flatdeb org.debian.packages.hello
