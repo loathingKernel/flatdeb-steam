@@ -72,6 +72,28 @@ from flatdeb.worker import HostWorker, NspawnWorker, SshWorker, SudoWorker
 logger = logging.getLogger('flatdeb')
 
 
+# TODO: When flatdeb is packaged/released, replace this with the released
+# version in packages/releases
+VERSION = None
+
+if VERSION is None:
+    _git_version = subprocess.check_output([
+        'sh', '-c',
+        'cd "$(dirname "$1")" && '
+        'git describe '
+        '--always '
+        '--dirty '
+        '--first-parent '
+        '--long '
+        '--tags '
+        '--match="v[0-9]*" '
+        '2>/dev/null || :',
+        'sh',
+        sys.argv[0],
+    ])[1:].decode('utf-8').strip()
+    VERSION = _git_version
+
+
 class Builder:
 
     """
@@ -1174,6 +1196,10 @@ class Builder:
                         '/app/lib/girepository-1.0',
                     ]),
                 )
+
+            keyfile.set_string(
+                'Runtime', 'x-flatdeb-version', VERSION,
+            )
 
             keyfile.save_to_file(metadata)
 
