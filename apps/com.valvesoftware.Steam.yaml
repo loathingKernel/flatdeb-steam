@@ -40,6 +40,10 @@ finish-args:
 cleanup-commands:
   - sed -i -e '2,$s,/usr/,/app/,g' /app/bin/steam
   - sed -i -e 's,/usr/bin/steam,/app/bin/steam,g' /app/share/applications/*.desktop
+  - sed -i -e 's,[$]STEAMPACKAGE[.]desktop,com.valvesoftware.Steam.desktop,g' /app/bin/steam
+  # Allow launching in beta mode by running with --command=
+  - ln -s steam /app/bin/steambeta
+  - ln -s steamdeps /app/bin/steambetadeps
 rename-desktop-file: steam.desktop
 rename-icon: steam
 desktop-file-name-prefix: "flatdeb "
