@@ -50,12 +50,4 @@ On the host (assuming VM is "ikea.virt"):
 Bonus content: Steam as a Flatpak
 ---------------------------------
 
-Put `ubuntu-archive-keyring` and `valve-archive-keyring.gpg` in this
-directory. Also get the Steam trusted key and put it in
-`valve-steam-keyring.gpg`. Then run:
-
-    ./run.py --remote=ikea.virt --suite=scout --arch=amd64 base
-    ./run.py --remote=ikea.virt --suite=scout --arch=amd64 runtimes \
-        com.valvesoftware.SteamRuntime
-    ./run.py --remote=ikea.virt --arch=amd64 app \
-        com.valvesoftware.Steam
+https://github.com/smcv/flatdeb-steam
