@@ -1,9 +1,0 @@
----
-sdk:
-  add_packages:
-    - build-essential
-    - ccache
-    - debhelper
-    - dpkg-dev
-    - fakeroot
-...
