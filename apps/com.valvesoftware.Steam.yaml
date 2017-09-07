@@ -1,8 +1,8 @@
 ---
 id: com.valvesoftware.Steam
-branch: scout
+branch: scout_beta
 runtime: com.valvesoftware.SteamRuntime.Platform
-runtime-version: scout
+runtime-version: scout_beta
 sdk: com.valvesoftware.SteamRuntime.Sdk
 command: steam
 tags:
