@@ -1,0 +1,3 @@
+[submodule "flatdeb"]
+	path = flatdeb
+	url = https://github.com/smcv/flatdeb
