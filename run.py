@@ -106,7 +106,7 @@ class Builder:
         #: The Flatpak branch to use for the runtime, or None for apt_suite
         self.runtime_branch = None
         #: The Flatpak branch to use for the app
-        self.app_branch = 'master'
+        self.app_branch = None
         #: The freedesktop.org cache directory
         self.xdg_cache_dir = os.getenv(
             'XDG_CACHE_DIR', os.path.expanduser('~/.cache'))
