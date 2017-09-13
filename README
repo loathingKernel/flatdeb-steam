@@ -38,6 +38,8 @@ On the host (assuming VM is "ikea.virt"):
         apps/org.debian.packages.hello.yaml
     ./run.py --remote=ikea.virt --arch=amd64 app \
         apps/org.debian.packages.openarena.yaml
+    ./run.py --remote=ikea.virt --arch=amd64 app \
+        apps/org.debian.packages.mesa_utils.yaml
 
     flatpak --user remote-add --no-gpg-verify flatdeb $HOME/.cache/flatdeb/repo
     flatpak --user install flatdeb org.debian.packages.hello

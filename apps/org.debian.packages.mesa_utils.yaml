@@ -1,0 +1,21 @@
+---
+id: org.debian.packages.mesa_utils
+branch: master
+runtime: net.debian.flatpak.Games.Platform
+sdk: net.debian.flatpak.Games.Sdk
+command: glxgears
+writable-sdk: true
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --device=dri
+modules:
+  - name: mesa-utils
+    x-flatdeb-apt-packages:
+      - mesa-utils
+    sources:
+      - type: file
+        path: deb-buildapi/configure
+      - type: file
+        path: deb-buildapi/Makefile
+...
