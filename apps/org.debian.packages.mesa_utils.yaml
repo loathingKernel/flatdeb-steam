@@ -1,0 +1,21 @@
+---
+id: org.debian.packages.mesa_utils
+branch: scout_beta
+runtime: com.valvesoftware.SteamRuntime.Platform
+sdk: com.valvesoftware.SteamRuntime.Sdk
+command: glxgears
+writable-sdk: true
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --device=dri
+modules:
+  - name: mesa-utils
+    x-flatdeb-apt-packages:
+      - mesa-utils
+    sources:
+      - type: file
+        path: flatdeb/deb-buildapi/configure
+      - type: file
+        path: flatdeb/deb-buildapi/Makefile
+...
