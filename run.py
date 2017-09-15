@@ -1207,6 +1207,20 @@ class Builder:
                 'Runtime', 'x-flatdeb-version', VERSION,
             )
 
+            for ext, detail in self.runtime_details.get(
+                    'add-extensions', {}
+                    ).items():
+                group = 'Extension {}'.format(ext)
+
+                for k, v in detail.items():
+                    if isinstance(v, str):
+                        keyfile.set_string(group, k, v)
+                    elif isinstance(v, bool):
+                        keyfile.set_boolean(group, k, v)
+                    else:
+                        raise RuntimeError(
+                            'Unknown type {} in {}'.format(v, ext))
+
             keyfile.save_to_file(metadata)
 
             self.root_worker.install_file(
