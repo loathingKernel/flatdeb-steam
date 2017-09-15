@@ -1239,6 +1239,11 @@ class Builder:
                     ).items():
                 group = 'Extension {}'.format(ext)
 
+                self.root_worker.check_call([
+                    'install', '-d',
+                    '{}/ostree/main/files/{}'.format(chroot, detail['directory']),
+                ])
+
                 for k, v in detail.items():
                     if isinstance(v, str):
                         keyfile.set_string(group, k, v)
