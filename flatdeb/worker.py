@@ -160,10 +160,6 @@ class NspawnWorker(Worker):
         with TemporaryDirectory(prefix='flatdeb-manifest.') as t:
             manifest = os.path.join(t, 'manifest')
 
-            dpkg_version = self.check_output([
-                'dpkg-query', '-W', '-f', '${Version}', 'dpkg',
-            ]).decode('utf-8')
-
             with open(manifest, 'w') as writer:
                 writer.write(
                     '#Package[:Architecture]\t'
@@ -171,6 +167,11 @@ class NspawnWorker(Worker):
                     '#Source\t'
                     '#Installed-Size\n'
                 )
+                writer.flush()
+
+                dpkg_version = self.check_output([
+                    'dpkg-query', '-W', '-f', '${Version}', 'dpkg',
+                ]).decode('utf-8')
 
                 if Version(dpkg_version) >= Version('1.16.2'):
                     self.check_call([
