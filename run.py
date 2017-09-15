@@ -340,10 +340,16 @@ class Builder:
 
     def ensure_build_area(self):
         if self.remote_build_area is None:
-            self.remote_build_area = self.worker.scratch
+            # With Flatpak 0.8.x this needs to be on a filesystem that
+            # supports xattrs, i.e. not tmpfs
+            self.remote_build_area = self.worker.check_output([
+                'sh', '-euc',
+                'mkdir -p "${XDG_CACHE_HOME:="$HOME/.cache"}/flatdeb"; '
+                'echo "$XDG_CACHE_HOME/flatdeb"',
+            ]).decode('utf-8').rstrip('\n')
 
         if self.remote_repo is None:
-            self.remote_repo = '{}/repo'.format(self.worker.scratch)
+            self.remote_repo = '{}/repo'.format(self.remote_build_area)
 
     def command_base(self, **kwargs):
         with ExitStack() as stack:
