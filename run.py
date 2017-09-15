@@ -857,7 +857,16 @@ class Builder:
                     '--no-install-recommends',
                 ] + packages)
 
-            script = sdk_details.get('post_script', [])
+            script = self.runtime_details.get('post_script', '')
+
+            if script:
+                logger.info('Running custom script...')
+                nspawn.check_call([
+                    'sh', '-c', script,
+                ])
+                logger.info('... done')
+
+            script = sdk_details.get('post_script', '')
 
             if script:
                 logger.info('Running custom SDK script...')
@@ -1021,6 +1030,24 @@ class Builder:
             for p in sorted(installed):
                 if p != 'dpkg':
                     logger.info('- %s', p)
+
+            script = self.runtime_details.get('post_script', '')
+
+            if script:
+                logger.info('Running custom script...')
+                nspawn.check_call([
+                    'sh', '-c', script,
+                ])
+                logger.info('... done')
+
+            script = platform_details.get('post_script', '')
+
+            if script:
+                logger.info('Running custom platform script...')
+                nspawn.check_call([
+                    'sh', '-c', script,
+                ])
+                logger.info('... done')
 
             # We have to do this before removing dpkg :-)
             nspawn.write_manifest()
