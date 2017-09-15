@@ -1413,7 +1413,7 @@ class Builder:
                         'runtime/{}/{}/{}'.format(
                             manifest['sdk'],
                             self.flatpak_arch,
-                            manifest['runtime-version'],
+                            self.runtime_branch,
                         ),
                     ])
                     self.host_worker.check_call([
@@ -1426,7 +1426,7 @@ class Builder:
                         'runtime/{}/{}/{}'.format(
                             manifest['runtime'],
                             self.flatpak_arch,
-                            manifest['runtime-version'],
+                            self.runtime_branch,
                         ),
                     ])
                     self.host_worker.check_call([
@@ -1459,28 +1459,30 @@ class Builder:
                 '--url=file://{}'.format(urllib.parse.quote(self.remote_repo)),
                 'flatdeb',
             ])
-            self.worker.check_call([
-                'env',
-                'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
-                'flatpak', '--user',
-                'install', 'flatdeb',
-                '{}/{}/{}'.format(
-                    manifest['sdk'],
-                    self.flatpak_arch,
-                    self.runtime_branch,
-                ),
-            ])
-            self.worker.check_call([
-                'env',
-                'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
-                'flatpak', '--user',
-                'install', 'flatdeb',
-                '{}/{}/{}'.format(
-                    manifest['runtime'],
-                    self.flatpak_arch,
-                    manifest['runtime-version'],
-                ),
-            ])
+
+            for runtime in (manifest['sdk'], manifest['runtime']):
+                if self.worker.call([
+                            'env',
+                            'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
+                            'flatpak', '--user',
+                            'install', 'flatdeb',
+                            '{}/{}/{}'.format(
+                                runtime,
+                                self.flatpak_arch,
+                                self.runtime_branch,
+                            ),
+                        ]) != 0:
+                    self.worker.check_call([
+                        'env',
+                        'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
+                        'flatpak', '--user',
+                        'update',
+                        '{}/{}/{}'.format(
+                            runtime,
+                            self.flatpak_arch,
+                            self.runtime_branch,
+                        ),
+                    ])
 
             for module in manifest.get('modules', []):
                 if isinstance(module, dict):
