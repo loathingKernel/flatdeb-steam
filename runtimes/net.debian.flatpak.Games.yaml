@@ -5,6 +5,9 @@ add_packages_multiarch:
   - libcurl3-gnutls
   - libgl1-mesa-dri
   - libgl1-mesa-glx
+  - libgles2
+  - libglib2.0-0
+  - libglu1-mesa
   - libjpeg62-turbo
   - libogg0
   - libopenal1
@@ -13,6 +16,8 @@ add_packages_multiarch:
   - libsdl2-2.0-0
   - libvorbis0a
   - libvorbisfile3
+  - libxcb-randr0
+  - libxcb-render0
   - zlib1g
 
 add_packages:
