@@ -1572,17 +1572,30 @@ class Builder:
                         ] + module['x-flatdeb-apt-packages'])
 
                         obtained = self.worker.check_output([
-                            'ls', packages,
+                            'sh', '-euc',
+                            'cd "$1"\n'
+                            'find * -type f -print0 | xargs -0 sha256sum -b\n'
+                            '',
+                            'sh',   # argv[0]
+                            packages,
                         ]).decode('utf-8').splitlines()
 
-                        for f in obtained:
+                        for line in obtained:
+                            sha256, f = line.split(' *', 1)
                             path = '{}/{}'.format(packages, f)
 
                             if f.endswith('.deb'):
                                 sources.append({
                                     'dest': '.',
                                     'type': 'file',
-                                    'path': path,
+                                    'sha256': sha256,
+                                    'url': urllib.parse.urlunsplit((
+                                        'file',
+                                        '',
+                                        urllib.parse.quote(path),
+                                        '',
+                                        '',
+                                    ))
                                 })
 
             remote_manifest = '{}/{}.json'.format(
