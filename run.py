@@ -100,6 +100,8 @@ class Builder:
     Main object
     """
 
+    __multiarch_tuple_cache = {}
+
     def __init__(self):
         #: The Debian suite to use
         self.apt_suite = 'stretch'
@@ -173,6 +175,21 @@ class Builder:
             return 'armhf'
         else:
             return None
+
+    @staticmethod
+    def multiarch_tuple(arch):
+        """
+        Return the multiarch tuple for the given dpkg architecture name.
+        """
+
+        if arch not in Builder.__multiarch_tuple_cache:
+            Builder.__multiarch_tuple_cache[arch] = subprocess.check_output([
+                'dpkg-architecture',
+                '-qDEB_HOST_MULTIARCH',
+                '-a{}'.format(arch),
+            ]).decode('utf-8').strip()
+
+        return Builder.__multiarch_tuple_cache[arch]
 
     @staticmethod
     def dpkg_to_flatpak_arch(arch):
@@ -1212,22 +1229,59 @@ class Builder:
                 ]),
             )
 
+            search_path = []
+
+            for arch in self.dpkg_archs:
+                search_path.append('/app/lib/{}'.format(self.multiarch_tuple(arch)))
+
+            search_path.append('/app/lib')
+
+            keyfile.set_string(
+                'Environment', 'LD_LIBRARY_PATH', ':'.join(search_path),
+            )
+
             if 'libgstreamer1.0-0' in installed:
+                search_path = []
+
+                for arch in self.dpkg_archs:
+                    search_path.append(
+                        '/app/lib/{}/gstreamer-1.0'.format(
+                            self.multiarch_tuple(arch)))
+
+                search_path.append('/app/lib/gstreamer-1.0')
+
+                for arch in self.dpkg_archs:
+                    search_path.append(
+                        '/usr/lib/extensions/{}/gstreamer-1.0'.format(
+                            self.multiarch_tuple(arch)))
+
+                search_path.append('/usr/lib/extensions/gstreamer-1.0')
+
+                for arch in self.dpkg_archs:
+                    search_path.append(
+                        '/usr/lib/{}/gstreamer-1.0'.format(
+                            self.multiarch_tuple(arch)))
+
+                search_path.append('/usr/lib/gstreamer-1.0')
+
                 keyfile.set_string(
                     'Environment', 'GST_PLUGIN_SYSTEM_PATH',
-                    ':'.join([
-                        '/app/lib/gstreamer-1.0',
-                        '/usr/lib/extensions/gstreamer-1.0',
-                        '/usr/lib/gstreamer-1.0',
-                    ]),
+                    ':'.join(search_path),
                 )
 
             if 'libgirepository-1.0-1' in installed:
+                search_path = []
+
+                for arch in self.dpkg_archs:
+                    search_path.append(
+                        '/app/lib/{}/girepository-1.0'.format(
+                            self.multiarch_tuple(arch)))
+
+                search_path.append('/app/lib/girepository-1.0')
+
                 keyfile.set_string(
                     'Environment', 'GI_TYPELIB_PATH',
-                    ':'.join([
-                        '/app/lib/girepository-1.0',
-                    ]),
+                    ':'.join(search_path),
                 )
 
             keyfile.set_string(
