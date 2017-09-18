@@ -1207,7 +1207,7 @@ class Builder:
             keyfile.set_string('Runtime', 'name', runtime)
             keyfile.set_string(
                 'Runtime', 'runtime',
-                '{}.Platform/{}/{}\n'.format(
+                '{}.Platform/{}/{}'.format(
                     prefix,
                     self.flatpak_arch,
                     self.runtime_branch,
@@ -1215,7 +1215,7 @@ class Builder:
             )
             keyfile.set_string(
                 'Runtime', 'sdk',
-                '{}.Sdk/{}/{}\n'.format(
+                '{}.Sdk/{}/{}'.format(
                     prefix,
                     self.flatpak_arch,
                     self.runtime_branch,
