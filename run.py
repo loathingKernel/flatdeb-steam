@@ -1127,22 +1127,98 @@ class Builder:
         if not self.suite_details.get('can_merge_usr', False):
             self.usrmerge(chroot)
 
+        self.root_worker.check_call([
+            'rm', '-fr', '--one-file-system',
+            '{}/etc/apparmor'.format(chroot),
+            '{}/etc/apparmor.d'.format(chroot),
+            '{}/etc/console-setup'.format(chroot),
+            '{}/etc/cron.daily'.format(chroot),
+            '{}/etc/cron.hourly'.format(chroot),
+            '{}/etc/cron.monthly'.format(chroot),
+            '{}/etc/cron.weekly'.format(chroot),
+            '{}/etc/dbus-1/system.d'.format(chroot),
+            '{}/etc/depmod.d'.format(chroot),
+            '{}/etc/dhcp'.format(chroot),
+            '{}/etc/emacs'.format(chroot),
+            '{}/etc/fstab'.format(chroot),
+            '{}/etc/fstab.d'.format(chroot),
+            '{}/etc/group-'.format(chroot),
+            '{}/etc/gshadow-'.format(chroot),
+            '{}/etc/hostname'.format(chroot),
+            '{}/etc/hosts'.format(chroot),
+            '{}/etc/hosts.allow'.format(chroot),
+            '{}/etc/hosts.deny'.format(chroot),
+            '{}/etc/init'.format(chroot),
+            '{}/etc/init.d'.format(chroot),
+            '{}/etc/initramfs-tools'.format(chroot),
+            '{}/etc/insserv'.format(chroot),
+            '{}/etc/insserv.conf'.format(chroot),
+            '{}/etc/insserv.conf.d'.format(chroot),
+            '{}/etc/iproute2'.format(chroot),
+            '{}/etc/issue'.format(chroot),
+            '{}/etc/issue.net'.format(chroot),
+            '{}/etc/kbd'.format(chroot),
+            '{}/etc/kernel'.format(chroot),
+            '{}/etc/localtime'.format(chroot),
+            '{}/etc/logcheck'.format(chroot),
+            '{}/etc/login.defs'.format(chroot),
+            '{}/etc/logrotate.d'.format(chroot),
+            '{}/etc/lsb-base'.format(chroot),
+            '{}/etc/lsb-base-logging.sh'.format(chroot),
+            '{}/etc/machine-id'.format(chroot),
+            '{}/etc/mailname'.format(chroot),
+            '{}/etc/modprobe.d'.format(chroot),
+            '{}/etc/modules'.format(chroot),
+            '{}/etc/network'.format(chroot),
+            '{}/etc/networks'.format(chroot),
+            '{}/etc/nologin'.format(chroot),
+            '{}/etc/opt'.format(chroot),
+            '{}/etc/pam.conf'.format(chroot),
+            '{}/etc/pam.d'.format(chroot),
+            '{}/etc/passwd-'.format(chroot),
+            '{}/etc/ppp'.format(chroot),
+            '{}/etc/rc.local'.format(chroot),
+            '{}/etc/rc0.d'.format(chroot),
+            '{}/etc/rc1.d'.format(chroot),
+            '{}/etc/rc2.d'.format(chroot),
+            '{}/etc/rc3.d'.format(chroot),
+            '{}/etc/rc4.d'.format(chroot),
+            '{}/etc/rc5.d'.format(chroot),
+            '{}/etc/rc6.d'.format(chroot),
+            '{}/etc/resolv.conf'.format(chroot),
+            '{}/etc/resolvconf'.format(chroot),
+            '{}/etc/rmt'.format(chroot),
+            '{}/etc/rpc'.format(chroot),
+            '{}/etc/rsyslog.conf'.format(chroot),
+            '{}/etc/rsyslog.d'.format(chroot),
+            '{}/etc/securetty'.format(chroot),
+            '{}/etc/security'.format(chroot),
+            '{}/etc/shadow-'.format(chroot),
+            '{}/etc/shells'.format(chroot),
+            '{}/etc/subgid-'.format(chroot),
+            '{}/etc/subuid-'.format(chroot),
+            '{}/etc/sudoers'.format(chroot),
+            '{}/etc/sudoers.d'.format(chroot),
+            '{}/etc/sysctl.conf'.format(chroot),
+            '{}/etc/sysctl.d'.format(chroot),
+            '{}/etc/systemd'.format(chroot),
+            '{}/etc/timezone'.format(chroot),
+            '{}/etc/udev'.format(chroot),
+            '{}/etc/update-motd.d'.format(chroot),
+            '{}/var/backups'.format(chroot),
+            '{}/var/cache'.format(chroot),
+            '{}/var/lib/dpkg/status-old'.format(chroot),
+            '{}/var/lib/dpkg/statoverride'.format(chroot),
+        ])
+
+        self.root_worker.check_call([
+            'mv', '{}/etc'.format(chroot),
+            '{}/usr/etc'.format(chroot),
+        ])
+
         if sdk:
             runtime = prefix + '.Sdk'
 
-            self.root_worker.check_call([
-                'rm', '-fr', '--one-file-system',
-                '{}/etc/group-'.format(chroot),
-                '{}/etc/gshadow-'.format(chroot),
-                '{}/etc/passwd-'.format(chroot),
-                '{}/etc/shadow-'.format(chroot),
-                '{}/etc/subuid-'.format(chroot),
-                '{}/etc/subgid-'.format(chroot),
-                '{}/var/backups'.format(chroot),
-                '{}/var/cache'.format(chroot),
-                '{}/var/lib/dpkg/status-old'.format(chroot),
-                '{}/var/lib/dpkg/statoverride'.format(chroot),
-            ])
             self.root_worker.check_call([
                 'install', '-d',
                 '{}/var/cache/apt/archives/partial'.format(chroot),
@@ -1154,17 +1230,12 @@ class Builder:
 
             # This is only useful if the SDK has libnss-extrausers
             self.root_worker.check_call([
-                'cp', '{}/etc/passwd'.format(chroot),
+                'cp', '{}/usr/etc/passwd'.format(chroot),
                 '{}/var/lib/extrausers/passwd'.format(chroot),
             ])
             self.root_worker.check_call([
-                'cp', '{}/etc/group'.format(chroot),
+                'cp', '{}/usr/etc/group'.format(chroot),
                 '{}/var/lib/extrausers/groups'.format(chroot),
-            ])
-
-            self.root_worker.check_call([
-                'mv', '{}/etc'.format(chroot),
-                '{}/usr/etc'.format(chroot),
             ])
             self.root_worker.check_call([
                 'mv', '{}/var'.format(chroot),
@@ -1175,7 +1246,28 @@ class Builder:
 
             self.root_worker.check_call([
                 'rm', '-fr', '--one-file-system',
-                '{}/etc'.format(chroot),
+                '{}/etc/adduser.conf'.format(chroot),
+                '{}/etc/apt'.format(chroot),
+                '{}/etc/bash_completion.d'.format(chroot),
+                '{}/etc/dpkg'.format(chroot),
+                '{}/etc/debconf.conf'.format(chroot),
+                '{}/etc/default'.format(chroot),
+                '{}/etc/deluser.conf'.format(chroot),
+                '{}/etc/gdb'.format(chroot),
+                '{}/etc/gpasswd'.format(chroot),
+                '{}/etc/groff'.format(chroot),
+                '{}/etc/group'.format(chroot),
+                '{}/etc/mailcap'.format(chroot),
+                '{}/etc/mailcap.order'.format(chroot),
+                '{}/etc/manpath.config'.format(chroot),
+                '{}/etc/mke2fs.conf'.format(chroot),
+                '{}/etc/newt'.format(chroot),
+                '{}/etc/passwd'.format(chroot),
+                '{}/etc/shadow'.format(chroot),
+                '{}/etc/skel'.format(chroot),
+                '{}/etc/subgid'.format(chroot),
+                '{}/etc/subuid'.format(chroot),
+                '{}/etc/ucf.conf'.format(chroot),
                 '{}/share/bash-completion'.format(chroot),
                 '{}/share/bug'.format(chroot),
                 '{}/var'.format(chroot),
@@ -1187,8 +1279,7 @@ class Builder:
         # TODO: Icon theme, Gtk theme extension
         # TODO: VAAPI extension
         # TODO: SDK extension
-        # TODO: ca-certificates extension (or at least make them available
-        # in the Platform somehow)
+        # TODO: ca-certificates extension to get newer certs?
 
         self.root_worker.check_call([
             'install', '-d', '{}/ostree/main'.format(chroot),
