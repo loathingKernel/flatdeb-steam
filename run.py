@@ -1187,6 +1187,8 @@ class Builder:
         # TODO: Icon theme, Gtk theme extension
         # TODO: VAAPI extension
         # TODO: SDK extension
+        # TODO: ca-certificates extension (or at least make them available
+        # in the Platform somehow)
 
         self.root_worker.check_call([
             'install', '-d', '{}/ostree/main'.format(chroot),
