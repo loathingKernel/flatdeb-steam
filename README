@@ -15,6 +15,15 @@ On a Debian 9 VM (assuming username "user"):
         sudo systemd-container time
     passwd user     # and have a password
 
+You might want flatpak and flatpak-builder from stretch-backports
+(this is required if your VM's /tmp is a tmpfs). While the version in
+official stretch-backports gets processed and built, unofficial builds
+are available from:
+
+    deb [trusted=yes] https://people.collabora.com/~smcv/debian-backports smcv-stretch-backports main
+
+(Only add that apt source if you trust the https CA system.)
+
 On the host system (or the VM if you're running everything there):
 
     apt install python3 python3-debian python3-gi python3-yaml sshfs
