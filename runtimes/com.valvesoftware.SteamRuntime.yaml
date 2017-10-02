@@ -428,10 +428,12 @@ sdk:
     - libxtst-dev
     - libxxf86vm-dev
     - lldb-3.6
+    - ltrace
     - network-manager-dev
     - nvidia-cg-toolkit
     - pkg-config
     - steamrt-dev
+    - strace
     - time
     - ubuntu-minimal
     - uuid-dev
