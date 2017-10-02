@@ -8,4 +8,7 @@ sdk:
     - debhelper
     - dpkg-dev
     - fakeroot
+    - gdb
+    - ltrace
+    - strace
 ...

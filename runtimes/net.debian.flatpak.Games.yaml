@@ -34,6 +34,7 @@ sdk:
     - dh-exec
     - dpkg-dev
     - fakeroot
+    - gdb
     - libcurl4-gnutls-dev
     - libgl1-mesa-dev
     - libjpeg-dev
@@ -45,6 +46,8 @@ sdk:
     - libsdl2-dev
     - libvorbis-dev
     - libz-dev
+    - ltrace
+    - strace
 
 add-extensions:
   # FIXME: This is not properly multiarch-aware, but it's enough for a
