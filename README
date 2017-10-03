@@ -69,7 +69,8 @@ On the host (assuming VM is "ikea.virt"):
     flatdeb/run.py --remote=ikea.virt --arch=i386 app \
         apps/com.valvesoftware.Steam.yaml
 
-and then
+On the host, or a test machine onto which you have copied
+`$HOME/.cache/flatdeb/repo` with `rsync` or similar:
 
     flatpak --user remote-add --no-gpg-verify flatdeb $HOME/.cache/flatdeb/repo
     flatpak --user install flatdeb org.debian.packages.mesa_utils
