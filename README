@@ -54,6 +54,9 @@ On the host (assuming VM is "ikea.virt"):
     ./run.py --remote=ikea.virt --suite=stretch --arch=amd64 app \
         apps/org.debian.packages.mesa_utils.yaml
 
+On the host, or a test machine onto which you have copied
+`$HOME/.cache/flatdeb/repo` with `rsync` or similar:
+
     flatpak --user remote-add --no-gpg-verify flatdeb $HOME/.cache/flatdeb/repo
     flatpak --user install flatdeb org.debian.packages.hello
     flatpak run org.debian.packages.hello
