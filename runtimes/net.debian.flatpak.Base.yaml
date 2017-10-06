@@ -9,6 +9,8 @@ sdk:
     - dpkg-dev
     - fakeroot
     - gdb
+    - libc6-dbg
     - ltrace
     - strace
+    - valgrind
 ...

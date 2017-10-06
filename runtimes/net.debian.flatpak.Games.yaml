@@ -35,6 +35,7 @@ sdk:
     - dpkg-dev
     - fakeroot
     - gdb
+    - libc6-dbg
     - libcurl4-gnutls-dev
     - libgl1-mesa-dev
     - libjpeg-dev
@@ -48,6 +49,7 @@ sdk:
     - libz-dev
     - ltrace
     - strace
+    - valgrind
 
 add-extensions:
   # FIXME: This is not properly multiarch-aware, but it's enough for a
