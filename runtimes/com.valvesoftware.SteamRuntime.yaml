@@ -287,6 +287,7 @@ sdk:
     - libavformat-dev
     - libavutil-dev
     - libbz2-dev
+    - libc6-dbg
     - libcairo2-dev
     - libcanberra-dev
     - libcanberra-gtk-dev
@@ -437,6 +438,7 @@ sdk:
     - time
     - ubuntu-minimal
     - uuid-dev
+    - valgrind
     - x11proto-composite-dev
     - x11proto-core-dev
     - x11proto-damage-dev
