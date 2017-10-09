@@ -5,7 +5,7 @@ add_packages_multiarch:
   - libcurl3-gnutls
   - libgl1-mesa-dri
   - libgl1-mesa-glx
-  - libgles2
+  - libgles2-mesa
   - libglib2.0-0
   - libglu1-mesa
   - libjpeg62-turbo
@@ -46,10 +46,10 @@ sdk:
     - libopusfile-dev
     - libsdl2-dev
     - libvorbis-dev
-    - libz-dev
     - ltrace
     - strace
     - valgrind
+    - zlib1g-dev
 
 add-extensions:
   # FIXME: This is not properly multiarch-aware, but it's enough for a
