@@ -133,6 +133,7 @@ class Builder:
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
         self.sources_required = set()
+        self.strip_source_version_suffix = None
 
         self.logger = logger.getChild('Builder')
 
@@ -344,6 +345,12 @@ class Builder:
 
         with open(os.path.join('suites', self.apt_suite + '.yaml')) as reader:
             self.suite_details = yaml.safe_load(reader)
+
+        if 'strip_source_version_suffix' in self.suite_details:
+            self.strip_source_version_suffix = re.compile(
+                '(?:' +
+                self.suite_details['strip_source_version_suffix'] +
+                ')$')
 
         getattr(
             self, 'command_' + args.command.replace('-', '_'))(**vars(args))
@@ -910,8 +917,13 @@ class Builder:
             argv = []
 
             for p in sorted(self.sources_required):
-                logger.info('- %s_%s', p[0], p[1])
-                argv.append('{}={}'.format(p[0], p[1]))
+                version = p[1]
+
+                if self.strip_source_version_suffix is not None:
+                    version = self.strip_source_version_suffix.sub('', version)
+
+                logger.info('- %s_%s', p[0], version)
+                argv.append('{}={}'.format(p[0], version))
 
             nspawn.check_call(['sh', '-euc',
                 'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
