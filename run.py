@@ -132,6 +132,7 @@ class Builder:
         self.remote_ostree_mode = None
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
+        self.sources_required = set()
 
         self.logger = logger.getChild('Builder')
 
@@ -533,6 +534,8 @@ class Builder:
 
             prefix = self.runtime_details['id_prefix']
 
+            # Do the Platform first, because we download its source
+            # packages as part of preparing the Sdk
             self.ostreeify(
                 prefix,
                 platform_chroot,
@@ -892,7 +895,12 @@ class Builder:
                 ])
                 logger.info('... done')
 
-            nspawn.write_manifest()
+            logger.info('Listing packages in SDK...')
+
+            for package in nspawn.write_manifest():
+                logger.info('- %s_%s', package.source, package.source_version)
+                self.sources_required.add((package.source, package.source_version))
+
             installed = nspawn.list_packages_ignore_arch()
 
             logger.info('Packages included in SDK:')
@@ -1066,8 +1074,12 @@ class Builder:
                 ])
                 logger.info('... done')
 
+            logger.info('Listing packages in platform...')
+
             # We have to do this before removing dpkg :-)
-            nspawn.write_manifest()
+            for package in nspawn.write_manifest():
+                logger.info('- %s_%s', package.source, package.source_version)
+                self.sources_required.add((package.source, package.source_version))
 
             # This has to be last for obvious reasons!
             nspawn.check_call([

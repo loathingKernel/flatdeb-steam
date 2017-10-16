@@ -106,6 +106,23 @@ class Worker(metaclass=ABCMeta):
         return installed
 
 
+class InstalledPackage:
+    def __init__(self, fields):
+        self.binary = fields[0]
+        self.binary_version = fields[1]
+        self.source = fields[2]
+
+        if self.source.endswith(')'):
+            self.source, self.source_version = self.source.rstrip(')').split(' (')
+        else:
+            self.source_version = self.binary_version
+
+            if not self.source:
+                self.source = self.binary
+
+        self.installed_size = fields[3]
+
+
 class NspawnWorker(Worker):
     def __init__(self, worker, path, env=()):
         super().__init__()
@@ -157,6 +174,8 @@ class NspawnWorker(Worker):
         )
 
     def write_manifest(self):
+        ret = []
+
         with TemporaryDirectory(prefix='flatdeb-manifest.') as t:
             manifest = os.path.join(t, 'manifest')
 
@@ -195,6 +214,21 @@ class NspawnWorker(Worker):
                     ], stdout=writer)
 
             self.install_file(manifest, '/usr/manifest.dpkg')
+
+            with open(manifest) as reader:
+                for line in reader:
+                    line = line.rstrip('\n')
+
+                    if not line:
+                        continue
+
+                    if line.startswith('#'):
+                        continue
+
+                    assert '\t' in line, repr(line)
+                    ret.append(InstalledPackage(line.rstrip('\n').split('\t')))
+
+        return ret
 
     @contextmanager
     def remote_dir_context(self, path):
