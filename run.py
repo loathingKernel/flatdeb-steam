@@ -1819,19 +1819,18 @@ class Builder:
                             sha256, f = line.split(' *', 1)
                             path = '{}/{}'.format(packages, f)
 
-                            if f.endswith('.deb'):
-                                sources.append({
-                                    'dest': '.',
-                                    'type': 'file',
-                                    'sha256': sha256,
-                                    'url': urllib.parse.urlunsplit((
-                                        'file',
-                                        '',
-                                        urllib.parse.quote(path),
-                                        '',
-                                        '',
-                                    ))
-                                })
+                            sources.append({
+                                'dest': (os.path.dirname(f) or '.'),
+                                'type': 'file',
+                                'sha256': sha256,
+                                'url': urllib.parse.urlunsplit((
+                                    'file',
+                                    '',
+                                    urllib.parse.quote(path),
+                                    '',
+                                    '',
+                                ))
+                            })
 
             remote_manifest = '{}/{}.json'.format(
                 self.worker.scratch,
