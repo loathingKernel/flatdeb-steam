@@ -917,13 +917,16 @@ class Builder:
             argv = []
 
             for p in sorted(self.sources_required):
+                package = p[0]
                 version = p[1]
+
+                package = package.split(':', 1)[0]
 
                 if self.strip_source_version_suffix is not None:
                     version = self.strip_source_version_suffix.sub('', version)
 
-                logger.info('- %s_%s', p[0], version)
-                argv.append('{}={}'.format(p[0], version))
+                logger.info('- %s_%s', package, version)
+                argv.append('{}={}'.format(package, version))
 
             nspawn.check_call(['sh', '-euc',
                 'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
