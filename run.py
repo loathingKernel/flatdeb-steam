@@ -898,15 +898,27 @@ class Builder:
             logger.info('Listing packages in SDK...')
 
             for package in nspawn.write_manifest():
-                logger.info('- %s_%s', package.source, package.source_version)
+                logger.info(
+                    '- %s from %s_%s',
+                    package.binary, package.source, package.source_version)
                 self.sources_required.add((package.source, package.source_version))
 
             installed = nspawn.list_packages_ignore_arch()
 
-            logger.info('Packages included in SDK:')
+            logger.info('Source code required for GPL compliance:')
 
-            for p in sorted(installed):
-                logger.info('- %s', p)
+            argv = []
+
+            for p in sorted(self.sources_required):
+                logger.info('- %s_%s', p[0], p[1])
+                argv.append('{}={}'.format(p[0], p[1]))
+
+            nspawn.check_call(['sh', '-euc',
+                'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
+                'sh',                       # argv[0]
+                '/ostree/source/files',     # working directory
+                'apt-get', '-y', '--download-only', 'source',
+            ] + argv)
 
         return installed
 
@@ -1050,12 +1062,6 @@ class Builder:
 
             installed = nspawn.list_packages_ignore_arch()
 
-            logger.info('Packages included in platform:')
-
-            for p in sorted(installed):
-                if p != 'dpkg':
-                    logger.info('- %s', p)
-
             script = self.runtime_details.get('post_script', '')
 
             if script:
@@ -1078,7 +1084,9 @@ class Builder:
 
             # We have to do this before removing dpkg :-)
             for package in nspawn.write_manifest():
-                logger.info('- %s_%s', package.source, package.source_version)
+                logger.info(
+                    '- %s from %s_%s',
+                    package.binary, package.source, package.source_version)
                 self.sources_required.add((package.source, package.source_version))
 
             # This has to be last for obvious reasons!
@@ -1429,6 +1437,57 @@ class Builder:
             '--tree=dir={}/ostree/main'.format(chroot),
             '--fsync=false',
         ])
+
+        if os.path.exists('{}/ostree/source'.format(chroot)):
+            source_ref = 'runtime/{}/{}/{}'.format(
+                runtime + '.Sources',
+                self.flatpak_arch,
+                self.runtime_branch,
+            )
+
+            with TemporaryDirectory(prefix='flatdeb-ostreeify.') as t:
+                metadata = os.path.join(t, 'metadata')
+
+                keyfile = GLib.KeyFile()
+                keyfile.set_string('Runtime', 'name', runtime + '.Sources')
+                keyfile.set_string(
+                    'Runtime', 'runtime',
+                    '{}.Platform/{}/{}'.format(
+                        prefix,
+                        self.flatpak_arch,
+                        self.runtime_branch,
+                    )
+                )
+                keyfile.set_string(
+                    'Runtime', 'sdk',
+                    '{}.Sdk/{}/{}'.format(
+                        prefix,
+                        self.flatpak_arch,
+                        self.runtime_branch,
+                    )
+                )
+
+                keyfile.set_string(
+                    'Runtime', 'x-flatdeb-version', VERSION,
+                )
+
+                keyfile.save_to_file(metadata)
+
+                self.root_worker.install_file(
+                    metadata,
+                    '{}/ostree/source/metadata'.format(chroot),
+                )
+
+            self.worker.check_call([
+                'time',
+                'ostree',
+                '--repo=' + self.remote_repo,
+                'commit',
+                '--branch=' + source_ref,
+                '--subject=Update',
+                '--tree=dir={}/ostree/source'.format(chroot),
+                '--fsync=false',
+            ])
 
         # Don't keep the history in this working repository:
         # if history is desired, mirror the commits into a public
