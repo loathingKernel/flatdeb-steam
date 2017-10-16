@@ -1920,8 +1920,6 @@ class Builder:
         ])
 
 if __name__ == '__main__':
-    logging.getLogger().setLevel(logging.DEBUG)
-
     if sys.stderr.isatty():
         try:
             import colorlog
@@ -1933,6 +1931,10 @@ if __name__ == '__main__':
             handler = logging.StreamHandler()
             handler.setFormatter(formatter)
             logging.getLogger().addHandler(handler)
+    else:
+        logging.basicConfig()
+
+    logging.getLogger().setLevel(logging.DEBUG)
 
     try:
         Builder().run_command_line()
