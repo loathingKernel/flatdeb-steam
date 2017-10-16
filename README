@@ -11,8 +11,9 @@ On a Debian 9 VM (assuming username "user"):
 
     adduser user sudo
     visudo          # and set %sudo ALL=(ALL:ALL) NOPASSWD: ALL
-    apt install debootstrap flatpak flatpak-builder openssh-server \
-        sudo systemd-container time
+    sensible-editor /etc/apt/sources.list    # and enable backports
+    apt install debootstrap openssh-server sudo systemd-container time
+    apt install -t stretch-backports flatpak flatpak-builder ostree
     passwd user     # and have a password
 
 Make sure the VM's /tmp is on the same filesystem as the user's $HOME,

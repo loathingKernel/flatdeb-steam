@@ -44,8 +44,8 @@ Requires (on worker, possibly the same machine as the host):
     - Debian 9 'stretch'
     - /tmp on the same filesystem as /home
     - debootstrap
-    - flatpak
-    - flatpak-builder
+    - flatpak (>= 0.9.99)
+    - flatpak-builder (>= 0.9.99)
     - ostree
     - sudo
     - systemd-container
@@ -1866,6 +1866,7 @@ class Builder:
                 'flatpak-builder',
                 '--arch={}'.format(self.flatpak_arch),
                 '--repo={}'.format(self.remote_repo),
+                '--bundle-sources',
                 '{}/workdir'.format(self.worker.scratch),
                 remote_manifest,
             ])
