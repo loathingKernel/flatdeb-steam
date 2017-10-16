@@ -6,6 +6,7 @@ debootstrap_script: 'precise'
 # neither is the precise package set, but we can do it after upgrading to
 # scout.
 can_merge_usr: after_debootstrap
+strip_source_version_suffix: '\+srt[0-9]+'
 sources:
   - apt_uri: 'http://archive.ubuntu.com/ubuntu'
     apt_suite: 'precise'
