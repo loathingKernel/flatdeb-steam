@@ -134,6 +134,7 @@ class Builder:
         self.export_bundles = False
         self.sources_required = set()
         self.strip_source_version_suffix = None
+        self.missing_sources = set()
 
         self.logger = logger.getChild('Builder')
 
@@ -589,6 +590,14 @@ class Builder:
 
                         os.rename(output + '.new', output)
 
+        if self.missing_sources:
+            logger.warning('Missing source packages:')
+
+            for p in sorted(self.missing_sources):
+                logger.warning('- %s', p)
+
+            logger.warning('Check that this runtime is GPL-compliant!')
+
     def configure_apt(self, base_chroot):
         """
         Configure apt. We only do this once, so that all chroots
@@ -914,7 +923,7 @@ class Builder:
 
             logger.info('Source code required for GPL compliance:')
 
-            argv = []
+            sources = []
 
             for p in sorted(self.sources_required):
                 package = p[0]
@@ -926,14 +935,30 @@ class Builder:
                     version = self.strip_source_version_suffix.sub('', version)
 
                 logger.info('- %s_%s', package, version)
-                argv.append('{}={}'.format(package, version))
+                sources.append('{}={}'.format(package, version))
 
-            nspawn.check_call(['sh', '-euc',
-                'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
-                'sh',                       # argv[0]
-                '/ostree/source/files',     # working directory
-                'apt-get', '-y', '--download-only', 'source',
-            ] + argv)
+            try:
+                nspawn.check_call(['sh', '-euc',
+                    'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
+                    'sh',                       # argv[0]
+                    '/ostree/source/files',     # working directory
+                    'apt-get', '-y', '--download-only', 'source',
+                ] + sources)
+            except subprocess.CalledProcessError:
+                for source in sources:
+                    try:
+                        nspawn.check_call(['sh', '-euc',
+                            'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
+                            'sh',                       # argv[0]
+                            '/ostree/source/files',     # working directory
+                            'apt-get', '-y', '--download-only', 'source',
+                            source,
+                        ])
+                    except subprocess.CalledProcessError:
+                        # Non-fatal for now
+                        logger.warning(
+                            'Unable to get source code for %s', source)
+                        self.missing_sources.add(source)
 
         return installed
 
