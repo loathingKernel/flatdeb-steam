@@ -15,14 +15,9 @@ On a Debian 9 VM (assuming username "user"):
         sudo systemd-container time
     passwd user     # and have a password
 
-You might want flatpak and flatpak-builder from stretch-backports
-(this is required if your VM's /tmp is a tmpfs). While the version in
-official stretch-backports gets processed and built, unofficial builds
-are available from:
-
-    deb [trusted=yes] https://people.collabora.com/~smcv/debian-backports smcv-stretch-backports main
-
-(Only add that apt source if you trust the https CA system.)
+Make sure the VM's /tmp is on the same filesystem as the user's $HOME,
+otherwise ostree will try (and fail) to hard-link files across the
+filesystem boundary.
 
 On the host system (or the VM if you're running everything there):
 
