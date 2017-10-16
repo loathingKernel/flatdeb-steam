@@ -1490,12 +1490,12 @@ class Builder:
                     'flatdeb-worker',
                 ])
 
-            self.host_worker.check_call([
-                'time',
-                'flatpak',
-                'build-update-repo',
-                self.repo,
-            ])
+        self.host_worker.check_call([
+            'time',
+            'flatpak',
+            'build-update-repo',
+            self.repo,
+        ])
 
     def command_app(self, *, app_branch, yaml_manifest, **kwargs):
         self.ensure_local_repo()
