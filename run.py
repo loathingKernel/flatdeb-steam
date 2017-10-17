@@ -1727,28 +1727,29 @@ class Builder:
             ])
 
             for runtime in (manifest['sdk'], manifest['runtime']):
-                if self.worker.call([
-                            'env',
-                            'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
-                            'flatpak', '--user',
-                            'install', 'flatdeb',
-                            '{}/{}/{}'.format(
-                                runtime,
-                                self.flatpak_arch,
-                                self.runtime_branch,
-                            ),
-                        ]) != 0:
-                    self.worker.check_call([
-                        'env',
-                        'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
-                        'flatpak', '--user',
-                        'update',
-                        '{}/{}/{}'.format(
-                            runtime,
-                            self.flatpak_arch,
-                            self.runtime_branch,
-                        ),
-                    ])
+                # This may fail: we might already have it.
+                self.worker.call([
+                    'env',
+                    'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
+                    'flatpak', '--user',
+                    'install', 'flatdeb',
+                    '{}/{}/{}'.format(
+                        runtime,
+                        self.flatpak_arch,
+                        self.runtime_branch,
+                    ),
+                ])
+                self.worker.check_call([
+                    'env',
+                    'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
+                    'flatpak', '--user',
+                    'update',
+                    '{}/{}/{}'.format(
+                        runtime,
+                        self.flatpak_arch,
+                        self.runtime_branch,
+                    ),
+                ])
 
             for module in manifest.get('modules', []):
                 if isinstance(module, dict):
