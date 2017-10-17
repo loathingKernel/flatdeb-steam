@@ -942,16 +942,22 @@ class Builder:
                     'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
                     'sh',                       # argv[0]
                     '/ostree/source/files',     # working directory
-                    'apt-get', '-y', '--download-only', 'source',
+                    'apt-get', '-y', '--download-only',
+                    '-oAPT::Get::Only-Source=true', 'source',
                 ] + sources)
             except subprocess.CalledProcessError:
+                logger.warning(
+                    'Unable to download some sources as a batch, trying '
+                    'to download sources individually')
+
                 for source in sources:
                     try:
                         nspawn.check_call(['sh', '-euc',
                             'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
                             'sh',                       # argv[0]
                             '/ostree/source/files',     # working directory
-                            'apt-get', '-y', '--download-only', 'source',
+                            'apt-get', '-y', '--download-only',
+                            '-oAPT::Get::Only-Source=true', 'source',
                             source,
                         ])
                     except subprocess.CalledProcessError:
@@ -959,6 +965,8 @@ class Builder:
                         logger.warning(
                             'Unable to get source code for %s', source)
                         self.missing_sources.add(source)
+                        source_package = source.split('=', 1)[0]
+                        nspawn.call(['apt-cache', 'showsrc', source_package])
 
         return installed
 
@@ -1835,7 +1843,8 @@ class Builder:
                             '        source="${source% (*}"\n'
                             '    fi\n'
                             '    ( cd "$export" && \\\n'
-                            '         apt-get -y --download-only source \\\n'
+                            '         apt-get -y --download-only \\\n'
+                            '         -oAPT::Get::Only-Source=true source \\\n'
                             '         "$source=$version"\n'
                             '    )\n'
                             'done\n'
