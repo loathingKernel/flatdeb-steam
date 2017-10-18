@@ -1894,11 +1894,12 @@ class Builder:
                 'mkdir', '-p',
                 '{}/.flatpak-builder'.format(self.remote_build_area),
             ])
-            self.worker.check_call([
-                'ln', '-nsf',
-                '{}/.flatpak-builder'.format(self.remote_build_area),
-                '{}/'.format(self.worker.scratch),
-            ])
+            if self.remote_build_area != self.worker.scratch:
+                self.worker.check_call([
+                    'ln', '-nsf',
+                    '{}/.flatpak-builder'.format(self.remote_build_area),
+                    '{}/'.format(self.worker.scratch),
+                ])
 
             with TemporaryDirectory(prefix='flatdeb-manifest.') as t:
                 json_manifest = os.path.join(t, manifest['id'] + '.json')
