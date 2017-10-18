@@ -1919,6 +1919,10 @@ class Builder:
                 'DEBIAN_FRONTEND=noninteractive',
                 'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
                 'http_proxy=http://192.168.122.1:3142',
+                'sh', '-euc',
+                'cd "$1"; shift; exec "$@"',
+                'sh',                   # argv[0]
+                self.worker.scratch,    # directory to cd into
                 'flatpak-builder',
                 '--arch={}'.format(self.flatpak_arch),
                 '--repo={}'.format(self.remote_repo),
