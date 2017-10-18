@@ -1180,6 +1180,13 @@ class Builder:
                 'sh', # argv[0] for the one-line shell script
                 '{}', '+',
             ])
+            # Flatpak wants to be able to run ldconfig without specifying
+            # an absolute path
+            nspawn.check_call([
+                'sh', '-euc',
+                'test -e /bin/ldconfig || ln -s /sbin/ldconfig /bin/ldconfig',
+            ])
+
         self.root_worker.check_call([
             'chmod', '-R', '--changes', 'a-s,o-t,u=rwX,og=rX', chroot,
         ])
