@@ -1642,90 +1642,20 @@ class Builder:
                 'mkdir', '-p', '{}/home'.format(self.remote_build_area),
             ])
 
-            if isinstance(self.worker, SshWorker):
-                # ostree over sshfs is painfully slow so do something different
-                self.host_worker.call([
-                    'time',
-                    'rsync',
-                    '-aW',
-                    '--no-i-r',
-                    '--info=progress2',
-                    '{}/'.format(self.repo),
-                    '{}:{}/'.format(self.worker.remote, self.remote_repo),
-                ])
-            elif not isinstance(self.worker, HostWorker):
-                with self.worker.remote_dir_context(self.remote_repo) as mount:
-                    self.host_worker.call([
-                        'ostree',
-                        '--repo={}'.format(mount),
-                        'remote',
-                        'delete',
-                        'flatdeb-host',
-                    ])
-                    print('^ It is OK if that failed with "remote not found"')
-                    self.host_worker.check_call([
-                        'ostree',
-                        '--repo={}'.format(mount),
-                        'remote',
-                        'add',
-                        '--no-gpg-verify',
-                        'flatdeb-host',
-                        'file://' + urllib.parse.quote(self.repo),
-                    ])
-                    self.host_worker.check_call([
-                        'ostree',
-                        '--repo={}'.format(mount),
-                        'pull',
-                        '--disable-fsync',
-                        '--mirror',
-                        'flatdeb-host',
-                        'runtime/{}/{}/{}'.format(
-                            manifest['sdk'],
-                            self.flatpak_arch,
-                            self.runtime_branch,
-                        ),
-                    ])
-                    self.host_worker.check_call([
-                        'ostree',
-                        '--repo={}'.format(mount),
-                        'pull',
-                        '--disable-fsync',
-                        '--mirror',
-                        'flatdeb-host',
-                        'runtime/{}/{}/{}'.format(
-                            manifest['runtime'],
-                            self.flatpak_arch,
-                            self.runtime_branch,
-                        ),
-                    ])
-                    self.host_worker.check_call([
-                        'ostree',
-                        '--repo={}'.format(mount),
-                        'remote',
-                        'delete',
-                        'flatdeb-host',
-                    ])
-                    self.worker.check_call([
-                        'time',
-                        'flatpak',
-                        'build-update-repo',
-                        self.remote_repo,
-                    ])
-
             self.worker.check_call([
                 'env',
                 'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
                 'flatpak', '--user',
                 'remote-add', '--if-not-exists', '--no-gpg-verify',
                 'flatdeb',
-                'file://{}'.format(urllib.parse.quote(self.remote_repo)),
+                'http://192.168.122.1:3142/local/flatdeb/repo',
             ])
             self.worker.check_call([
                 'env',
                 'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
                 'flatpak', '--user',
                 'remote-modify', '--no-gpg-verify',
-                '--url=file://{}'.format(urllib.parse.quote(self.remote_repo)),
+                '--url=http://192.168.122.1:3142/local/flatdeb/repo',
                 'flatdeb',
             ])
 
