@@ -1608,6 +1608,7 @@ class Builder:
         ])
 
     def command_app(self, *, app_branch, yaml_manifest, **kwargs):
+        self.worker.require_extended_attributes()
         self.ensure_local_repo()
 
         with open(yaml_manifest) as reader:

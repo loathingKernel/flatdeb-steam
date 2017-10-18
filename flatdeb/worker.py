@@ -49,6 +49,7 @@ class Worker(metaclass=ABCMeta):
         super().__init__()
         self.__depth = 0
         self.stack = ExitStack()
+        self._temporary_directory = '/tmp'
 
     def __enter__(self):
         self.__depth += 1
@@ -64,6 +65,18 @@ class Worker(metaclass=ABCMeta):
             return False
         else:
             return self.stack.__exit__(et, ev, tb)
+
+    def require_extended_attributes(self):
+        assert self.__depth == 0, "Must not have been opened yet"
+        assert self.scratch is None, "Must not have been opened yet"
+
+        # We assume /var/tmp has xattr support
+        self._temporary_directory = '/var/tmp'
+
+    @property
+    @abstractmethod
+    def scratch(self):
+        pass
 
     @abstractmethod
     def _open(self):
@@ -316,7 +329,10 @@ class HostWorker(Worker):
 
     def _open(self):
         self.__scratch = self.stack.enter_context(
-            TemporaryDirectory(prefix='flatdeb-host.')
+            TemporaryDirectory(
+                prefix='flatdeb-host.',
+                dir=self._temporary_directory,
+            )
         )
 
     @property
@@ -371,7 +387,8 @@ class SshWorker(Worker):
 
     def _open(self):
         self.__scratch = self.check_output(
-            ['mktemp', '-d', '-p', '/tmp', 'flatdeb-ssh-worker.XXXXXX'],
+            ['mktemp', '-d', '-p', self._temporary_directory,
+                'flatdeb-ssh-worker.XXXXXX'],
             universal_newlines=True,
         ).rstrip('\n')
         self.stack.callback(
