@@ -129,7 +129,7 @@ class Builder:
         self.root_worker = None
         self.worker = None
         self.host_worker = HostWorker()
-        self.remote_ostree_mode = None
+        self.remote_ostree_mode = 'bare-user-only'
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
         self.sources_required = set()
@@ -266,7 +266,7 @@ class Builder:
             '--ostree-mode', default=self.ostree_mode,
         )
         parser.add_argument(
-            '--remote-ostree-mode', default=None,
+            '--remote-ostree-mode', default=self.remote_ostree_mode,
         )
         parser.add_argument(
             '--export-bundles', action='store_true', default=False,
@@ -314,14 +314,10 @@ class Builder:
 
         if args.remote is not None:
             self.worker = SshWorker(args.remote)
-
             self.remote_ostree_mode = args.remote_ostree_mode
-
-            if self.remote_ostree_mode is None:
-                self.remote_ostree_mode = self.ostree_mode
         else:
             self.worker = HostWorker()
-            self.remote_build_area = self.build_area
+            self.remote_build_area = self.worker.scratch
             self.remote_repo = self.repo
             self.remote_ostree_mode = self.ostree_mode
 
@@ -366,13 +362,7 @@ class Builder:
 
     def ensure_build_area(self):
         if self.remote_build_area is None:
-            # With Flatpak 0.8.x this needs to be on a filesystem that
-            # supports xattrs, i.e. not tmpfs
-            self.remote_build_area = self.worker.check_output([
-                'sh', '-euc',
-                'mkdir -p "${XDG_CACHE_HOME:="$HOME/.cache"}/flatdeb"; '
-                'echo "$XDG_CACHE_HOME/flatdeb"',
-            ]).decode('utf-8').rstrip('\n')
+            self.remote_build_area = self.worker.scratch
 
         if self.remote_repo is None:
             self.remote_repo = '{}/repo'.format(self.remote_build_area)
@@ -1556,7 +1546,7 @@ class Builder:
             '--depth=1',
         ])
 
-        if not isinstance(self.worker, HostWorker):
+        if self.remote_repo != self.repo:
             self.worker.check_call([
                 'time',
                 'flatpak',

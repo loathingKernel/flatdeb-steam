@@ -16,9 +16,7 @@ On a Debian 9 VM (assuming username "user"):
     apt install -t stretch-backports flatpak flatpak-builder ostree
     passwd user     # and have a password
 
-Make sure the VM's /tmp is on the same filesystem as the user's $HOME,
-otherwise ostree will try (and fail) to hard-link files across the
-filesystem boundary.
+Make sure the VM's /tmp is large and mounted with the "dev" option.
 
 On the host system (or the VM if you're running everything there):
 
