@@ -477,6 +477,11 @@ class Builder:
 
     def ensure_local_repo(self):
         self.host_worker.check_call([
+            'install',
+            '-d',
+            os.path.dirname(self.repo),
+        ])
+        self.host_worker.check_call([
             'ostree',
             '--repo=' + self.repo,
             'init',
