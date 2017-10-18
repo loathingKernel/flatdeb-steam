@@ -146,6 +146,10 @@ class NspawnWorker(Worker):
     def _open(self):
         pass
 
+    @property
+    def scratch(self):
+        return self.worker.scratch
+
     def call(self, argv, **kwargs):
         return self.worker.check_call(
             [
