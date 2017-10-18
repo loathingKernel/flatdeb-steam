@@ -11,9 +11,13 @@ On a Debian 9 VM (assuming username "user"):
 
     adduser user sudo
     visudo          # and set %sudo ALL=(ALL:ALL) NOPASSWD: ALL
-    apt install debootstrap flatpak flatpak-builder openssh-server \
-        sudo systemd-container time
+    sensible-editor /etc/apt/sources.list    # and enable backports
+    apt install debootstrap openssh-server sudo systemd-container time
+    apt install -t stretch-backports flatpak flatpak-builder ostree
     passwd user     # and have a password
+
+Make sure the VM's /tmp is large and mounted with the "dev" option,
+and that its /var/tmp is large and supports extended attributes.
 
 On the host system (or the VM if you're running everything there):
 
@@ -23,23 +27,20 @@ You need an apt-cacher-ng on http://192.168.122.1:3142 (currently
 hard-coded), visible to both the host system and the VM. If you don't
 have that, edit run.py accordingly.
 
-For now you also need the apt-cacher-ng configured to serve your
-~/.cache/flatdeb at <http://192.168.122.1:3142/local/flatdeb>, and
-a mirror of the patched packages from
+$HOME/.cache/flatdeb on the host system also needs to be made available
+to both the host system and the VM via HTTP, at
+http://192.168.122.1:3142/local/flatdeb (again currently hard-coded). A
+convenient way to do this is to make it a symlink to a directory that is
+exported via apt-cacher-ng's LocalDirs directive:
+
+    $ cat /etc/apt-cacher-ng/local.conf
+    LocalDirs: local /srv/acng/local
+    $ ls -l ~/.cache/flatdeb
+    lrwxrwxrwx ... /home/user/.cache/flatdeb -> /srv/acng/local/flatdeb
+
+You also need a mirror of the patched packages from
 `deb https://people.collabora.com/~smcv/steamos steamrt-multiarch main` at
-<http://192.168.122.1:3142/local/steamrt>:
-
-    sudo mkdir -p /srv/pub/acng
-    sudo chown -R $(id -nu) /srv/pub/acng
-    mkdir /srv/pub/acng/flatdeb
-    ln -s /srv/pub/acng/flatdeb ~/.cache/
-    mkdir /srv/pub/acng/steamrt
-    # ... mirror packages into that directory with reprepro or something
-
-    sudo tee /etc/apt-cacher-ng/local.conf <<EOF
-    LocalDirs: local /srv/pub/acng
-    EOF
-    sudo systemctl restart apt-cacher-ng.service
+<http://192.168.122.1:3142/local/steamrt>, which can be set up similarly.
 
 Finally, put exported Ubuntu, Steam Runtime and SteamOS keys in
 suites/valve-archive-keyring.gpg (0x9E46D8DCD0BBF5AE and
