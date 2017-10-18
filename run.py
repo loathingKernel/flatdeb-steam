@@ -1551,7 +1551,8 @@ class Builder:
             '--depth=1',
         ])
 
-        if self.remote_repo != self.repo:
+        if (self.remote_repo != self.repo or
+                not isinstance(self.worker, HostWorker)):
             self.worker.check_call([
                 'time',
                 'flatpak',
