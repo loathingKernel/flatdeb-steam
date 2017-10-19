@@ -1386,6 +1386,15 @@ class Builder:
             )
 
             keyfile.set_string(
+                'Runtime', 'x-flatdeb-sources',
+                '{}.Sdk.Sources/{}/{}'.format(
+                    prefix,
+                    self.flatpak_arch,
+                    self.runtime_branch,
+                ),
+            )
+
+            keyfile.set_string(
                 'Environment', 'XDG_DATA_DIRS',
                 ':'.join([
                     '/app/share', '/usr/share', '/usr/share/runtime/share',
@@ -1538,6 +1547,8 @@ class Builder:
                 '--tree=dir={}/ostree/source'.format(chroot),
                 '--fsync=false',
             ])
+        else:
+            source_ref = None
 
         # Don't keep the history in this working repository:
         # if history is desired, mirror the commits into a public
@@ -1586,12 +1597,21 @@ class Builder:
                     '--mirror',
                     '--untrusted',
                     'flatdeb-worker',
-                    'runtime/{}/{}/{}'.format(
-                        runtime,
-                        self.flatpak_arch,
-                        self.runtime_branch,
-                    ),
+                    ref,
                 ])
+
+                if source_ref is not None:
+                    self.host_worker.check_call([
+                        'ostree',
+                        '--repo={}'.format(self.repo),
+                        'pull',
+                        '--disable-fsync',
+                        '--mirror',
+                        '--untrusted',
+                        'flatdeb-worker',
+                        source_ref,
+                    ])
+
                 self.host_worker.check_call([
                     'ostree',
                     '--repo={}'.format(self.repo),
