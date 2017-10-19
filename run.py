@@ -1922,6 +1922,20 @@ class Builder:
                     self.host_worker.check_call([
                         'ostree',
                         '--repo={}'.format(self.repo),
+                        'pull',
+                        '--disable-fsync',
+                        '--mirror',
+                        '--untrusted',
+                        'flatdeb-worker',
+                        'runtime/{}.Sources/{}/{}'.format(
+                            manifest['id'].replace('-', '_'),
+                            self.flatpak_arch,
+                            manifest['branch'],
+                        ),
+                    ])
+                    self.host_worker.check_call([
+                        'ostree',
+                        '--repo={}'.format(self.repo),
                         'remote',
                         'delete',
                         'flatdeb-worker',
