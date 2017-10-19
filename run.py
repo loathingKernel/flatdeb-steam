@@ -1497,7 +1497,7 @@ class Builder:
             '--fsync=false',
         ])
 
-        if os.path.exists('{}/ostree/source'.format(chroot)):
+        if sdk:
             source_ref = 'runtime/{}/{}/{}'.format(
                 runtime + '.Sources',
                 self.flatpak_arch,
@@ -1600,7 +1600,8 @@ class Builder:
                     ref,
                 ])
 
-                if source_ref is not None:
+                if sdk:
+                    assert source_ref is not None
                     self.host_worker.check_call([
                         'ostree',
                         '--repo={}'.format(self.repo),
