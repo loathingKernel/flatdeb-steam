@@ -38,10 +38,6 @@ exported via apt-cacher-ng's LocalDirs directive:
     $ ls -l ~/.cache/flatdeb
     lrwxrwxrwx ... /home/user/.cache/flatdeb -> /srv/acng/local/flatdeb
 
-You also need a mirror of the patched packages from
-`deb https://people.collabora.com/~smcv/steamos steamrt-multiarch main` at
-<http://192.168.122.1:3142/local/steamrt>, which can be set up similarly.
-
 Finally, put exported Ubuntu, Steam Runtime and SteamOS keys in
 suites/valve-archive-keyring.gpg (0x9E46D8DCD0BBF5AE and
 0x7DEEB7438ABDDD96), suites/valve-steam-keyring.gpg (0xF24AEA9FB05498B7)
