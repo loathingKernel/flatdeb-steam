@@ -362,7 +362,11 @@ class Builder:
 
     def ensure_build_area(self):
         if self.remote_build_area is None:
-            self.remote_build_area = self.worker.scratch
+            self.remote_build_area = self.worker.check_output([
+                'sh', '-euc',
+                'mkdir -p "${XDG_CACHE_HOME:="$HOME/.cache"}/flatdeb"; '
+                'echo "$XDG_CACHE_HOME/flatdeb"',
+            ]).decode('utf-8').rstrip('\n')
 
         if self.remote_repo is None:
             self.remote_repo = '{}/repo'.format(self.remote_build_area)
@@ -1668,12 +1672,12 @@ class Builder:
             )
 
             self.worker.check_call([
-                'mkdir', '-p', '{}/home'.format(self.remote_build_area),
+                'mkdir', '-p', '{}/home'.format(self.worker.scratch),
             ])
 
             self.worker.check_call([
                 'env',
-                'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
+                'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
                 'flatpak', '--user',
                 'remote-add', '--if-not-exists', '--no-gpg-verify',
                 'flatdeb',
@@ -1681,7 +1685,7 @@ class Builder:
             ])
             self.worker.check_call([
                 'env',
-                'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
+                'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
                 'flatpak', '--user',
                 'remote-modify', '--no-gpg-verify',
                 '--url=http://192.168.122.1:3142/local/flatdeb/repo',
@@ -1692,7 +1696,7 @@ class Builder:
                 # This may fail: we might already have it.
                 self.worker.call([
                     'env',
-                    'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
+                    'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
                     'flatpak', '--user',
                     'install', 'flatdeb',
                     '{}/{}/{}'.format(
@@ -1703,7 +1707,7 @@ class Builder:
                 ])
                 self.worker.check_call([
                     'env',
-                    'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
+                    'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
                     'flatpak', '--user',
                     'update',
                     '{}/{}/{}'.format(
@@ -1772,7 +1776,7 @@ class Builder:
 
                         self.worker.check_call([
                             'env',
-                            'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
+                            'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
                             'flatpak', 'run',
                             '--filesystem={}'.format(packages),
                             '--share=network',
@@ -1873,7 +1877,7 @@ class Builder:
             self.worker.check_call([
                 'env',
                 'DEBIAN_FRONTEND=noninteractive',
-                'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
+                'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
                 'http_proxy=http://192.168.122.1:3142',
                 'sh', '-euc',
                 'cd "$1"; shift; exec "$@"',
@@ -1959,7 +1963,7 @@ class Builder:
                 self.worker.check_call([
                     'time',
                     'env',
-                    'XDG_DATA_HOME={}/home'.format(self.remote_build_area),
+                    'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
                     'flatpak',
                     'build-bundle',
                     self.remote_repo,
