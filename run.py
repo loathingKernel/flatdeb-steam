@@ -1279,6 +1279,13 @@ class Builder:
             '{}/var/cache'.format(chroot),
             '{}/var/lib/dpkg/status-old'.format(chroot),
             '{}/var/lib/dpkg/statoverride'.format(chroot),
+            '{}/var/local'.format(chroot),
+            '{}/var/lock'.format(chroot),
+            '{}/var/log'.format(chroot),
+            '{}/var/mail'.format(chroot),
+            '{}/var/opt'.format(chroot),
+            '{}/var/run'.format(chroot),
+            '{}/var/spool'.format(chroot),
         ])
 
         self.root_worker.check_call([
