@@ -1513,6 +1513,22 @@ class Builder:
                 '{}/ostree/main/metadata'.format(chroot),
             )
 
+        tarball = '{}-ostree-{}-{}.tar.gz'.format(
+            runtime,
+            self.flatpak_arch,
+            self.runtime_branch,
+        )
+
+        self.worker.check_call([
+            'tar', '-zcf',
+            '{}/{}'.format(
+                self.remote_build_area,
+                tarball,
+            ),
+            '-C', '{}/ostree/main'.format(chroot),
+            '.',
+        ])
+
         self.worker.check_call([
             'time',
             'ostree',
@@ -1520,7 +1536,7 @@ class Builder:
             'commit',
             '--branch=' + ref,
             '--subject=Update',
-            '--tree=dir={}/ostree/main'.format(chroot),
+            '--tree=tar={}/{}'.format(self.remote_build_area, tarball),
             '--fsync=false',
         ])
 
@@ -1588,6 +1604,18 @@ class Builder:
             '--refs-only',
             '--depth=1',
         ])
+
+        if (not isinstance(self.worker, HostWorker) or
+                self.build_area != self.remote_build_area):
+            output = os.path.join(self.build_area, tarball)
+
+            with open(output + '.new', 'wb') as writer:
+                self.worker.check_call([
+                    'cat',
+                    '{}/{}'.format(self.remote_build_area, tarball),
+                ], stdout=writer)
+
+            os.rename(output + '.new', output)
 
         if (self.remote_repo != self.repo or
                 not isinstance(self.worker, HostWorker)):
