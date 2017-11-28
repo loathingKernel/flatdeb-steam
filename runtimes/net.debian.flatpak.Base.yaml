@@ -1,6 +1,10 @@
 ---
 id_prefix: net.debian.flatpak.Base
 
+add_packages_multiarch:
+  - libc6
+  - libstdc++6
+
 sdk:
   add_packages:
     - build-essential
