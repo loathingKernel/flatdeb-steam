@@ -460,7 +460,8 @@ class Builder:
                 '.',
             ])
 
-            if not isinstance(self.worker, HostWorker):
+            if (not isinstance(self.worker, HostWorker) or
+                    self.build_area != self.remote_build_area):
                 output = os.path.join(self.build_area, tarball)
 
                 with open(output + '.new', 'wb') as writer:
