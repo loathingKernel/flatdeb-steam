@@ -918,6 +918,14 @@ class Builder:
                     package.binary, package.source, package.source_version)
                 self.sources_required.add((package.source, package.source_version))
 
+            logger.info('Listing Built-Using fields for SDK...')
+
+            for package, source, version in nspawn.list_built_using():
+                logger.info(
+                    '- %s was Built-Using %s_%s',
+                    package, source, version)
+                self.sources_required.add((source, version))
+
             installed = nspawn.list_packages_ignore_arch()
 
             logger.info('Source code required for GPL compliance:')
@@ -1135,6 +1143,14 @@ class Builder:
                     '- %s from %s_%s',
                     package.binary, package.source, package.source_version)
                 self.sources_required.add((package.source, package.source_version))
+
+            logger.info('Listing Built-Using fields for platform...')
+
+            for package, source, version in nspawn.list_built_using():
+                logger.info(
+                    '- %s was Built-Using %s_%s',
+                    package, source, version)
+                self.sources_required.add((source, version))
 
             # This has to be last for obvious reasons!
             nspawn.check_call([

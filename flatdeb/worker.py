@@ -249,6 +249,37 @@ class NspawnWorker(Worker):
 
         return ret
 
+    def list_built_using(self):
+        for line in self.check_output([
+                    'dpkg-query', '-W', '-f',
+                    r'${Package}\t${Built-Using}\n',
+                ]).decode('utf-8').splitlines():
+            built_using = line.rstrip('\n')
+
+            if not built_using:
+                continue
+
+            assert '\t' in built_using, built_using
+            package, built_using = built_using.split('\t', 1)
+            built_using = built_using.split(',')
+
+            if not built_using:
+                continue
+
+            for field in built_using:
+                # The example given in Policy is:
+                # Built-Using: gcc-4.6 (= 4.6.0-11)
+                f = field.replace(' ', '')      # gcc-4.6(=4.6.0-11)
+
+                if not f:
+                    continue
+
+                assert '(=' in f, f
+                source, version = f.split('(=', 1) # gcc-4.6, 4.6.0-11)
+                assert version.endswith(')'), version
+                version = version[:-1]          # 4.6.0-11
+                yield package, source, version
+
     @contextmanager
     def remote_dir_context(self, path):
         yield os.path.normpath(os.path.join(self.path, './' + path))
