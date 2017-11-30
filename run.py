@@ -135,6 +135,7 @@ class Builder:
         self.sources_required = set()
         self.strip_source_version_suffix = None
         self.missing_sources = set()
+        self.platform_packages = []
 
         self.logger = logger.getChild('Builder')
 
@@ -911,13 +912,24 @@ class Builder:
                 ])
                 logger.info('... done')
 
-            logger.info('Listing packages in SDK...')
+            logger.info('Listing additional packages in SDK...')
 
-            for package in nspawn.write_manifest():
+            sdk_packages = nspawn.write_manifest()
+
+            for package in sdk_packages:
+                if package in self.platform_packages:
+                    continue
+
                 logger.info(
                     '- %s from %s_%s',
                     package.binary, package.source, package.source_version)
                 self.sources_required.add((package.source, package.source_version))
+
+            for package in self.platform_packages:
+                if package not in sdk_packages:
+                    logger.warning(
+                        'Package found in Platform but not Sdk: %s/%s',
+                        package.binary, package.binary_version)
 
             logger.info('Listing Built-Using fields for SDK...')
 
@@ -1139,7 +1151,9 @@ class Builder:
             logger.info('Listing packages in platform...')
 
             # We have to do this before removing dpkg :-)
-            for package in nspawn.write_manifest():
+            self.platform_packages = nspawn.write_manifest()
+
+            for package in self.platform_packages:
                 logger.info(
                     '- %s from %s_%s',
                     package.binary, package.source, package.source_version)

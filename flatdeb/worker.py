@@ -137,6 +137,18 @@ class InstalledPackage:
 
         self.installed_size = fields[3]
 
+    def __eq__(self, other):
+        if isinstance(other, InstalledPackage):
+            return (
+                self.binary,
+                self.binary_version,
+            ) == (
+                other.binary,
+                other.binary_version,
+            )
+        else:
+            return NotImplemented
+
 
 class NspawnWorker(Worker):
     def __init__(self, worker, path, env=()):
