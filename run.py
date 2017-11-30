@@ -1309,11 +1309,6 @@ class Builder:
             '{}/var/spool'.format(chroot),
         ])
 
-        self.root_worker.check_call([
-            'mv', '{}/etc'.format(chroot),
-            '{}/usr/etc'.format(chroot),
-        ])
-
         if sdk:
             runtime = prefix + '.Sdk'
 
@@ -1328,11 +1323,11 @@ class Builder:
 
             # This is only useful if the SDK has libnss-extrausers
             self.root_worker.check_call([
-                'cp', '{}/usr/etc/passwd'.format(chroot),
+                'cp', '{}/etc/passwd'.format(chroot),
                 '{}/var/lib/extrausers/passwd'.format(chroot),
             ])
             self.root_worker.check_call([
-                'cp', '{}/usr/etc/group'.format(chroot),
+                'cp', '{}/etc/group'.format(chroot),
                 '{}/var/lib/extrausers/groups'.format(chroot),
             ])
             self.root_worker.check_call([
@@ -1370,6 +1365,11 @@ class Builder:
                 '{}/share/bug'.format(chroot),
                 '{}/var'.format(chroot),
             ])
+
+        self.root_worker.check_call([
+            'mv', '{}/etc'.format(chroot),
+            '{}/usr/etc'.format(chroot),
+        ])
 
         # TODO: Move lib/debug, zoneinfo, locales into extensions
         # TODO: Hook point for GL, instead of just Mesa
