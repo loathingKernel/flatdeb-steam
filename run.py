@@ -941,6 +941,10 @@ class Builder:
 
             installed = nspawn.list_packages_ignore_arch()
 
+            if 'apt-forktracer' in installed:
+                logger.info('Checking which packages came from other sources:')
+                nspawn.call(['apt-forktracer'])
+
             logger.info('Source code required for GPL compliance:')
 
             sources = []

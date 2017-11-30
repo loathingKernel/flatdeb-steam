@@ -28,6 +28,7 @@ platform:
 
 sdk:
   add_packages:
+    - apt-forktracer
     - build-essential
     - ccache
     - debhelper
