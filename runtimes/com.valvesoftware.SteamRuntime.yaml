@@ -262,6 +262,7 @@ platform:
 
 sdk:
   add_packages:
+    - apt-forktracer
     - build-essential
     - clang-3.6
     - cmake
