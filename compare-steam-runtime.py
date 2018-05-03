@@ -229,8 +229,8 @@ def main(packages, *, manifest=None, steam=None):
 
     print('...')
 
-    if (missing_platform or missing_sdk or only_in_flatpak or
-            different_version):
+    if (missing_platform or missing_sdk or only_in_steam or
+            different_version or newer_in_steam):
         raise SystemExit(1)
 
 if __name__ == '__main__':
