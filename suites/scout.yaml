@@ -28,6 +28,12 @@ sources:
   - apt_uri: 'http://192.168.122.1:3142/local/steamrt'
     # apt_uri: 'https://people.collabora.com/~smcv/steamos'
     apt_trusted: true
+    apt_suite: 'scout-runtime'
+    apt_components:
+      - main
+  - apt_uri: 'http://192.168.122.1:3142/local/steamrt'
+    # apt_uri: 'https://people.collabora.com/~smcv/steamos'
+    apt_trusted: true
     apt_suite: 'scout-multiarch'
     apt_components:
       - main
