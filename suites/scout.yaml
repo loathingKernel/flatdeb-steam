@@ -16,14 +16,6 @@ sources:
       - universe
       - restricted
       - multiverse
-  - apt_uri: 'http://archive.ubuntu.com/ubuntu'
-    apt_suite: 'precise-updates'
-    keyring: 'ubuntu-archive-keyring.gpg'
-    apt_components:
-      - main
-      - universe
-      - restricted
-      - multiverse
   - apt_uri: 'http://repo.steampowered.com/steamrt'
     keyring: 'valve-archive-keyring.gpg'
     apt_components:
