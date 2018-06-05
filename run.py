@@ -111,7 +111,7 @@ class Builder:
         self.app_branch = None
         #: The freedesktop.org cache directory
         self.xdg_cache_dir = os.getenv(
-            'XDG_CACHE_DIR', os.path.expanduser('~/.cache'))
+            'XDG_CACHE_HOME', os.path.expanduser('~/.cache'))
         self.remote_repo = None
         #: Where to write output
         self.build_area = os.path.join(
