@@ -210,7 +210,7 @@ class NspawnWorker(Worker):
         with TemporaryDirectory(prefix='flatdeb-manifest.') as t:
             manifest = os.path.join(t, 'manifest')
 
-            with open(manifest, 'w') as writer:
+            with open(manifest, 'w', encoding='utf-8') as writer:
                 writer.write(
                     '#Package[:Architecture]\t'
                     '#Version\t'
@@ -246,7 +246,7 @@ class NspawnWorker(Worker):
 
             self.install_file(manifest, '/usr/manifest.dpkg')
 
-            with open(manifest) as reader:
+            with open(manifest, encoding='utf-8') as reader:
                 for line in reader:
                     line = line.rstrip('\n')
 

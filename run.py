@@ -359,7 +359,9 @@ class Builder:
         if args.command is None:
             parser.error('A command is required')
 
-        with open(os.path.join('suites', self.apt_suite + '.yaml')) as reader:
+        with open(
+                os.path.join('suites', self.apt_suite + '.yaml'),
+                encoding='utf-8') as reader:
             self.suite_details = yaml.safe_load(reader)
 
         if 'strip_source_version_suffix' in self.suite_details:
@@ -540,7 +542,7 @@ class Builder:
         if self.runtime_branch is None:
             self.runtime_branch = self.apt_suite
 
-        with open(yaml_file) as reader:
+        with open(yaml_file, encoding='utf-8') as reader:
             self.runtime_details = yaml.safe_load(reader)
 
         tarball = 'base-{}-{}.tar.gz'.format(
@@ -651,7 +653,7 @@ class Builder:
 
             to_copy = os.path.join(t, 'sources.list')
 
-            with open(to_copy, 'w') as writer:
+            with open(to_copy, 'w', encoding='utf-8') as writer:
                 for source in self.suite_details['sources']:
                     suite = source.get('apt_suite', self.apt_suite)
                     suite = suite.replace('*', self.apt_suite)
@@ -1659,7 +1661,7 @@ class Builder:
         self.worker.require_extended_attributes()
         self.ensure_local_repo()
 
-        with open(yaml_manifest) as reader:
+        with open(yaml_manifest, encoding='utf-8') as reader:
             manifest = yaml.safe_load(reader)
 
         if self.runtime_branch is None:
