@@ -322,7 +322,8 @@ class Builder:
             self.remote_repo = self.repo
             self.remote_ostree_mode = self.ostree_mode
 
-        self.root_worker = SudoWorker(self.worker)
+            if os.geteuid() == 0 and os.getuid() == 0:
+                self.root_worker = self.worker
 
         if args.architecture is None:
             self.dpkg_archs = [
@@ -376,7 +377,7 @@ class Builder:
         with ExitStack() as stack:
             stack.enter_context(self.worker)
             self.ensure_build_area()
-            stack.enter_context(self.root_worker)
+            stack.enter_context(self.ensure_root_worker())
 
             base_chroot = '{}/base'.format(self.root_worker.scratch)
 
@@ -473,6 +474,17 @@ class Builder:
 
                 os.rename(output + '.new', output)
 
+    def ensure_root_worker(self):
+        if self.root_worker is None:
+            id_u = self.worker.check_output(['id', '-u']).strip()
+
+            if id_u == b'0':
+                self.root_worker = self.worker
+            else:
+                self.root_worker = SudoWorker(self.worker)
+
+        return self.root_worker
+
     def ensure_remote_repo(self):
         self.worker.check_call([
             'ostree',
@@ -512,7 +524,7 @@ class Builder:
             stack.enter_context(self.worker)
             self.ensure_build_area()
             self.ensure_remote_repo()
-            stack.enter_context(self.root_worker)
+            stack.enter_context(self.ensure_root_worker())
 
             base_chroot = '{}/base'.format(self.root_worker.scratch)
             self.root_worker.check_call([
