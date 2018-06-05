@@ -262,6 +262,9 @@ class Builder:
         parser = argparse.ArgumentParser(
             description='Build Flatpak runtimes',
         )
+        parser.add_argument(
+            '--in-fakemachine', action='store_true', default=False)
+        parser.add_argument('--chdir', default=None)
         parser.add_argument('--remote', default=None)
         parser.add_argument(
             '--ostree-mode', default=self.ostree_mode,
@@ -304,6 +307,14 @@ class Builder:
         )
 
         args = parser.parse_args()
+
+        if args.in_fakemachine:
+            # Avoid weird terminal settings inherited from the firmware
+            # and boot loader of the VM
+            subprocess.check_call(['env', 'TERM=xterm', 'reset'])
+
+        if args.chdir is not None:
+            os.chdir(args.chdir)
 
         self.build_area = args.build_area
         self.apt_suite = args.suite

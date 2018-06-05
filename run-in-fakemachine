@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# flatdeb — build Flatpak runtimes from Debian packages
+#
+# Copyright © 2016-2017 Simon McVittie
+# Copyright © 2017-2018 Collabora Ltd.
+#
+# SPDX-License-Identifier: MIT
+# (see run.py)
+
+set -e
+set -o pipefail
+set -u
+set -x
+
+cwd="$(pwd)"
+here="$(cd "$(dirname "$0")"; pwd)"
+cache="${XDG_CACHE_HOME:-"$HOME/.cache"}"
+mkdir -p "$cache/flatdeb"
+
+declare -a fakemachine=(fakemachine)
+
+# Currently hard-coded: 2G of RAM, 2G of disk-backed scratch space
+# (so that /var/tmp will support xattrs)
+fakemachine+=(-m 2048)
+fakemachine+=(-s 2G)
+
+fakemachine+=(-v "$cwd")
+
+if [ "$cwd" != "$here" ]; then
+    fakemachine+=(-v "$here")
+fi
+
+fakemachine+=(-v "$cache/flatdeb")
+
+exec \
+    "${fakemachine[@]}" \
+    -- \
+    env \
+    PYTHONUNBUFFERED=yes \
+    TMPDIR=/scratch \
+    XDG_CACHE_HOME="${cache}" \
+    "$here/run.py" --chdir "${cwd}" --in-fakemachine \
+    "$@"
+
+# vim:set sw=4 sts=4 et:
