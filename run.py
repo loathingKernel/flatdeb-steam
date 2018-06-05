@@ -93,6 +93,12 @@ if VERSION is None:
     ])[1:].decode('utf-8').strip()
     VERSION = _git_version
 
+_CLEAN_UP_BASE = os.path.join(
+    os.path.dirname(__file__), 'flatdeb', 'clean-up-base')
+_DISABLE_SERVICES = os.path.join(
+    os.path.dirname(__file__), 'flatdeb', 'disable-services')
+_USRMERGE = os.path.join(
+    os.path.dirname(__file__), 'flatdeb', 'usrmerge')
 
 class Builder:
 
@@ -563,6 +569,7 @@ class Builder:
             # We do common steps for both the Platform and the Sdk
             # in the base directory, then copy it.
             self.configure_base(base_chroot)
+            self.configure_base_runtime(base_chroot)
 
             platform_chroot = '{}/platform'.format(self.root_worker.scratch)
             sdk_chroot = '{}/sdk'.format(self.root_worker.scratch)
@@ -737,118 +744,30 @@ class Builder:
         Configure the common chroot that will be copied to make both the
         Platform and the Sdk.
         """
+        self.root_worker.install_file(
+            _DISABLE_SERVICES,
+            '{}/disable-services'.format(self.root_worker.scratch),
+            permissions=0o755,
+        )
+        self.root_worker.check_call([
+            '{}/disable-services'.format(self.root_worker.scratch),
+            base_chroot,
+        ])
+        self.root_worker.install_file(
+            _CLEAN_UP_BASE,
+            '{}/clean-up-base'.format(self.root_worker.scratch),
+            permissions=0o755,
+        )
+        self.root_worker.check_call([
+            '{}/clean-up-base'.format(self.root_worker.scratch),
+            base_chroot,
+        ])
 
-        with TemporaryDirectory(prefix='flatdeb-base-install.') as t:
-            # Disable starting services. This container has no init
-            # anyway.
-
-            to_copy = os.path.join(t, 'policy-rc.d')
-
-            with open(to_copy, 'w') as writer:
-                writer.write('#!/bin/sh\n')
-                writer.write('exit 101\n')
-
-            self.root_worker.install_file(
-                to_copy,
-                '{}/usr/sbin/policy-rc.d'.format(base_chroot),
-                permissions=0o755,
-            )
-
-            with open(to_copy, 'w') as writer:
-                writer.write('#!/bin/sh\n')
-                writer.write('exit 0\n')
-
-            self.root_worker.install_file(
-                to_copy,
-                '{}/sbin/initctl'.format(base_chroot),
-                permissions=0o755,
-            )
-            self.root_worker.install_file(
-                to_copy,
-                '{}/usr/local/sbin/initctl'.format(base_chroot),
-                permissions=0o755,
-            )
-
-            with open(to_copy, 'w') as writer:
-                writer.write('#!/bin/sh\n')
-                writer.write('exit 0\n')
-
-            self.root_worker.install_file(
-                to_copy,
-                '{}/usr/local/sbin/update-rc.d'.format(base_chroot),
-                permissions=0o755,
-            )
-
-            # There is some cleanup that we can do in the base
-            # tarball rather than in every runtime individually.
-            # See https://github.com/debuerreotype/debuerreotype
-            # for further ideas.
-
-            to_copy = os.path.join(t, 'flatpak-runtime')
-
-            with open(to_copy, 'w') as writer:
-                writer.write('force-unsafe-io\n')
-
-                writer.write('path-exclude /usr/share/doc/*/*\n')
-                # For license compliance, we should keep the copyright
-                # files intact
-                writer.write('path-include /usr/share/doc/*/copyright\n')
-                self.root_worker.check_call([
-                    'find', '{}/usr/share/doc'.format(base_chroot), '-xdev',
-                    '-not', '-name', 'copyright', '-not', '-type', 'd',
-                    '-delete'
-                ])
-                self.root_worker.check_call([
-                    'find', '{}/usr/share/doc'.format(base_chroot), '-depth',
-                    '-xdev', '-type', 'd', '-empty', '-delete'
-                ])
-
-                for d in (
-                        'doc-base', 'groff', 'info', 'linda', 'lintian', 'man',
-                ):
-                    writer.write(
-                        'path-exclude /usr/share/{}/*\n'.format(d),
-                    )
-                    self.root_worker.check_call([
-                        'rm', '-fr', '{}/usr/share/{}'.format(base_chroot, d),
-                    ])
-
-            self.root_worker.check_call([
-                'install', '-d',
-                '{}/etc/dpkg/dpkg.cfg.d'.format(base_chroot),
-            ])
-            self.root_worker.install_file(
-                to_copy,
-                '{}/etc/dpkg/dpkg.cfg.d/flatpak-runtime'.format(base_chroot),
-            )
-
-            to_copy = os.path.join(t, 'flatpak-runtime')
-
-            with open(to_copy, 'w') as writer:
-                writer.write('Acquire::Languages "none";\n')
-                writer.write('Acquire::GzipIndexes "true";\n')
-                writer.write('Acquire::CompressionTypes::Order:: "gz";\n')
-                # TODO: This doesn't seem to be working in precise,
-                # is it newer?
-                writer.write('APT::InstallRecommends "false";\n')
-                writer.write(
-                    'APT::AutoRemove::SuggestsImportant "false";\n')
-                # We rely on autoremove not taking effect immediately
-                writer.write('APT::Get::AutomaticRemove "false";\n')
-                writer.write('Aptitude::Delete-Unused "false";\n')
-
-            self.root_worker.check_call([
-                'install', '-d',
-                '{}/etc/apt/apt.conf.d'.format(base_chroot),
-            ])
-            self.root_worker.install_file(
-                to_copy,
-                '{}/etc/apt/apt.conf.d/flatpak-runtime'.format(base_chroot),
-            )
-
-        if not self.runtime_details:
-            return
-
+    def configure_base_runtime(self, base_chroot):
+        """
+        Configure the common chroot that will be copied to make both the
+        Platform and the Sdk.
+        """
         with NspawnWorker(
             self.root_worker,
             base_chroot,
@@ -2102,58 +2021,14 @@ class Builder:
                 os.rename(output + '.new', output)
 
     def usrmerge(self, chroot):
+        self.root_worker.install_file(
+            _USRMERGE,
+            '{}/usrmerge'.format(self.root_worker.scratch),
+            permissions=0o755,
+        )
         self.root_worker.check_call([
-            'time',
-            'chroot', chroot,
-            'sh',
-            '-euc',
-
-            'usrmerge () {\n'
-            '    local f="$1"\n'
-            '\n'
-            '    ls -dl "$f" "/usr$f" >&2 || true\n'
-            '    if [ "$(readlink "$f")" = "/usr$f" ]; then\n'
-            '        echo "Removing $f in favour of /usr$f" >&2\n'
-            '        rm -v -f "$f"\n'
-            '    elif [ "$(readlink "/usr$f")" = "$f" ]; then\n'
-            '        echo "Removing /usr$f in favour of $f" >&2\n'
-            '        rm -v -f "/usr$f"\n'
-            '    elif [ "$(readlink -f "/usr$f")" = \\\n'
-            '           "$(readlink -f "$f")" ]; then\n'
-            '        echo "/usr$f and $f are functionally identical" >&2\n'
-            '        rm -v -f "$f"\n'
-            '    else\n'
-            '        echo "Cannot merge $f with /usr$f" >&2\n'
-            '        exit 1\n'
-            '    fi\n'
-            '}\n'
-            '\n'
-            'find /bin /sbin /lib* -not -xtype d |\n'
-            'while read f; do\n'
-            '    if [ -e "/usr$f" ]; then\n'
-            '        usrmerge "$f"\n'
-            '    fi\n'
-            'done\n'
-            '',
-
-            'sh',   # argv[0]
+            '{}/usrmerge'.format(self.root_worker.scratch),
             chroot,
-        ])
-        self.root_worker.check_call([
-            'time',
-            'sh', '-euc',
-            'cd "$1"; tar -cf- bin sbin lib* | tar -C usr -xf-',
-            'sh', chroot,
-        ])
-        self.root_worker.check_call([
-            'time',
-            'sh', '-euc', 'cd "$1"; rm -fr bin sbin lib*',
-            'sh', chroot,
-        ])
-        self.root_worker.check_call([
-            'time',
-            'sh', '-euc', 'cd "$1"; ln -vs usr/bin usr/sbin usr/lib* .',
-            'sh', chroot,
         ])
 
 if __name__ == '__main__':

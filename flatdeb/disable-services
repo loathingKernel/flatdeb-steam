@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# Copyright © 2016-2017 Simon McVittie
+# Copyright © 2017-2018 Collabora Ltd.
+#
+# SPDX-License-Identifier: MIT
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Disable services in a chroot.
+
+set -e
+set -u
+set -x
+set -o pipefail
+
+me="$(basename "$0")"
+
+if [ "$#" != 1 ] || [ "$1" = '--help' ] || [ "x$(id -u)" != x0 ] ||
+        ! [ -d "$1" ]; then
+    echo "$me: Usage:" >&2
+    echo "    $me SYSROOT" >&2
+    echo "" >&2
+    echo "Run this script as root." >&2
+    exit 2
+fi
+
+sysroot="$1"
+cd "$sysroot"
+
+in_chroot () {
+    chroot "$sysroot" "$@"
+}
+
+set_file_contents () {
+    file="$1"
+    permissions="${2-0644}"
+
+    install -d "$sysroot/$(dirname "$file")"
+    rm -f "$sysroot/$file"
+    cat > "$sysroot/$file.dpkg-new"
+    chmod "$permissions" "$sysroot/$file.dpkg-new"
+    mv -f "$sysroot/$file.dpkg-new" "$sysroot/$file"
+}
+
+# Disable starting services. The containers produced by flatdeb have
+# no init anyway.
+set_file_contents "usr/sbin/policy-rc.d" 0755 <<EOF
+#!/bin/sh
+exit 101
+EOF
+
+# Disable Upstart for Ubuntu-based sysroots.
+
+if [ -e "$sysroot/sbin/initctl" ] && \
+        ! [ -e "$sysroot/sbin/initctl.dist" ]; then
+    mv -f "$sysroot/sbin/initctl" "$sysroot/sbin/initctl.dist"
+fi
+
+in_chroot dpkg-divert \
+    --package flatdeb \
+    --divert /sbin/initctl.dist \
+    --add /sbin/initctl
+
+set_file_contents "sbin/initctl" 0755 <<'EOF'
+#!/bin/sh
+echo "/sbin/initctl: Ignoring command: $*" >&2
+exit 0
+EOF
