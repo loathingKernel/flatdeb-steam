@@ -298,7 +298,7 @@ class Builder:
             'app',
             help='Build an app',
         )
-        parser.add_argument('--app-branch', default=self.app_branch)
+        subparser.add_argument('--app-branch', default=self.app_branch)
         subparser.add_argument('yaml_manifest')
 
         subparser = subparsers.add_parser(
