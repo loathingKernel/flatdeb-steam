@@ -392,6 +392,17 @@ class Builder:
 
             base_chroot = '{}/base'.format(self.root_worker.scratch)
 
+            # Try to make sure Ubuntu precise doesn't try to migrate /run
+            self.root_worker.check_call(['install', '-d', base_chroot])
+            self.root_worker.check_call([
+                'install', '-d', base_chroot + '/run'])
+            self.root_worker.check_call([
+                'install', '-d', base_chroot + '/var'])
+            self.root_worker.check_call([
+                'ln', '-fns', '/run', base_chroot + '/var/run'])
+            self.root_worker.check_call([
+                'ln', '-fns', '/dev/shm', base_chroot + '/run/shm'])
+
             argv = [
                 'env',
                 'DEBIAN_FRONTEND=noninteractive',
