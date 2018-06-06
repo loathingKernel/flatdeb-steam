@@ -25,11 +25,9 @@
 
 import logging
 import os
-import shlex
 import subprocess
-import sys
 from abc import abstractmethod, ABCMeta
-from contextlib import ExitStack, contextmanager
+from contextlib import ExitStack
 from tempfile import TemporaryDirectory
 
 from debian.debian_support import Version
@@ -97,15 +95,6 @@ class Worker(metaclass=ABCMeta):
     @abstractmethod
     def install_file(self, source, destination, permissions=0o644):
         pass
-
-    @abstractmethod
-    def remote_dir_context(self, path):
-        """
-        Return a context manager. Entering the context manager makes path
-        available as a filesystem directory for the caller, returning
-        the transformed path (possibly a sshfs or similar). Leaving the
-        context manager cleans up.
-        """
 
     def list_packages_ignore_arch(self):
         installed = set()
@@ -292,10 +281,6 @@ class NspawnWorker(Worker):
                 version = version[:-1]          # 4.6.0-11
                 yield package, source, version
 
-    @contextmanager
-    def remote_dir_context(self, path):
-        yield os.path.normpath(os.path.join(self.path, './' + path))
-
 
 class SudoWorker(Worker):
 
@@ -361,10 +346,6 @@ class SudoWorker(Worker):
             destination,
         ])
 
-    @contextmanager
-    def remote_dir_context(self, path):
-        yield path
-
 
 class HostWorker(Worker):
 
@@ -417,99 +398,3 @@ class HostWorker(Worker):
         self.check_call([
             'install', '-m' + permissions, source, destination,
         ])
-
-    @contextmanager
-    def remote_dir_context(self, path):
-        yield path
-
-
-class SshWorker(Worker):
-
-    """
-    A machine we can ssh to.
-    """
-
-    def __init__(self, remote):
-        super().__init__()
-        self.remote = remote
-        self.__scratch = None
-
-    def _open(self):
-        self.__scratch = self.check_output(
-            ['mktemp', '-d', '-p', self._temporary_directory,
-                'flatdeb-ssh-worker.XXXXXX'],
-            universal_newlines=True,
-        ).rstrip('\n')
-        self.stack.callback(
-            lambda:
-            self.check_call([
-                'rm', '-fr', '--one-file-system', self.__scratch,
-            ]),
-        )
-
-    @property
-    def scratch(self):
-        return self.__scratch
-
-    def call(self, argv, **kwargs):
-        logger.debug('%s:%r', self.remote, argv)
-        if isinstance(argv, str):
-            command_line = argv
-        else:
-            command_line = ' '.join(map(shlex.quote, argv))
-        return subprocess.call(
-            ['ssh', self.remote, command_line],
-            **kwargs,
-        )
-
-    def check_call(self, argv, **kwargs):
-        logger.debug('%s:%r', self.remote, argv)
-        if isinstance(argv, str):
-            command_line = argv
-        else:
-            command_line = ' '.join(map(shlex.quote, argv))
-        subprocess.check_call(
-            ['ssh', self.remote, command_line],
-            **kwargs,
-        )
-
-    def check_output(self, argv, **kwargs):
-        logger.debug('%s:%r', self.remote, argv)
-        command_line = ' '.join(map(shlex.quote, argv))
-        return subprocess.check_output(
-            ['ssh', self.remote, command_line],
-            **kwargs,
-        )
-
-    def install_file(self, source, destination, permissions=0o644):
-        permissions = oct(permissions)
-
-        if permissions.startswith('0o'):
-            permissions = permissions[2:]
-
-        self.check_call(
-            'cat > {}/install'.format(shlex.quote(self.scratch)),
-            stdin=open(source, 'rb'),
-        )
-        self.check_call([
-            'install', '-m' + permissions,
-            '{}/install'.format(self.scratch),
-            destination,
-        ])
-
-    @contextmanager
-    def remote_dir_context(self, path):
-        with TemporaryDirectory(prefix='flatdeb-mount.') as t:
-            subprocess.check_call([
-                'sshfs',
-                '{}:{}'.format(self.remote, path),
-                t,
-            ])
-            try:
-                yield t
-            finally:
-                subprocess.check_call([
-                    'fusermount',
-                    '-u',
-                    t,
-                ])

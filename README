@@ -9,30 +9,23 @@ Walkthrough
 
 On a Debian 9 VM (assuming username "user"):
 
-    adduser user sudo
-    visudo          # and set %sudo ALL=(ALL:ALL) NOPASSWD: ALL
     sensible-editor /etc/apt/sources.list    # and enable backports
-    apt install debootstrap openssh-server sudo systemd-container time
+    apt install debootstrap systemd-container time
+    apt install python3 python3-debian python3-gi python3-yaml
     apt install -t stretch-backports flatpak flatpak-builder ostree
-    passwd user     # and have a password
 
 Make sure the VM's /tmp is large and mounted with the "dev" option,
 and that its /var/tmp is large and supports extended attributes.
 
-On the host system (or the VM if you're running everything there):
-
-    apt install python3 python3-debian python3-gi python3-yaml sshfs
-
 You need an apt-cacher-ng on http://192.168.122.1:3142 (currently
-hard-coded), visible to both the host system and the VM. If you don't
-have that, edit run.py accordingly.
+hard-coded) visible to the VM. If you don't have that, edit run.py
+accordingly.
 
 Also edit org.debian.packages.openarena.yaml to specify where you have
 put local clones of ioquake3 and openarena if you can't (or don't
 want to) clone them via https.
 
-$HOME/.cache/flatdeb on the host system also needs to be made available
-to both the host system and the VM via HTTP, at
+$HOME/.cache/flatdeb also needs to be made available via HTTP, at
 http://192.168.122.1:3142/local/flatdeb (again currently hard-coded). A
 convenient way to do this is to make it a symlink to a directory that is
 exported via apt-cacher-ng's LocalDirs directive:
@@ -44,22 +37,24 @@ exported via apt-cacher-ng's LocalDirs directive:
 
 Finally, put a copy of debian-archive-keyring.gpg in this directory.
 
-On the host (assuming VM is "ikea.virt"):
+Then you can run:
 
-    ssh-copy-id ikea.virt
-    ./run.py --remote=ikea.virt --suite=stretch --arch=amd64 base
-    ./run.py --remote=ikea.virt --suite=stretch --arch=amd64 runtimes \
+    ./run.py --suite=stretch --arch=amd64 base
+    ./run.py --suite=stretch --arch=amd64 runtimes \
         runtimes/net.debian.flatpak.Base.yaml
-    ./run.py --remote=ikea.virt --suite=stretch --arch=amd64 runtimes \
+    ./run.py --suite=stretch --arch=amd64 runtimes \
         runtimes/net.debian.flatpak.Games.yaml
-    ./run.py --remote=ikea.virt --suite=stretch --arch=amd64 app \
+    ./run.py --suite=stretch --arch=amd64 app \
         apps/org.debian.packages.hello.yaml
-    ./run.py --remote=ikea.virt --suite=stretch --arch=amd64 app \
+    ./run.py --suite=stretch --arch=amd64 app \
         apps/org.debian.packages.openarena.yaml
-    ./run.py --remote=ikea.virt --suite=stretch --arch=amd64 app \
+    ./run.py --suite=stretch --arch=amd64 app \
         apps/org.debian.packages.mesa_utils.yaml
 
-On the host, or a test machine onto which you have copied
+If you aren't root and don't have the ability to run `sudo`, use
+`run-in-fakemachine` instead of `./run.py`.
+
+On the same machine, or a test machine onto which you have copied
 `$HOME/.cache/flatdeb/repo` with `rsync` or similar:
 
     flatpak --user remote-add --no-gpg-verify flatdeb $HOME/.cache/flatdeb/repo
@@ -67,8 +62,6 @@ On the host, or a test machine onto which you have copied
     flatpak run org.debian.packages.hello
     flatpak --user install flatdeb org.debian.packages.openarena
     flatpak run org.debian.packages.openarena
-
-(Or run it all on the VM, without `--remote` - less well-tested.)
 
 Bonus content: Steam as a Flatpak, with multiarch
 -------------------------------------------------

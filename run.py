@@ -30,26 +30,6 @@
 
 """
 Create Flatpak runtimes from Debian packages.
-
-Requires (on host):
-    - flatpak
-    - ostree
-    - python3
-    - python3-debian
-    - python3-gi
-    - python3-yaml
-    - sshfs (if worker is remote)
-
-Requires (on worker, possibly the same machine as the host):
-    - Debian 9 'stretch'
-    - /tmp on the same filesystem as /home
-    - debootstrap
-    - flatpak (>= 0.9.99)
-    - flatpak-builder (>= 0.9.99)
-    - ostree
-    - sudo
-    - systemd-container
-    - time
 """
 
 import argparse
@@ -66,7 +46,7 @@ from tempfile import TemporaryDirectory
 import yaml
 from gi.repository import GLib
 
-from flatdeb.worker import HostWorker, NspawnWorker, SshWorker, SudoWorker
+from flatdeb.worker import HostWorker, NspawnWorker, SudoWorker
 
 
 logger = logging.getLogger('flatdeb')
@@ -118,12 +98,10 @@ class Builder:
         #: The freedesktop.org cache directory
         self.xdg_cache_dir = os.getenv(
             'XDG_CACHE_HOME', os.path.expanduser('~/.cache'))
-        self.remote_repo = None
         #: Where to write output
         self.build_area = os.path.join(
             self.xdg_cache_dir, 'flatdeb',
         )
-        self.remote_build_area = None
         self.repo = os.path.join(self.build_area, 'repo')
 
         self.__dpkg_archs = []
@@ -135,7 +113,6 @@ class Builder:
         self.root_worker = None
         self.worker = None
         self.host_worker = HostWorker()
-        self.remote_ostree_mode = 'bare-user-only'
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
         self.sources_required = set()
@@ -271,19 +248,14 @@ class Builder:
         parser.add_argument(
             '--in-fakemachine', action='store_true', default=False)
         parser.add_argument('--chdir', default=None)
-        parser.add_argument('--remote', default=None)
         parser.add_argument(
             '--ostree-mode', default=self.ostree_mode,
-        )
-        parser.add_argument(
-            '--remote-ostree-mode', default=self.remote_ostree_mode,
         )
         parser.add_argument(
             '--export-bundles', action='store_true', default=False,
         )
         parser.add_argument('--build-area', default=self.build_area)
         parser.add_argument('--repo', default=self.repo)
-        parser.add_argument('--remote-repo', default=self.remote_repo)
         parser.add_argument('--suite', '-d', default=self.apt_suite)
         parser.add_argument('--architecture', '--arch', '-a')
         parser.add_argument('--runtime-branch', default=self.runtime_branch)
@@ -326,21 +298,12 @@ class Builder:
         self.apt_suite = args.suite
         self.runtime_branch = args.runtime_branch
         self.repo = args.repo
-        self.remote_repo = args.remote_repo
         self.export_bundles = args.export_bundles
         self.ostree_mode = args.ostree_mode
+        self.worker = HostWorker()
 
-        if args.remote is not None:
-            self.worker = SshWorker(args.remote)
-            self.remote_ostree_mode = args.remote_ostree_mode
-        else:
-            self.worker = HostWorker()
-            self.remote_build_area = self.worker.scratch
-            self.remote_repo = self.repo
-            self.remote_ostree_mode = self.ostree_mode
-
-            if os.geteuid() == 0 and os.getuid() == 0:
-                self.root_worker = self.worker
+        if os.geteuid() == 0 and os.getuid() == 0:
+            self.root_worker = self.worker
 
         if args.architecture is None:
             self.dpkg_archs = [
@@ -382,15 +345,10 @@ class Builder:
             yield source['apt_uri']
 
     def ensure_build_area(self):
-        if self.remote_build_area is None:
-            self.remote_build_area = self.worker.check_output([
-                'sh', '-euc',
-                'mkdir -p "${XDG_CACHE_HOME:="$HOME/.cache"}/flatdeb"; '
-                'echo "$XDG_CACHE_HOME/flatdeb"',
-            ]).decode('utf-8').rstrip('\n')
-
-        if self.remote_repo is None:
-            self.remote_repo = '{}/repo'.format(self.remote_build_area)
+        self.worker.check_call([
+            'sh', '-euc',
+            'mkdir -p "${XDG_CACHE_HOME:="$HOME/.cache"}/flatdeb"',
+        ])
 
     def command_base(self, **kwargs):
         with ExitStack() as stack:
@@ -476,7 +434,7 @@ class Builder:
             self.root_worker.check_call([
                 'time',
                 'tar', '-zcf', '{}/{}'.format(
-                    self.remote_build_area, tarball,
+                    self.build_area, tarball,
                 ),
                 '-C', base_chroot,
                 '--exclude=./etc/.pwd.lock',
@@ -492,18 +450,6 @@ class Builder:
                 '.',
             ])
 
-            if (not isinstance(self.worker, HostWorker) or
-                    self.build_area != self.remote_build_area):
-                output = os.path.join(self.build_area, tarball)
-
-                with open(output + '.new', 'wb') as writer:
-                    self.root_worker.check_call([
-                        'cat',
-                        '{}/{}'.format(self.remote_build_area, tarball),
-                    ], stdout=writer)
-
-                os.rename(output + '.new', output)
-
     def ensure_root_worker(self):
         if self.root_worker is None:
             id_u = self.worker.check_output(['id', '-u']).strip()
@@ -514,14 +460,6 @@ class Builder:
                 self.root_worker = SudoWorker(self.worker)
 
         return self.root_worker
-
-    def ensure_remote_repo(self):
-        self.worker.check_call([
-            'ostree',
-            '--repo=' + self.remote_repo,
-            'init',
-            '--mode={}'.format(self.remote_ostree_mode),
-        ])
 
     def ensure_local_repo(self):
         self.host_worker.check_call([
@@ -553,7 +491,6 @@ class Builder:
         with ExitStack() as stack:
             stack.enter_context(self.worker)
             self.ensure_build_area()
-            self.ensure_remote_repo()
             stack.enter_context(self.ensure_root_worker())
 
             base_chroot = '{}/base'.format(self.root_worker.scratch)
@@ -602,22 +539,11 @@ class Builder:
                 'time',
                 'flatpak',
                 'build-update-repo',
-                self.remote_repo,
+                self.repo,
             ])
 
             if self.export_bundles:
                 for suffix in ('.Platform', '.Sdk'):
-                    self.worker.check_call([
-                        'time',
-                        'flatpak',
-                        'build-bundle',
-                        '--runtime',
-                        self.remote_repo,
-                        '{}/bundle'.format(self.worker.scratch),
-                        prefix + suffix,
-                        self.runtime_branch,
-                    ])
-
                     bundle = '{}-{}-{}.bundle'.format(
                         prefix + suffix,
                         self.flatpak_arch,
@@ -625,14 +551,18 @@ class Builder:
                     )
                     output = os.path.join(self.build_area, bundle)
 
-                    with open(output + '.new', 'wb') as writer:
-                        self.worker.check_call([
-                            'time',
-                            'cat',
-                            '{}/bundle'.format(self.worker.scratch),
-                        ], stdout=writer)
+                    self.worker.check_call([
+                        'time',
+                        'flatpak',
+                        'build-bundle',
+                        '--runtime',
+                        self.repo,
+                        output + '.new',
+                        prefix + suffix,
+                        self.runtime_branch,
+                    ])
 
-                        os.rename(output + '.new', output)
+                    os.rename(output + '.new', output)
 
         if self.missing_sources:
             logger.warning('Missing source packages:')
@@ -1495,22 +1425,25 @@ class Builder:
 
         self.worker.check_call([
             'tar', '-zcf',
-            '{}/{}'.format(
-                self.remote_build_area,
+            '{}/{}{}'.format(
+                self.build_area,
                 tarball,
+                '.new',
             ),
             '-C', '{}/ostree/main'.format(chroot),
             '.',
         ])
+        output = os.path.join(self.build_area, tarball)
+        os.rename(output + '.new', output)
 
         self.worker.check_call([
             'time',
             'ostree',
-            '--repo=' + self.remote_repo,
+            '--repo=' + self.repo,
             'commit',
             '--branch=' + ref,
             '--subject=Update',
-            '--tree=tar={}/{}'.format(self.remote_build_area, tarball),
+            '--tree=tar={}/{}'.format(self.build_area, tarball),
             '--fsync=false',
         ])
 
@@ -1557,7 +1490,7 @@ class Builder:
             self.worker.check_call([
                 'time',
                 'ostree',
-                '--repo=' + self.remote_repo,
+                '--repo=' + self.repo,
                 'commit',
                 '--branch=' + source_ref,
                 '--subject=Update',
@@ -1573,82 +1506,11 @@ class Builder:
         self.worker.check_call([
             'time',
             'ostree',
-            '--repo=' + self.remote_repo,
+            '--repo=' + self.repo,
             'prune',
             '--refs-only',
             '--depth=1',
         ])
-
-        if (not isinstance(self.worker, HostWorker) or
-                self.build_area != self.remote_build_area):
-            output = os.path.join(self.build_area, tarball)
-
-            with open(output + '.new', 'wb') as writer:
-                self.worker.check_call([
-                    'cat',
-                    '{}/{}'.format(self.remote_build_area, tarball),
-                ], stdout=writer)
-
-            os.rename(output + '.new', output)
-
-        if (self.remote_repo != self.repo or
-                not isinstance(self.worker, HostWorker)):
-            self.worker.check_call([
-                'time',
-                'flatpak',
-                'build-update-repo',
-                self.remote_repo,
-            ])
-
-            with self.worker.remote_dir_context(self.remote_repo) as mount:
-                self.host_worker.call([
-                    'ostree',
-                    '--repo={}'.format(self.repo),
-                    'remote',
-                    'delete',
-                    'flatdeb-worker',
-                ])
-                print('^ It is OK if that failed with "remote not found"')
-                self.host_worker.check_call([
-                    'ostree',
-                    '--repo={}'.format(self.repo),
-                    'remote',
-                    'add',
-                    '--no-gpg-verify',
-                    'flatdeb-worker',
-                    'file://' + urllib.parse.quote(mount),
-                ])
-                self.host_worker.check_call([
-                    'ostree',
-                    '--repo={}'.format(self.repo),
-                    'pull',
-                    '--disable-fsync',
-                    '--mirror',
-                    '--untrusted',
-                    'flatdeb-worker',
-                    ref,
-                ])
-
-                if sdk:
-                    assert source_ref is not None
-                    self.host_worker.check_call([
-                        'ostree',
-                        '--repo={}'.format(self.repo),
-                        'pull',
-                        '--disable-fsync',
-                        '--mirror',
-                        '--untrusted',
-                        'flatdeb-worker',
-                        source_ref,
-                    ])
-
-                self.host_worker.check_call([
-                    'ostree',
-                    '--repo={}'.format(self.repo),
-                    'remote',
-                    'delete',
-                    'flatdeb-worker',
-                ])
 
         self.host_worker.check_call([
             'time',
@@ -1684,7 +1546,7 @@ class Builder:
         with ExitStack() as stack:
             stack.enter_context(self.worker)
             self.ensure_build_area()
-            self.ensure_remote_repo()
+            self.ensure_local_repo()
             t = stack.enter_context(
                 TemporaryDirectory(prefix='flatpak-app.')
             )
@@ -1890,12 +1752,12 @@ class Builder:
 
             self.worker.check_call([
                 'mkdir', '-p',
-                '{}/.flatpak-builder'.format(self.remote_build_area),
+                '{}/.flatpak-builder'.format(self.build_area),
             ])
-            if self.remote_build_area != self.worker.scratch:
+            if self.build_area != self.worker.scratch:
                 self.worker.check_call([
                     'ln', '-nsf',
-                    '{}/.flatpak-builder'.format(self.remote_build_area),
+                    '{}/.flatpak-builder'.format(self.build_area),
                     '{}/'.format(self.worker.scratch),
                 ])
 
@@ -1920,79 +1782,11 @@ class Builder:
                 self.worker.scratch,    # directory to cd into
                 'flatpak-builder',
                 '--arch={}'.format(self.flatpak_arch),
-                '--repo={}'.format(self.remote_repo),
+                '--repo={}'.format(self.repo),
                 '--bundle-sources',
                 '{}/workdir'.format(self.worker.scratch),
                 remote_manifest,
             ])
-
-            if not isinstance(self.worker, HostWorker):
-                self.worker.check_call([
-                    'time',
-                    'flatpak',
-                    'build-update-repo',
-                    self.remote_repo,
-                ])
-
-                with self.worker.remote_dir_context(self.remote_repo) as mount:
-                    self.host_worker.call([
-                        'ostree',
-                        '--repo={}'.format(self.repo),
-                        'remote',
-                        'delete',
-                        'flatdeb-worker',
-                    ])
-                    self.host_worker.check_call([
-                        'ostree',
-                        '--repo={}'.format(self.repo),
-                        'remote',
-                        'add',
-                        '--no-gpg-verify',
-                        'flatdeb-worker',
-                        'file://' + urllib.parse.quote(mount),
-                    ])
-                    self.host_worker.check_call([
-                        'ostree',
-                        '--repo={}'.format(self.repo),
-                        'pull',
-                        '--disable-fsync',
-                        '--mirror',
-                        '--untrusted',
-                        'flatdeb-worker',
-                        'app/{}/{}/{}'.format(
-                            manifest['id'],
-                            self.flatpak_arch,
-                            manifest['branch'],
-                        ),
-                    ])
-                    self.host_worker.check_call([
-                        'ostree',
-                        '--repo={}'.format(self.repo),
-                        'pull',
-                        '--disable-fsync',
-                        '--mirror',
-                        '--untrusted',
-                        'flatdeb-worker',
-                        'runtime/{}.Sources/{}/{}'.format(
-                            manifest['id'].replace('-', '_'),
-                            self.flatpak_arch,
-                            manifest['branch'],
-                        ),
-                    ])
-                    self.host_worker.check_call([
-                        'ostree',
-                        '--repo={}'.format(self.repo),
-                        'remote',
-                        'delete',
-                        'flatdeb-worker',
-                    ])
-
-                self.host_worker.check_call([
-                    'time',
-                    'flatpak',
-                    'build-update-repo',
-                    self.repo,
-                ])
 
             if self.export_bundles:
                 self.worker.check_call([
@@ -2001,7 +1795,7 @@ class Builder:
                     'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
                     'flatpak',
                     'build-bundle',
-                    self.remote_repo,
+                    self.repo,
                     '{}/bundle'.format(self.worker.scratch),
                     manifest['id'],
                     manifest['branch'],
