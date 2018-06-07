@@ -1087,18 +1087,16 @@ class Builder:
             '{}/usr/local'.format(chroot),
         ])
 
-        # Merge /usr the hard way, if necessary.
-        if not self.suite_details.get('can_merge_usr', False):
-            self.root_worker.install_file(
-                os.path.join(
-                    os.path.dirname(__file__), 'flatdeb', 'usrmerge'),
-                '{}/usrmerge'.format(self.root_worker.scratch),
-                permissions=0o755,
-            )
-            self.root_worker.check_call([
-                '{}/usrmerge'.format(self.root_worker.scratch),
-                chroot,
-            ])
+        self.root_worker.install_file(
+            os.path.join(
+                os.path.dirname(__file__), 'flatdeb', 'usrmerge'),
+            '{}/usrmerge'.format(self.root_worker.scratch),
+            permissions=0o755,
+        )
+        self.root_worker.check_call([
+            '{}/usrmerge'.format(self.root_worker.scratch),
+            chroot,
+        ])
 
         self.root_worker.check_call([
             'rm', '-fr', '--one-file-system',
