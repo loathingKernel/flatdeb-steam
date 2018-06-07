@@ -40,7 +40,7 @@ import re
 import subprocess
 import sys
 import urllib.parse
-from contextlib import ExitStack, suppress
+from contextlib import ExitStack
 from tempfile import TemporaryDirectory
 
 import yaml
@@ -73,12 +73,8 @@ if VERSION is None:
     ])[1:].decode('utf-8').strip()
     VERSION = _git_version
 
-_CLEAN_UP_BASE = os.path.join(
-    os.path.dirname(__file__), 'flatdeb', 'clean-up-base')
-_DISABLE_SERVICES = os.path.join(
-    os.path.dirname(__file__), 'flatdeb', 'disable-services')
-_USRMERGE = os.path.join(
-    os.path.dirname(__file__), 'flatdeb', 'usrmerge')
+_DEBOS_BASE_RECIPE = os.path.join(
+    os.path.dirname(__file__), 'flatdeb', 'debos-base.yaml')
 
 class Builder:
 
@@ -354,33 +350,61 @@ class Builder:
         with ExitStack() as stack:
             stack.enter_context(self.worker)
             self.ensure_build_area()
-            stack.enter_context(self.ensure_root_worker())
 
-            base_chroot = '{}/base'.format(self.root_worker.scratch)
+            apt_suite = self.suite_details['sources'][0].get(
+                'apt_suite', self.apt_suite)
 
-            # Try to make sure Ubuntu precise doesn't try to migrate /run
-            self.root_worker.check_call(['install', '-d', base_chroot])
-            self.root_worker.check_call([
-                'install', '-d', base_chroot + '/run'])
-            self.root_worker.check_call([
-                'install', '-d', base_chroot + '/var'])
-            self.root_worker.check_call([
-                'ln', '-fns', '/run', base_chroot + '/var/run'])
-            self.root_worker.check_call([
-                'ln', '-fns', '/dev/shm', base_chroot + '/run/shm'])
+            dest_recipe = '{}/{}'.format(
+                self.worker.scratch,
+                'flatdeb.yaml',
+            )
+            self.worker.install_file(_DEBOS_BASE_RECIPE, dest_recipe)
 
-            argv = [
-                'env',
-                'DEBIAN_FRONTEND=noninteractive',
-                'http_proxy=http://192.168.122.1:3142',
-                'debootstrap',
-                '--variant=minbase',
-                '--arch={}'.format(self.primary_dpkg_arch),
-                '--include=apt-transport-https',
-            ]
+            for helper in (
+                'add-foreign-architectures',
+                'clean-up-base',
+                'clean-up-before-pack',
+                'disable-services',
+                'usrmerge',
+            ):
+                dest = '{}/{}'.format(
+                    self.worker.scratch,
+                    helper,
+                )
+                self.worker.install_file(
+                    os.path.join(
+                        os.path.dirname(__file__),
+                        'flatdeb',
+                        helper,
+                    ),
+                    dest,
+                    permissions=0o755,
+                )
 
-            if self.suite_details.get('can_merge_usr', False) is True:
-                argv.append('--merged-usr')
+            self.worker.check_call([
+                'mkdir', '-p',
+                '{}/suites/{}/overlay/etc/apt/trusted.gpg.d'.format(
+                    self.worker.scratch,
+                    apt_suite,
+                ),
+            ])
+
+            tarball = 'base-{}-{}.tar.gz'.format(
+                self.apt_suite,
+                ','.join(self.dpkg_archs),
+            )
+            output = os.path.join(self.build_area, tarball)
+
+            script = self.suite_details.get('debootstrap_script')
+
+            if script is not None:
+                # TODO: flatdeb has historically used a configurable
+                # debootstrap_script, but debos doesn't support scripts other
+                # than 'unstable'. Does the Debian script work for precise and
+                # produce the same results as the 'precise' script?
+                # https://github.com/go-debos/debos/issues/16
+                logger.debug(
+                    'Ignoring /usr/share/debootstrap/scripts/%s', script)
 
             keyring = self.suite_details['sources'][0].get('keyring')
 
@@ -392,63 +416,48 @@ class Builder:
                 else:
                     raise RuntimeError('Cannot open {}'.format(keyring))
 
-                dest = '{}/{}'.format(
-                    self.root_worker.scratch,
+                dest = '{}/suites/{}/overlay/etc/apt/trusted.gpg.d/{}'.format(
+                    self.worker.scratch,
+                    apt_suite,
                     os.path.basename(keyring),
                 )
-                self.root_worker.install_file(os.path.abspath(keyring), dest)
-                argv.append('--keyring=' + dest)
+                self.worker.install_file(os.path.abspath(keyring), dest)
 
-            argv.append(self.suite_details['sources'][0].get(
-                'apt_suite', self.apt_suite,
-            ))
-            argv.append(base_chroot)
-            argv.append(self.suite_details['sources'][0]['apt_uri'])
+            self.configure_apt(
+                '{}/suites/{}/overlay'.format(self.worker.scratch, apt_suite))
 
-            script = self.suite_details.get('debootstrap_script')
-
-            if script is not None:
-                argv.append('/usr/share/debootstrap/scripts/' + script)
-
-            try:
-                self.root_worker.check_call(argv)
-            except:
-                with suppress(Exception):
-                    self.root_worker.check_call([
-                        'cat',
-                        '{}/debootstrap/debootstrap.log'.format(base_chroot),
-                    ])
-                raise
-
-            self.configure_base(base_chroot)
-            self.configure_apt(base_chroot)
-
-            if self.suite_details.get('can_merge_usr', False) == 'after_debootstrap':
-                self.usrmerge(base_chroot)
-
-            tarball = 'base-{}-{}.tar.gz'.format(
-                self.apt_suite,
-                ','.join(self.dpkg_archs),
-            )
-
-            self.root_worker.check_call([
-                'time',
-                'tar', '-zcf', '{}/{}'.format(
-                    self.build_area, tarball,
+            argv = [
+                'debos',
+                '--artifactdir={}'.format(self.build_area),
+                # This is a YAML list
+                '-t', 'components:[{}]'.format(
+                    ', '.join(
+                        self.suite_details.get(
+                            'apt_components',
+                            ['main']
+                        )
+                    )
                 ),
-                '-C', base_chroot,
-                '--exclude=./etc/.pwd.lock',
-                '--exclude=./etc/group-',
-                '--exclude=./etc/passwd-',
-                '--exclude=./etc/shadow-',
-                '--exclude=./home',
-                '--exclude=./root',
-                '--exclude=./tmp',
-                '--exclude=./var/cache',
-                '--exclude=./var/lock',
-                '--exclude=./var/tmp',
-                '.',
-            ])
+                '-t', 'architecture:{}'.format(self.primary_dpkg_arch),
+                '-t', 'suite:{}'.format(apt_suite),
+                '-t', 'mirror:{}'.format(
+                    self.suite_details['sources'][0]['apt_uri'],
+                ),
+                '-t', 'ospack:{}'.format(tarball + '.new'),
+                '-t', 'foreignarchs:{}'.format(
+                    ' '.join(self.dpkg_archs[1:]),
+                ),
+                '-t', 'mergedusr:{}'.format(
+                    str(
+                        self.suite_details.get('can_merge_usr', False),
+                    ).lower(),
+                ),
+            ]
+
+            argv.append(dest_recipe)
+            self.worker.check_call(argv)
+
+            os.rename(output + '.new', output)
 
     def ensure_root_worker(self):
         if self.root_worker is None:
@@ -507,7 +516,6 @@ class Builder:
 
             # We do common steps for both the Platform and the Sdk
             # in the base directory, then copy it.
-            self.configure_base(base_chroot)
             self.configure_base_runtime(base_chroot)
 
             platform_chroot = '{}/platform'.format(self.root_worker.scratch)
@@ -572,7 +580,7 @@ class Builder:
 
             logger.warning('Check that this runtime is GPL-compliant!')
 
-    def configure_apt(self, base_chroot):
+    def configure_apt(self, overlay):
         """
         Configure apt. We only do this once, so that all chroots
         created from the same base have their version numbers
@@ -622,84 +630,46 @@ class Builder:
                         else:
                             raise RuntimeError('Cannot open {}'.format(keyring))
 
-                        self.root_worker.install_file(
+                        self.worker.install_file(
                             os.path.abspath(keyring),
                             '{}/etc/apt/trusted.gpg.d/{}'.format(
-                                base_chroot,
+                                overlay,
                                 os.path.basename(keyring),
                             ),
                         )
 
-            self.root_worker.install_file(
+            self.worker.install_file(
                 to_copy,
-                '{}/etc/apt/sources.list'.format(base_chroot),
+                '{}/etc/apt/sources.list'.format(overlay),
             )
-            self.root_worker.check_call([
-                'rm', '-fr',
-                '{}/etc/apt/sources.list.d'.format(base_chroot),
-            ])
-
-        with NspawnWorker(
-            self.root_worker,
-            base_chroot,
-            env=[
-                'DEBIAN_FRONTEND=noninteractive',
-                'http_proxy=http://192.168.122.1:3142',
-            ],
-        ) as nspawn:
-            for other_arch in self.dpkg_archs[1:]:
-                try:
-                    nspawn.check_call([
-                        'dpkg', '--add-architecture', other_arch,
-                    ])
-                except subprocess.CalledProcessError:
-                    # Older syntax for Ubuntu precise
-                    # https://wiki.debian.org/Multiarch/HOWTO
-                    nspawn.check_call([
-                        'sh', '-euc',
-                        'echo "foreign-architecture $1" > ' +
-                        '/etc/dpkg/dpkg.cfg.d/architectures',
-                        'sh', # argv[0]
-                        other_arch,
-                    ])
-
-            nspawn.check_call([
-                'apt-get', '-y', '-q', 'update',
-            ])
-            nspawn.check_call([
-                'DEBIAN_FRONTEND=noninteractive',
-                'apt-get', '-y', '-q', 'dist-upgrade',
-            ])
-
-    def configure_base(self, base_chroot):
-        """
-        Configure the common chroot that will be copied to make both the
-        Platform and the Sdk.
-        """
-        self.root_worker.install_file(
-            _DISABLE_SERVICES,
-            '{}/disable-services'.format(self.root_worker.scratch),
-            permissions=0o755,
-        )
-        self.root_worker.check_call([
-            '{}/disable-services'.format(self.root_worker.scratch),
-            base_chroot,
-        ])
-        self.root_worker.install_file(
-            _CLEAN_UP_BASE,
-            '{}/clean-up-base'.format(self.root_worker.scratch),
-            permissions=0o755,
-        )
-        self.root_worker.check_call([
-            '{}/clean-up-base'.format(self.root_worker.scratch),
-            base_chroot,
-        ])
 
     def configure_base_runtime(self, base_chroot):
         """
         Configure the common chroot that will be copied to make both the
         Platform and the Sdk.
         """
+        for helper in (
+            'disable-services',
+            'clean-up-base',
+        ):
+            dest = '{}/{}'.format(
+                self.root_worker.scratch,
+                helper,
+            )
+            self.root_worker.install_file(
+                os.path.join(
+                    os.path.dirname(__file__),
+                    'flatdeb',
+                    helper,
+                ),
+                dest,
+                permissions=0o755,
+            )
+            self.root_worker.check_call([
+                dest,
+                base_chroot,
+            ])
+
         with NspawnWorker(
             self.root_worker,
             base_chroot,
@@ -1119,7 +1089,16 @@ class Builder:
 
         # Merge /usr the hard way, if necessary.
         if not self.suite_details.get('can_merge_usr', False):
-            self.usrmerge(chroot)
+            self.root_worker.install_file(
+                os.path.join(
+                    os.path.dirname(__file__), 'flatdeb', 'usrmerge'),
+                '{}/usrmerge'.format(self.root_worker.scratch),
+                permissions=0o755,
+            )
+            self.root_worker.check_call([
+                '{}/usrmerge'.format(self.root_worker.scratch),
+                chroot,
+            ])
 
         self.root_worker.check_call([
             'rm', '-fr', '--one-file-system',
@@ -1815,17 +1794,6 @@ class Builder:
                     ], stdout=writer)
 
                 os.rename(output + '.new', output)
-
-    def usrmerge(self, chroot):
-        self.root_worker.install_file(
-            _USRMERGE,
-            '{}/usrmerge'.format(self.root_worker.scratch),
-            permissions=0o755,
-        )
-        self.root_worker.check_call([
-            '{}/usrmerge'.format(self.root_worker.scratch),
-            chroot,
-        ])
 
 if __name__ == '__main__':
     if sys.stderr.isatty():

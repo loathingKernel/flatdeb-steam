@@ -14,6 +14,10 @@ On a Debian 9 VM (assuming username "user"):
     apt install python3 python3-debian python3-gi python3-yaml
     apt install -t stretch-backports flatpak flatpak-builder ostree
 
+Also install the latest versions of
+[fakemachine](https://github.com/go-debos/fakemachine)
+and [debos](https://github.com/go-debos/debos).
+
 Make sure the VM's /tmp is large and mounted with the "dev" option,
 and that its /var/tmp is large and supports extended attributes.
 
@@ -52,7 +56,7 @@ Then you can run:
         apps/org.debian.packages.mesa_utils.yaml
 
 If you aren't root and don't have the ability to run `sudo`, use
-`run-in-fakemachine` instead of `./run.py`.
+`run-in-fakemachine` instead of `./run.py` for the `runtimes` steps.
 
 On the same machine, or a test machine onto which you have copied
 `$HOME/.cache/flatdeb/repo` with `rsync` or similar:
