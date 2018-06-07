@@ -46,7 +46,7 @@ from tempfile import TemporaryDirectory
 import yaml
 from gi.repository import GLib
 
-from flatdeb.worker import HostWorker, NspawnWorker, SudoWorker
+from flatdeb.worker import HostWorker
 
 
 logger = logging.getLogger('flatdeb')
@@ -75,6 +75,8 @@ if VERSION is None:
 
 _DEBOS_BASE_RECIPE = os.path.join(
     os.path.dirname(__file__), 'flatdeb', 'debos-base.yaml')
+_DEBOS_RUNTIMES_RECIPE = os.path.join(
+    os.path.dirname(__file__), 'flatdeb', 'debos-runtimes.yaml')
 
 class Builder:
 
@@ -106,17 +108,23 @@ class Builder:
         self.__primary_dpkg_arch_matches_cache = {}
         self.suite_details = {}
         self.runtime_details = {}
-        self.root_worker = None
         self.worker = None
         self.host_worker = HostWorker()
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
         self.sources_required = set()
         self.strip_source_version_suffix = None
-        self.missing_sources = set()
-        self.platform_packages = []
 
         self.logger = logger.getChild('Builder')
+
+    @staticmethod
+    def yaml_dump_one_line(data, stream=None):
+        return yaml.safe_dump(
+            data,
+            stream=stream,
+            default_flow_style=True,
+            width=0xFFFFFFFF,
+        ).replace('\n', ' ')
 
     @staticmethod
     def get_flatpak_arch(arch=None):
@@ -241,8 +249,6 @@ class Builder:
         parser = argparse.ArgumentParser(
             description='Build Flatpak runtimes',
         )
-        parser.add_argument(
-            '--in-fakemachine', action='store_true', default=False)
         parser.add_argument('--chdir', default=None)
         parser.add_argument(
             '--ostree-mode', default=self.ostree_mode,
@@ -282,11 +288,6 @@ class Builder:
 
         args = parser.parse_args()
 
-        if args.in_fakemachine:
-            # Avoid weird terminal settings inherited from the firmware
-            # and boot loader of the VM
-            subprocess.check_call(['env', 'TERM=xterm', 'reset'])
-
         if args.chdir is not None:
             os.chdir(args.chdir)
 
@@ -297,9 +298,6 @@ class Builder:
         self.export_bundles = args.export_bundles
         self.ostree_mode = args.ostree_mode
         self.worker = HostWorker()
-
-        if os.geteuid() == 0 and os.getuid() == 0:
-            self.root_worker = self.worker
 
         if args.architecture is None:
             self.dpkg_archs = [
@@ -323,11 +321,8 @@ class Builder:
                 encoding='utf-8') as reader:
             self.suite_details = yaml.safe_load(reader)
 
-        if 'strip_source_version_suffix' in self.suite_details:
-            self.strip_source_version_suffix = re.compile(
-                '(?:' +
-                self.suite_details['strip_source_version_suffix'] +
-                ')$')
+        self.strip_source_version_suffix = self.suite_details.get(
+            'strip_source_version_suffix', '')
 
         getattr(
             self, 'command_' + args.command.replace('-', '_'))(**vars(args))
@@ -429,15 +424,6 @@ class Builder:
             argv = [
                 'debos',
                 '--artifactdir={}'.format(self.build_area),
-                # This is a YAML list
-                '-t', 'components:[{}]'.format(
-                    ', '.join(
-                        self.suite_details.get(
-                            'apt_components',
-                            ['main']
-                        )
-                    )
-                ),
                 '-t', 'architecture:{}'.format(self.primary_dpkg_arch),
                 '-t', 'suite:{}'.format(apt_suite),
                 '-t', 'mirror:{}'.format(
@@ -454,21 +440,17 @@ class Builder:
                 ),
             ]
 
+            components = self.suite_details.get('apt_components', ['main'])
+
+            if components:
+                argv.append('-t')
+                argv.append('components:{}'.format(
+                    self.yaml_dump_one_line(components)))
+
             argv.append(dest_recipe)
             self.worker.check_call(argv)
 
             os.rename(output + '.new', output)
-
-    def ensure_root_worker(self):
-        if self.root_worker is None:
-            id_u = self.worker.check_output(['id', '-u']).strip()
-
-            if id_u == b'0':
-                self.root_worker = self.worker
-            else:
-                self.root_worker = SudoWorker(self.worker)
-
-        return self.root_worker
 
     def ensure_local_repo(self):
         self.host_worker.check_call([
@@ -500,48 +482,193 @@ class Builder:
         with ExitStack() as stack:
             stack.enter_context(self.worker)
             self.ensure_build_area()
-            stack.enter_context(self.ensure_root_worker())
 
-            base_chroot = '{}/base'.format(self.root_worker.scratch)
-            self.root_worker.check_call([
-                'install', '-d', base_chroot,
-            ])
-            self.root_worker.check_call([
-                'time',
-                'tar', '-zxf',
-                '-',
-                '-C', base_chroot,
-                '.',
-            ], stdin=open(os.path.join(self.build_area, tarball), 'rb'))
+            dest_recipe = '{}/{}'.format(
+                self.worker.scratch,
+                'flatdeb.yaml',
+            )
+            self.worker.install_file(_DEBOS_RUNTIMES_RECIPE, dest_recipe)
 
-            # We do common steps for both the Platform and the Sdk
-            # in the base directory, then copy it.
-            self.configure_base_runtime(base_chroot)
-
-            platform_chroot = '{}/platform'.format(self.root_worker.scratch)
-            sdk_chroot = '{}/sdk'.format(self.root_worker.scratch)
-
-            self.root_worker.check_call([
-                'time',
-                'cp', '-a', '--reflink=auto', base_chroot, platform_chroot,
-            ])
-            self.root_worker.check_call([
-                'mv', base_chroot, sdk_chroot,
-            ])
+            for helper in (
+                'clean-up-base',
+                'collect-source-code',
+                'disable-services',
+                'hard-link-alternatives',
+                'make-flatpak-friendly',
+                'platformize',
+                'prepare-runtime',
+                'put-ldconfig-in-path',
+                'usrmerge',
+                'write-manifest',
+            ):
+                dest = '{}/{}'.format(
+                    self.worker.scratch,
+                    helper,
+                )
+                self.worker.install_file(
+                    os.path.join(
+                        os.path.dirname(__file__),
+                        'flatdeb',
+                        helper,
+                    ),
+                    dest,
+                    permissions=0o755,
+                )
 
             prefix = self.runtime_details['id_prefix']
 
             # Do the Platform first, because we download its source
             # packages as part of preparing the Sdk
-            self.ostreeify(
-                prefix,
-                platform_chroot,
-            )
-            self.ostreeify(
-                prefix,
-                sdk_chroot,
-                sdk=True,
-            )
+            for sdk in (False, True):
+                packages = list(self.runtime_details.get('add_packages', []))
+
+                for p in self.runtime_details.get('add_packages_multiarch', []):
+                    for a in self.dpkg_archs:
+                        packages.append(p + ':' + a)
+
+                if sdk:
+                    runtime = prefix + '.Sdk'
+                else:
+                    runtime = prefix + '.Platform'
+
+                out_tarball = '{}-ostree-{}-{}.tar.gz'.format(
+                    runtime,
+                    self.flatpak_arch,
+                    self.runtime_branch,
+                )
+
+                argv = [
+                    'debos',
+                    '--artifactdir={}'.format(self.build_area),
+                    '--scratchsize=8G',
+                    '-t', 'architecture:{}'.format(self.primary_dpkg_arch),
+                    '-t', 'flatpak_arch:{}'.format(self.flatpak_arch),
+                    '-t', 'suite:{}'.format(self.apt_suite),
+                    '-t', 'ospack:{}'.format(tarball),
+                    '-t', 'ostree_tarball:{}'.format(out_tarball + '.new'),
+                    '-t', 'runtime:{}'.format(runtime),
+                    '-t', 'runtime_branch:{}'.format(self.runtime_branch),
+                    '-t', 'strip_source_version_suffix:{}'.format(
+                        self.strip_source_version_suffix),
+                    '-t', 'repo:repo',
+                ]
+
+                if packages:
+                    logger.info('Installing packages:')
+                    packages.sort()
+
+                    for p in packages:
+                        logger.info('- %s', p)
+
+                    argv.append('-t')
+                    argv.append('packages:{}'.format(
+                        self.yaml_dump_one_line(packages)))
+
+                script = self.runtime_details.get('post_script', '')
+
+                if script:
+                    dest = '{}/{}'.format(
+                        self.worker.scratch,
+                        'post_script',
+                    )
+
+                    with open(dest, 'w', encoding='utf-8') as writer:
+                        writer.write('#!/bin/sh\n')
+                        writer.write(script)
+                        writer.write('\n')
+
+                    os.chmod(dest, 0o755)
+                    argv.append('-t')
+                    argv.append('post_script:post_script')
+
+                if sdk:
+                    sources_tarball = '{}-sources-{}-{}.tar.gz'.format(
+                        runtime,
+                        self.flatpak_arch,
+                        self.runtime_branch,
+                    )
+
+                    sdk_details = self.runtime_details.get('sdk', {})
+                    sdk_packages = list(sdk_details.get('add_packages', []))
+                    argv.append('-t')
+                    argv.append('sdk:yes')
+                    argv.append('-t')
+                    argv.append('sources_tarball:' + sources_tarball + '.new')
+
+                    for p in sdk_details.get('add_packages_multiarch', []):
+                        for a in self.dpkg_archs:
+                            sdk_packages.append(p + ':' + a)
+
+                    if sdk_packages:
+                        logger.info('Installing extra packages for SDK:')
+                        sdk_packages.sort()
+
+                        for p in sdk_packages:
+                            logger.info('- %s', p)
+
+                        argv.append('-t')
+                        argv.append(
+                            'sdk_packages:{}'.format(
+                                self.yaml_dump_one_line(sdk_packages)))
+
+                    script = sdk_details.get('post_script', '')
+
+                    if script:
+                        dest = '{}/{}'.format(
+                            self.worker.scratch,
+                            'sdk_post_script',
+                        )
+
+                        with open(dest, 'w', encoding='utf-8') as writer:
+                            writer.write('#!/bin/sh\n')
+                            writer.write(script)
+                            writer.write('\n')
+
+                        os.chmod(dest, 0o755)
+                        argv.append('-t')
+                        argv.append('sdk_post_script:sdk_post_script')
+                else:   # not sdk
+                    platform_details = self.runtime_details.get('platform', {})
+                    script = platform_details.get('post_script', '')
+
+                    if script:
+                        dest = '{}/{}'.format(
+                            self.worker.scratch,
+                            'platform_post_script',
+                        )
+
+                        with open(dest, 'w', encoding='utf-8') as writer:
+                            writer.write('#!/bin/sh\n')
+                            writer.write(script)
+                            writer.write('\n')
+
+                        os.chmod(dest, 0o755)
+                        argv.append('-t')
+                        argv.append('platform_post_script:platform_post_script')
+
+                self.create_flatpak_manifest_overlay(prefix, runtime, sdk=sdk)
+
+                argv.append(dest_recipe)
+                self.worker.check_call(argv)
+
+                if sdk:
+                    output = os.path.join(self.build_area, sources_tarball)
+                    os.rename(output + '.new', output)
+
+                output = os.path.join(self.build_area, out_tarball)
+                os.rename(output + '.new', output)
+
+            # Don't keep the history in this working repository:
+            # if history is desired, mirror the commits into a public
+            # repository and maintain history there.
+            self.worker.check_call([
+                'time',
+                'ostree',
+                '--repo=' + self.repo,
+                'prune',
+                '--refs-only',
+                '--depth=1',
+            ])
 
             self.worker.check_call([
                 'time',
@@ -571,14 +698,6 @@ class Builder:
                     ])
 
                     os.rename(output + '.new', output)
-
-        if self.missing_sources:
-            logger.warning('Missing source packages:')
-
-            for p in sorted(self.missing_sources):
-                logger.warning('- %s', p)
-
-            logger.warning('Check that this runtime is GPL-compliant!')
 
     def configure_apt(self, overlay):
         """
@@ -643,632 +762,10 @@ class Builder:
                 '{}/etc/apt/sources.list'.format(overlay),
             )
 
-    def configure_base_runtime(self, base_chroot):
-        """
-        Configure the common chroot that will be copied to make both the
-        Platform and the Sdk.
-        """
-        for helper in (
-            'disable-services',
-            'clean-up-base',
-        ):
-            dest = '{}/{}'.format(
-                self.root_worker.scratch,
-                helper,
-            )
-            self.root_worker.install_file(
-                os.path.join(
-                    os.path.dirname(__file__),
-                    'flatdeb',
-                    helper,
-                ),
-                dest,
-                permissions=0o755,
-            )
-            self.root_worker.check_call([
-                dest,
-                base_chroot,
-            ])
-
-        with NspawnWorker(
-            self.root_worker,
-            base_chroot,
-            env=[
-                'http_proxy=http://192.168.122.1:3142',
-                'DEBIAN_FRONTEND=noninteractive',
-            ],
-        ) as nspawn:
-            nspawn.check_call([
-                'install', '-d',
-                '/var/cache/apt/archives/partial',
-                '/var/lock',
-            ])
-
-            # We use aptitude to help prepare the Platform runtime, and
-            # it's a useful thing to have in the Sdk runtime
-            nspawn.check_call([
-                'apt-get', '-q', '-y',
-                '--no-install-recommends',
-                'install', 'aptitude',
-            ])
-
-            # All packages will be removed from the platform runtime
-            # unless they are Essential, depended-on, or in the
-            # add_packages list.
-            nspawn.check_call([
-                'aptitude', '-y', 'markauto', '?installed'
-            ])
-            # Ubuntu precise doesn't like apt being up for autoremoval.
-            nspawn.check_call([
-                'aptitude', '-y', 'unmarkauto', 'apt'
-            ])
-
-            packages = list(self.runtime_details.get('add_packages', []))
-
-            for p in self.runtime_details.get('add_packages_multiarch', []):
-                for a in self.dpkg_archs:
-                    packages.append(p + ':' + a)
-
-            if packages:
-                nspawn.check_call([
-                    'apt-get', '-q', '-y', 'install',
-                    '--no-install-recommends',
-                ] + packages)
-
-
-    def sdkize(self, sdk_chroot):
-        """
-        Transform a copy of the chroot into a Sdk runtime.
-        """
-        logger = self.logger.getChild('sdkize')
-
-        sdk_details = self.runtime_details.get('sdk', {})
-
-        with NspawnWorker(
-            self.root_worker,
-            sdk_chroot,
-            env=[
-                'http_proxy=http://192.168.122.1:3142',
-                'DEBIAN_FRONTEND=noninteractive',
-            ],
-        ) as nspawn:
-            packages = list(sdk_details.get('add_packages', []))
-
-            for p in sdk_details.get('add_packages_multiarch', []):
-                for a in self.dpkg_archs:
-                    packages.append(p + ':' + a)
-
-            if packages:
-                logger.info('Installing extra packages for SDK:')
-
-                for p in sorted(packages):
-                    logger.info('- %s', p)
-
-                nspawn.check_call([
-                    'apt-get', '-q', '-y', 'install',
-                    '--no-install-recommends',
-                ] + packages)
-
-            script = self.runtime_details.get('post_script', '')
-
-            if script:
-                logger.info('Running custom script...')
-                nspawn.check_call([
-                    'sh', '-c', script,
-                ])
-                logger.info('... done')
-
-            script = sdk_details.get('post_script', '')
-
-            if script:
-                logger.info('Running custom SDK script...')
-                nspawn.check_call([
-                    'sh', '-c', script,
-                ])
-                logger.info('... done')
-
-            logger.info('Listing additional packages in SDK...')
-
-            sdk_packages = nspawn.write_manifest()
-
-            for package in sdk_packages:
-                if package in self.platform_packages:
-                    continue
-
-                logger.info(
-                    '- %s from %s_%s',
-                    package.binary, package.source, package.source_version)
-                self.sources_required.add((package.source, package.source_version))
-
-            for package in self.platform_packages:
-                if package not in sdk_packages:
-                    logger.warning(
-                        'Package found in Platform but not Sdk: %s/%s',
-                        package.binary, package.binary_version)
-
-            logger.info('Listing Built-Using fields for SDK...')
-
-            for package, source, version in nspawn.list_built_using():
-                logger.info(
-                    '- %s was Built-Using %s_%s',
-                    package, source, version)
-                self.sources_required.add((source, version))
-
-            installed = nspawn.list_packages_ignore_arch()
-
-            if 'apt-forktracer' in installed:
-                logger.info('Checking which packages came from other sources:')
-                nspawn.call(['apt-forktracer'])
-
-            logger.info('Source code required for GPL compliance:')
-
-            sources = []
-
-            for p in sorted(self.sources_required):
-                package = p[0]
-                version = p[1]
-
-                package = package.split(':', 1)[0]
-
-                if self.strip_source_version_suffix is not None:
-                    version = self.strip_source_version_suffix.sub('', version)
-
-                logger.info('- %s_%s', package, version)
-                sources.append('{}={}'.format(package, version))
-
-            try:
-                nspawn.check_call(['sh', '-euc',
-                    'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
-                    'sh',                       # argv[0]
-                    '/ostree/source/files',     # working directory
-                    'apt-get', '-y', '--download-only',
-                    '-oAPT::Get::Only-Source=true', 'source',
-                ] + sources)
-            except subprocess.CalledProcessError:
-                logger.warning(
-                    'Unable to download some sources as a batch, trying '
-                    'to download sources individually')
-
-                for source in sources:
-                    try:
-                        nspawn.check_call(['sh', '-euc',
-                            'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
-                            'sh',                       # argv[0]
-                            '/ostree/source/files',     # working directory
-                            'apt-get', '-y', '--download-only',
-                            '-oAPT::Get::Only-Source=true', 'source',
-                            source,
-                        ])
-                    except subprocess.CalledProcessError:
-                        # Non-fatal for now
-                        logger.warning(
-                            'Unable to get source code for %s', source)
-                        self.missing_sources.add(source)
-                        source_package = source.split('=', 1)[0]
-                        nspawn.call(['apt-cache', 'showsrc', source_package])
-
-        return installed
-
-    def platformize(self, platform_chroot):
-        """
-        Transform a copy of the chroot into a Platform runtime.
-        """
-        logger = self.logger.getChild('platformize')
-        platform_details = self.runtime_details.get('platform', {})
-
-        with NspawnWorker(
-            self.root_worker,
-            platform_chroot,
-            env=[
-                'DEBIAN_FRONTEND=noninteractive',
-                'SUDO_FORCE_REMOVE=yes',
-                'http_proxy=http://192.168.122.1:3142',
-            ],
-        ) as nspawn:
-            # TODO: For the SteamRuntime this removes dbus,
-            # libsasl2-modules and python-debian and I have no idea why
-            #nspawn.check_call([
-            #    'aptitude', '-y', 'purge',
-            #    '?and(?installed,?section(devel))',
-            #    '?and(?installed,?section(libdevel))',
-            #])
-
-            installed = nspawn.list_packages_ignore_arch()
-
-            logger.info('Packages installed at the moment:')
-
-            for p in sorted(installed):
-                logger.info('- %s', p)
-
-            unwanted = []
-
-            for package in [
-                    'aptitude',
-                    'fakeroot',
-                    'libfakeroot',
-            ]:
-                if package in installed:
-                    unwanted.append(package)
-
-            if unwanted:
-                logger.info('Removing unwanted packages')
-
-                nspawn.check_call([
-                    'apt-get', '-y', 'purge',
-                ] + unwanted)
-
-            logger.info('Autoremoving packages')
-            nspawn.check_call([
-                'apt-get', '-y', '--purge', 'autoremove',
-            ])
-
-            installed = nspawn.list_packages_ignore_arch()
-
-            logger.info('Packages installed before destroying Essential set:')
-
-            for p in sorted(installed):
-                logger.info('- %s', p)
-
-            unwanted = []
-
-            # These are Essential (or at least important) but serve no
-            # purpose in an immutable runtime with no init. Note that
-            # order is important: adduser needs to be removed before
-            # debconf. We remove these particular packages first because
-            # they try to invoke other packages we want to remove in
-            # their postrm maintainer scripts.
-            for package in [
-                    'adduser',
-                    'apt',
-                    'gnupg',
-                    'ifupdown',
-                    'initramfs-tools',
-                    'initramfs-tools-bin',
-                    'initscripts',
-                    'lsb-base',
-                    'module-init-tools',
-                    'plymouth',
-                    'tcpd',
-            ]:
-                if package in installed:
-                    unwanted.append(package)
-
-            if 'python' not in installed:
-                unwanted.append('python-minimal')
-                unwanted.append('python2.7-minimal')
-
-            logger.info('Packages we will forcibly remove (first round):')
-
-            for p in sorted(unwanted):
-                logger.info('- %s', p)
-
-            if unwanted:
-                nspawn.check_call([
-                    'dpkg', '--purge', '--force-remove-essential',
-                    '--force-depends',
-                ] + unwanted)
-
-            # Second round of removals.
-            for package in [
-                    'busybox-initramfs',
-                    'debconf',
-                    'debian-archive-keyring',
-                    'e2fsprogs',
-                    'init',
-                    'init-system-helpers',
-                    'insserv',
-                    'iproute',
-                    'login',
-                    'mount',
-                    'mountall',
-                    'passwd',
-                    'systemd',
-                    'systemd-sysv',
-                    'sysv-rc',
-                    'ubuntu-archive-keyring',
-                    'ubuntu-keyring',
-                    'udev',
-                    'upstart',
-            ]:
-                if package in installed:
-                    unwanted.append(package)
-
-            if 'perl' not in installed:
-                unwanted.append('perl-base')
-
-            logger.info('Packages we will forcibly remove (second round):')
-
-            for p in sorted(unwanted):
-                logger.info('- %s', p)
-
-            if unwanted:
-                nspawn.check_call([
-                    'dpkg', '--purge', '--force-remove-essential',
-                    '--force-depends',
-                ] + unwanted)
-
-            installed = nspawn.list_packages_ignore_arch()
-
-            script = self.runtime_details.get('post_script', '')
-
-            if script:
-                logger.info('Running custom script...')
-                nspawn.check_call([
-                    'sh', '-c', script,
-                ])
-                logger.info('... done')
-
-            script = platform_details.get('post_script', '')
-
-            if script:
-                logger.info('Running custom platform script...')
-                nspawn.check_call([
-                    'sh', '-c', script,
-                ])
-                logger.info('... done')
-
-            logger.info('Listing packages in platform...')
-
-            # We have to do this before removing dpkg :-)
-            self.platform_packages = nspawn.write_manifest()
-
-            for package in self.platform_packages:
-                logger.info(
-                    '- %s from %s_%s',
-                    package.binary, package.source, package.source_version)
-                self.sources_required.add((package.source, package.source_version))
-
-            logger.info('Listing Built-Using fields for platform...')
-
-            for package, source, version in nspawn.list_built_using():
-                logger.info(
-                    '- %s was Built-Using %s_%s',
-                    package, source, version)
-                self.sources_required.add((source, version))
-
-            # This has to be last for obvious reasons!
-            nspawn.check_call([
-                'dpkg', '--purge', '--force-remove-essential',
-                '--force-depends',
-                'dpkg',
-            ])
-
-        return installed
-
-    def ostreeify(self, prefix, chroot, sdk=False, packages=()):
-        """
-        Move things around to turn a chroot into a runtime.
-        """
-        if sdk:
-            installed = self.sdkize(chroot)
-        else:
-            installed = self.platformize(chroot)
-
-        with NspawnWorker(
-            self.root_worker,
-            chroot,
-        ) as nspawn:
-            nspawn.check_call([
-                'find', '/', '-xdev', '(',
-                '-lname', '/etc/alternatives/*', '-o',
-                '-lname', '/etc/locale.alias',
-                ')', '-exec', 'sh', '-euc',
-
-                'set -e\n'
-                'while [ $# -gt 0 ]; do\n'
-                '    old="$(readlink "$1")"\n'
-                '    if target="$(readlink -f "$1")"; then\n'
-                '        echo "Making $1 a hard link to $target (was $old)"\n'
-                '        rm -f "$1"\n'
-                '        cp -al "$target" "$1"\n'
-                '    fi\n'
-                '    shift\n'
-                'done'
-                '',
-
-                'sh', # argv[0] for the one-line shell script
-                '{}', '+',
-            ])
-            # Flatpak wants to be able to run ldconfig without specifying
-            # an absolute path
-            nspawn.check_call([
-                'sh', '-euc',
-                'test -e /bin/ldconfig || ln -s /sbin/ldconfig /bin/ldconfig',
-            ])
-
-        self.root_worker.check_call([
-            'chmod', '-R', '--changes', 'a-s,o-t,u=rwX,og=rX', chroot,
-        ])
-        self.root_worker.check_call([
-            'chown', '-R', '--changes', 'root:root', chroot,
-        ])
-        self.root_worker.check_call([
-            'rm', '-fr', '--one-file-system',
-            '{}/usr/local'.format(chroot),
-        ])
-
-        self.root_worker.install_file(
-            os.path.join(
-                os.path.dirname(__file__), 'flatdeb', 'usrmerge'),
-            '{}/usrmerge'.format(self.root_worker.scratch),
-            permissions=0o755,
-        )
-        self.root_worker.check_call([
-            '{}/usrmerge'.format(self.root_worker.scratch),
-            chroot,
-        ])
-
-        self.root_worker.check_call([
-            'rm', '-fr', '--one-file-system',
-            '{}/etc/apparmor'.format(chroot),
-            '{}/etc/apparmor.d'.format(chroot),
-            '{}/etc/console-setup'.format(chroot),
-            '{}/etc/cron.daily'.format(chroot),
-            '{}/etc/cron.hourly'.format(chroot),
-            '{}/etc/cron.monthly'.format(chroot),
-            '{}/etc/cron.weekly'.format(chroot),
-            '{}/etc/dbus-1/system.d'.format(chroot),
-            '{}/etc/depmod.d'.format(chroot),
-            '{}/etc/dhcp'.format(chroot),
-            '{}/etc/emacs'.format(chroot),
-            '{}/etc/fstab'.format(chroot),
-            '{}/etc/fstab.d'.format(chroot),
-            '{}/etc/group-'.format(chroot),
-            '{}/etc/gshadow-'.format(chroot),
-            '{}/etc/hostname'.format(chroot),
-            '{}/etc/hosts'.format(chroot),
-            '{}/etc/hosts.allow'.format(chroot),
-            '{}/etc/hosts.deny'.format(chroot),
-            '{}/etc/init'.format(chroot),
-            '{}/etc/init.d'.format(chroot),
-            '{}/etc/initramfs-tools'.format(chroot),
-            '{}/etc/insserv'.format(chroot),
-            '{}/etc/insserv.conf'.format(chroot),
-            '{}/etc/insserv.conf.d'.format(chroot),
-            '{}/etc/iproute2'.format(chroot),
-            '{}/etc/issue'.format(chroot),
-            '{}/etc/issue.net'.format(chroot),
-            '{}/etc/kbd'.format(chroot),
-            '{}/etc/kernel'.format(chroot),
-            '{}/etc/localtime'.format(chroot),
-            '{}/etc/logcheck'.format(chroot),
-            '{}/etc/login.defs'.format(chroot),
-            '{}/etc/logrotate.d'.format(chroot),
-            '{}/etc/lsb-base'.format(chroot),
-            '{}/etc/lsb-base-logging.sh'.format(chroot),
-            '{}/etc/machine-id'.format(chroot),
-            '{}/etc/mailname'.format(chroot),
-            '{}/etc/modprobe.d'.format(chroot),
-            '{}/etc/modules'.format(chroot),
-            '{}/etc/network'.format(chroot),
-            '{}/etc/networks'.format(chroot),
-            '{}/etc/nologin'.format(chroot),
-            '{}/etc/opt'.format(chroot),
-            '{}/etc/pam.conf'.format(chroot),
-            '{}/etc/pam.d'.format(chroot),
-            '{}/etc/passwd-'.format(chroot),
-            '{}/etc/ppp'.format(chroot),
-            '{}/etc/rc.local'.format(chroot),
-            '{}/etc/rc0.d'.format(chroot),
-            '{}/etc/rc1.d'.format(chroot),
-            '{}/etc/rc2.d'.format(chroot),
-            '{}/etc/rc3.d'.format(chroot),
-            '{}/etc/rc4.d'.format(chroot),
-            '{}/etc/rc5.d'.format(chroot),
-            '{}/etc/rc6.d'.format(chroot),
-            '{}/etc/resolv.conf'.format(chroot),
-            '{}/etc/resolvconf'.format(chroot),
-            '{}/etc/rmt'.format(chroot),
-            '{}/etc/rpc'.format(chroot),
-            '{}/etc/rsyslog.conf'.format(chroot),
-            '{}/etc/rsyslog.d'.format(chroot),
-            '{}/etc/securetty'.format(chroot),
-            '{}/etc/security'.format(chroot),
-            '{}/etc/shadow-'.format(chroot),
-            '{}/etc/shells'.format(chroot),
-            '{}/etc/subgid-'.format(chroot),
-            '{}/etc/subuid-'.format(chroot),
-            '{}/etc/sudoers'.format(chroot),
-            '{}/etc/sudoers.d'.format(chroot),
-            '{}/etc/sysctl.conf'.format(chroot),
-            '{}/etc/sysctl.d'.format(chroot),
-            '{}/etc/systemd'.format(chroot),
-            '{}/etc/timezone'.format(chroot),
-            '{}/etc/udev'.format(chroot),
-            '{}/etc/update-motd.d'.format(chroot),
-            '{}/var/backups'.format(chroot),
-            '{}/var/cache'.format(chroot),
-            '{}/var/lib/dpkg/status-old'.format(chroot),
-            '{}/var/lib/dpkg/statoverride'.format(chroot),
-            '{}/var/local'.format(chroot),
-            '{}/var/lock'.format(chroot),
-            '{}/var/log'.format(chroot),
-            '{}/var/mail'.format(chroot),
-            '{}/var/opt'.format(chroot),
-            '{}/var/run'.format(chroot),
-            '{}/var/spool'.format(chroot),
-        ])
-
-        if sdk:
-            runtime = prefix + '.Sdk'
-
-            self.root_worker.check_call([
-                'install', '-d',
-                '{}/var/cache/apt/archives/partial'.format(chroot),
-                '{}/var/lib/extrausers'.format(chroot),
-            ])
-            self.root_worker.check_call([
-                'touch', '{}/var/cache/apt/archives/partial/.exists'.format(chroot),
-            ])
-
-            # This is only useful if the SDK has libnss-extrausers
-            self.root_worker.check_call([
-                'cp', '{}/etc/passwd'.format(chroot),
-                '{}/var/lib/extrausers/passwd'.format(chroot),
-            ])
-            self.root_worker.check_call([
-                'cp', '{}/etc/group'.format(chroot),
-                '{}/var/lib/extrausers/groups'.format(chroot),
-            ])
-            self.root_worker.check_call([
-                'mv', '{}/var'.format(chroot),
-                '{}/usr/var'.format(chroot),
-            ])
-        else:
-            runtime = prefix + '.Platform'
-
-            self.root_worker.check_call([
-                'rm', '-fr', '--one-file-system',
-                '{}/etc/adduser.conf'.format(chroot),
-                '{}/etc/apt'.format(chroot),
-                '{}/etc/bash_completion.d'.format(chroot),
-                '{}/etc/dpkg'.format(chroot),
-                '{}/etc/debconf.conf'.format(chroot),
-                '{}/etc/default'.format(chroot),
-                '{}/etc/deluser.conf'.format(chroot),
-                '{}/etc/gdb'.format(chroot),
-                '{}/etc/gpasswd'.format(chroot),
-                '{}/etc/groff'.format(chroot),
-                '{}/etc/group'.format(chroot),
-                '{}/etc/mailcap'.format(chroot),
-                '{}/etc/mailcap.order'.format(chroot),
-                '{}/etc/manpath.config'.format(chroot),
-                '{}/etc/mke2fs.conf'.format(chroot),
-                '{}/etc/newt'.format(chroot),
-                '{}/etc/passwd'.format(chroot),
-                '{}/etc/shadow'.format(chroot),
-                '{}/etc/skel'.format(chroot),
-                '{}/etc/subgid'.format(chroot),
-                '{}/etc/subuid'.format(chroot),
-                '{}/etc/ucf.conf'.format(chroot),
-                '{}/share/bash-completion'.format(chroot),
-                '{}/share/bug'.format(chroot),
-                '{}/var'.format(chroot),
-            ])
-
-        self.root_worker.check_call([
-            'mv', '{}/etc'.format(chroot),
-            '{}/usr/etc'.format(chroot),
-        ])
-
-        # TODO: Move lib/debug, zoneinfo, locales into extensions
-        # TODO: Hook point for GL, instead of just Mesa
-        # TODO: GStreamer extension
-        # TODO: Icon theme, Gtk theme extension
-        # TODO: VAAPI extension
-        # TODO: SDK extension
-        # TODO: ca-certificates extension to get newer certs?
-
-        self.root_worker.check_call([
-            'install', '-d', '{}/ostree/main'.format(chroot),
-        ])
-        self.root_worker.check_call([
-            'mv', '{}/usr'.format(chroot),
-            '{}/ostree/main/files'.format(chroot),
-        ])
-
-        ref = 'runtime/{}/{}/{}'.format(
-            runtime, self.flatpak_arch, self.runtime_branch,
+    def create_flatpak_manifest_overlay(self, prefix, runtime, sdk=False):
+        overlay = '{}/runtimes/{}/overlay'.format(
+            self.worker.scratch,
+            runtime,
         )
 
         with TemporaryDirectory(prefix='flatdeb-ostreeify.') as t:
@@ -1320,7 +817,7 @@ class Builder:
                 'Environment', 'LD_LIBRARY_PATH', ':'.join(search_path),
             )
 
-            if 'libgstreamer1.0-0' in installed:
+            if True:    # TODO: 'libgstreamer1.0-0' in installed:
                 search_path = []
 
                 for arch in self.dpkg_archs:
@@ -1349,7 +846,7 @@ class Builder:
                     ':'.join(search_path),
                 )
 
-            if 'libgirepository-1.0-1' in installed:
+            if True:    # TODO: 'libgirepository-1.0-1' in installed:
                 search_path = []
 
                 for arch in self.dpkg_archs:
@@ -1373,9 +870,10 @@ class Builder:
                     ).items():
                 group = 'Extension {}'.format(ext)
 
-                self.root_worker.check_call([
+                self.worker.check_call([
                     'install', '-d',
-                    '{}/ostree/main/files/{}'.format(chroot, detail['directory']),
+                    '{}/ostree/main/files/{}'.format(
+                        overlay, detail['directory']),
                 ])
 
                 for k, v in detail.items():
@@ -1389,48 +887,15 @@ class Builder:
 
             keyfile.save_to_file(metadata)
 
-            self.root_worker.install_file(
+            self.worker.check_call([
+                'install', '-d', '{}/ostree/main'.format(overlay),
+            ])
+            self.worker.install_file(
                 metadata,
-                '{}/ostree/main/metadata'.format(chroot),
+                '{}/ostree/main/metadata'.format(overlay),
             )
-
-        tarball = '{}-ostree-{}-{}.tar.gz'.format(
-            runtime,
-            self.flatpak_arch,
-            self.runtime_branch,
-        )
-
-        self.worker.check_call([
-            'tar', '-zcf',
-            '{}/{}{}'.format(
-                self.build_area,
-                tarball,
-                '.new',
-            ),
-            '-C', '{}/ostree/main'.format(chroot),
-            '.',
-        ])
-        output = os.path.join(self.build_area, tarball)
-        os.rename(output + '.new', output)
-
-        self.worker.check_call([
-            'time',
-            'ostree',
-            '--repo=' + self.repo,
-            'commit',
-            '--branch=' + ref,
-            '--subject=Update',
-            '--tree=tar={}/{}'.format(self.build_area, tarball),
-            '--fsync=false',
-        ])
 
         if sdk:
-            source_ref = 'runtime/{}/{}/{}'.format(
-                runtime + '.Sources',
-                self.flatpak_arch,
-                self.runtime_branch,
-            )
-
             with TemporaryDirectory(prefix='flatdeb-ostreeify.') as t:
                 metadata = os.path.join(t, 'metadata')
 
@@ -1459,42 +924,13 @@ class Builder:
 
                 keyfile.save_to_file(metadata)
 
-                self.root_worker.install_file(
+                self.worker.check_call([
+                    'install', '-d', '{}/ostree/source'.format(overlay),
+                ])
+                self.worker.install_file(
                     metadata,
-                    '{}/ostree/source/metadata'.format(chroot),
+                    '{}/ostree/source/metadata'.format(overlay),
                 )
-
-            self.worker.check_call([
-                'time',
-                'ostree',
-                '--repo=' + self.repo,
-                'commit',
-                '--branch=' + source_ref,
-                '--subject=Update',
-                '--tree=dir={}/ostree/source'.format(chroot),
-                '--fsync=false',
-            ])
-        else:
-            source_ref = None
-
-        # Don't keep the history in this working repository:
-        # if history is desired, mirror the commits into a public
-        # repository and maintain history there.
-        self.worker.check_call([
-            'time',
-            'ostree',
-            '--repo=' + self.repo,
-            'prune',
-            '--refs-only',
-            '--depth=1',
-        ])
-
-        self.host_worker.check_call([
-            'time',
-            'flatpak',
-            'build-update-repo',
-            self.repo,
-        ])
 
     def command_app(self, *, app_branch, yaml_manifest, **kwargs):
         self.worker.require_extended_attributes()

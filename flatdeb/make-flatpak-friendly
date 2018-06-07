@@ -1,0 +1,187 @@
+#!/bin/bash
+
+# Copyright © 2016-2017 Simon McVittie
+# Copyright © 2017-2018 Collabora Ltd.
+#
+# SPDX-License-Identifier: MIT
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+set -e
+set -u
+set -o pipefail
+
+me="$(basename "$0")"
+NULL=
+sdk=
+
+if [ "${1-}" = '--sdk' ]; then
+    sdk=yes
+    shift
+fi
+
+if [ "$#" != 1 ] || [ "$1" = '--help' ] || [ "x$(id -u)" != x0 ] ||
+        ! [ -d "$1" ]; then
+    echo "$me: Usage:" >&2
+    echo "    $me SYSROOT" >&2
+    echo "" >&2
+    echo "Run this script as root." >&2
+    exit 2
+fi
+
+set -x
+
+sysroot="$1"
+cd "$sysroot"
+
+chmod -R --changes "a-s,o-t,u=rwX,og=rX" .
+chown -R --changes "root:root" .
+rm -fr --one-file-system usr/local
+
+rm -fr --one-file-system \
+    etc/apparmor \
+    etc/apparmor.d \
+    etc/console-setup \
+    etc/cron.daily \
+    etc/cron.hourly \
+    etc/cron.monthly \
+    etc/cron.weekly \
+    etc/dbus-1/system.d \
+    etc/depmod.d \
+    etc/dhcp \
+    etc/emacs \
+    etc/fstab \
+    etc/fstab.d \
+    etc/group- \
+    etc/gshadow- \
+    etc/hostname \
+    etc/hosts \
+    etc/hosts.allow \
+    etc/hosts.deny \
+    etc/init \
+    etc/init.d \
+    etc/initramfs-tools \
+    etc/insserv \
+    etc/insserv.conf \
+    etc/insserv.conf.d \
+    etc/iproute2 \
+    etc/issue \
+    etc/issue.net \
+    etc/kbd \
+    etc/kernel \
+    etc/localtime \
+    etc/logcheck \
+    etc/login.defs \
+    etc/logrotate.d \
+    etc/lsb-base \
+    etc/lsb-base-logging.sh \
+    etc/machine-id \
+    etc/mailname \
+    etc/modprobe.d \
+    etc/modules \
+    etc/network \
+    etc/networks \
+    etc/nologin \
+    etc/opt \
+    etc/pam.conf \
+    etc/pam.d \
+    etc/passwd- \
+    etc/ppp \
+    "etc/rc.local" \
+    etc/rc0.d \
+    etc/rc1/d \
+    etc/rc2.d \
+    etc/rc3.d \
+    etc/rc4.d \
+    etc/rc5.d \
+    etc/rc6.d \
+    etc/resolv.conf \
+    etc/resolvconf \
+    etc/rmt \
+    etc/rpc \
+    etc/rsyslog.conf \
+    etc/rsyslog.d \
+    etc/securetty \
+    etc/security \
+    etc/shadow- \
+    etc/shells \
+    etc/subgid- \
+    etc/subuid- \
+    etc/sudoers \
+    etc/sudoers.d \
+    etc/sysctl.conf \
+    etc/sysctl.d \
+    etc/systemd \
+    etc/timezone \
+    etc/udev \
+    etc/update-motd.d \
+    var/backups \
+    var/cache \
+    var/lib/dpkg/status-old \
+    var/lib/dpkg/statoverride \
+    "var/local" \
+    var/lock \
+    var/log \
+    var/mail \
+    var/opt \
+    var/run \
+    var/spool \
+    ${NULL}
+
+if [ -n "$sdk" ]; then
+    install -d var/cache/apt/archives/partial
+    install -d var/lib/extrausers
+    touch var/cache/apt/archives/partial/.exists
+    # This is only useful if the SDK has libnss-extrausers
+    cp etc/passwd var/lib/extrausers/passwd
+    cp etc/group var/lib/extrausers/groups
+    mv var usr/var
+else
+    rm -fr --one-file-system \
+        etc/adduser.conf \
+        etc/apt \
+        etc/bash_completion.d \
+        etc/dpkg \
+        etc/debconf.conf \
+        etc/default \
+        etc/deluser.conf \
+        etc/gdb \
+        etc/gpasswd \
+        etc/groff \
+        etc/group \
+        etc/mailcap \
+        etc/mailcap.order \
+        etc/manpath.config \
+        etc/mke2fs.conf \
+        etc/newt \
+        etc/passwd \
+        etc/shadow \
+        etc/skel \
+        etc/subgid \
+        etc/subuid \
+        etc/ucf.conf \
+        share/bash-completion \
+        share/bug \
+        var \
+        ${NULL}
+fi
+
+install -d usr
+mv etc usr
