@@ -5,7 +5,7 @@
 {{- $foreignarchs := or .foreignarchs "" -}}
 {{- $mirror := or .mirror "http://deb.debian.org/debian" -}}
 {{- $mergedusr := or .mergedusr "false" }}
-{{- $keyring := or .keyring "debian-archive-keyring.gpg" -}}
+{{- $keyring := or .keyring "" -}}
 {{- $keyringpackage := or .keyringpackage "" -}}
 {{- $version := or .version "0" -}}
 {{- $ospack := or .ospack (printf "base_%s_%s_%s.tar.gz" $suite $version $architecture) -}}
@@ -28,9 +28,12 @@ actions:
     components: {{ $components }}
     {{ end }}
     mirror: {{ $mirror }}
-    # TODO: See https://github.com/go-debos/debos/issues/21
-    # keyringpackage: {{ $keyringpackage }}
-    # keyring: {{ $keyring }}
+    {{ if $keyring }}
+    keyring-file: {{ $keyring }}
+    {{ end }}
+    {{ if $keyringpackage }}
+    keyring-package: {{ $keyringpackage }}
+    {{ end }}
     {{ if eq $mergedusr "after_debootstrap" }}
     merged-usr: false
     {{ else }}

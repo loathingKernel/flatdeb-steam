@@ -401,23 +401,6 @@ class Builder:
                 logger.debug(
                     'Ignoring /usr/share/debootstrap/scripts/%s', script)
 
-            keyring = self.suite_details['sources'][0].get('keyring')
-
-            if keyring is not None:
-                if os.path.exists(os.path.join('suites', keyring)):
-                    keyring = os.path.join('suites', keyring)
-                elif os.path.exists(keyring):
-                    pass
-                else:
-                    raise RuntimeError('Cannot open {}'.format(keyring))
-
-                dest = '{}/suites/{}/overlay/etc/apt/trusted.gpg.d/{}'.format(
-                    self.worker.scratch,
-                    apt_suite,
-                    os.path.basename(keyring),
-                )
-                self.worker.install_file(os.path.abspath(keyring), dest)
-
             self.configure_apt(
                 '{}/suites/{}/overlay'.format(self.worker.scratch, apt_suite))
 
@@ -439,6 +422,33 @@ class Builder:
                     ).lower(),
                 ),
             ]
+
+            keyring = self.suite_details['sources'][0].get('keyring')
+
+            if keyring is not None:
+                if os.path.exists(os.path.join('suites', keyring)):
+                    keyring = os.path.join('suites', keyring)
+                elif os.path.exists(keyring):
+                    pass
+                else:
+                    raise RuntimeError('Cannot open {}'.format(keyring))
+
+                dest = '{}/suites/{}/overlay/etc/apt/trusted.gpg.d/{}'.format(
+                    self.worker.scratch,
+                    apt_suite,
+                    os.path.basename(keyring),
+                )
+                self.worker.install_file(os.path.abspath(keyring), dest)
+
+                argv.append('-t')
+                argv.append(
+                    'keyring:suites/{}/overlay/etc/apt/trusted.gpg.d/{}'.format(
+                        apt_suite,
+                        os.path.basename(keyring),
+                    )
+                )
+            else:
+                keyring = ''
 
             components = self.suite_details.get('apt_components', ['main'])
 
