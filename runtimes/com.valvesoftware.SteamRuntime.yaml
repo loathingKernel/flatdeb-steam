@@ -263,11 +263,17 @@ platform:
 
 sdk:
   add_packages:
+    - adduser
+    - apt
     - apt-forktracer
+    - apt-utils
     - build-essential
+    - bzip2
     - clang-3.6
     - cmake
     - comerr-dev
+    - debconf
+    - debconf-i18n
     - debhelper
     - dpkg-dev
     - fakeroot
@@ -275,7 +281,11 @@ sdk:
     - g++-4.8
     - gcc-4.8
     - gdb
+    - gnupg
+    - iproute
+    - iputils-ping
     - krb5-multidev
+    - less
     - libacl1-dev
     - libappindicator-dev
     - libasound2-dev
@@ -431,16 +441,28 @@ sdk:
     - libxtst-dev
     - libxxf86vm-dev
     - lldb-3.6
+    - locales
+    - lsb-release
     - ltrace
+    - mawk
+    - net-tools
+    - netbase
+    - netcat-openbsd
     - network-manager-dev
     - nvidia-cg-toolkit
+    - passwd
     - pkg-config
+    - procps
+    - python
     - steamrt-dev
     - strace
     - time
-    - ubuntu-minimal
+    - tzdata
+    - ubuntu-keyring
     - uuid-dev
     - valgrind
+    - vim-tiny
+    - whiptail
     - x11proto-composite-dev
     - x11proto-core-dev
     - x11proto-damage-dev
