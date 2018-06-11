@@ -37,6 +37,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import sys
 import urllib.parse
@@ -45,8 +46,6 @@ from tempfile import TemporaryDirectory
 
 import yaml
 from gi.repository import GLib
-
-from flatdeb.worker import HostWorker
 
 
 logger = logging.getLogger('flatdeb')
@@ -108,8 +107,6 @@ class Builder:
         self.__primary_dpkg_arch_matches_cache = {}
         self.suite_details = {}
         self.runtime_details = {}
-        self.worker = None
-        self.host_worker = HostWorker()
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
         self.sources_required = set()
@@ -235,7 +232,7 @@ class Builder:
         but not i386.
         """
         if arch_spec not in self.__primary_dpkg_arch_matches_cache:
-            exit_code = self.worker.call(
+            exit_code = subprocess.call(
                 ['dpkg-architecture', '--host-arch', self.primary_dpkg_arch,
                  '--is', arch_spec])
             self.__primary_dpkg_arch_matches_cache[arch_spec] = (exit_code == 0)
@@ -297,11 +294,10 @@ class Builder:
         self.repo = args.repo
         self.export_bundles = args.export_bundles
         self.ostree_mode = args.ostree_mode
-        self.worker = HostWorker()
 
         if args.architecture is None:
             self.dpkg_archs = [
-                self.worker.check_output(
+                subprocess.check_output(
                     ['dpkg-architecture', '-q', 'DEB_HOST_ARCH'],
                 ).decode('utf-8').rstrip('\n')
             ]
@@ -336,24 +332,21 @@ class Builder:
             yield source['apt_uri']
 
     def ensure_build_area(self):
-        self.worker.check_call([
-            'sh', '-euc',
-            'mkdir -p "${XDG_CACHE_HOME:="$HOME/.cache"}/flatdeb"',
-        ])
+        os.makedirs(self.xdg_cache_dir, 0o700, exist_ok=True)
+        os.makedirs(self.build_area, 0o755, exist_ok=True)
 
     def command_base(self, **kwargs):
         with ExitStack() as stack:
-            stack.enter_context(self.worker)
+            scratch = stack.enter_context(
+                TemporaryDirectory(prefix='flatdeb.')
+            )
             self.ensure_build_area()
 
             apt_suite = self.suite_details['sources'][0].get(
                 'apt_suite', self.apt_suite)
 
-            dest_recipe = '{}/{}'.format(
-                self.worker.scratch,
-                'flatdeb.yaml',
-            )
-            self.worker.install_file(_DEBOS_BASE_RECIPE, dest_recipe)
+            dest_recipe = os.path.join(scratch, 'flatdeb.yaml')
+            shutil.copyfile(_DEBOS_BASE_RECIPE, dest_recipe)
 
             for helper in (
                 'add-foreign-architectures',
@@ -362,27 +355,25 @@ class Builder:
                 'disable-services',
                 'usrmerge',
             ):
-                dest = '{}/{}'.format(
-                    self.worker.scratch,
-                    helper,
-                )
-                self.worker.install_file(
+                dest = os.path.join(scratch, helper)
+                shutil.copyfile(
                     os.path.join(
                         os.path.dirname(__file__),
                         'flatdeb',
                         helper,
                     ),
                     dest,
-                    permissions=0o755,
                 )
+                os.chmod(dest, 0o755)
 
-            self.worker.check_call([
-                'mkdir', '-p',
-                '{}/suites/{}/overlay/etc/apt/trusted.gpg.d'.format(
-                    self.worker.scratch,
-                    apt_suite,
+            os.makedirs(
+                os.path.join(
+                    scratch, 'suites', apt_suite, 'overlay', 'etc',
+                    'apt', 'trusted.gpg.d',
                 ),
-            ])
+                0o755,
+                exist_ok=True,
+            )
 
             tarball = 'base-{}-{}.tar.gz'.format(
                 self.apt_suite,
@@ -402,7 +393,7 @@ class Builder:
                     'Ignoring /usr/share/debootstrap/scripts/%s', script)
 
             self.configure_apt(
-                '{}/suites/{}/overlay'.format(self.worker.scratch, apt_suite))
+                os.path.join(scratch, 'suites', apt_suite, 'overlay'))
 
             argv = [
                 'debos',
@@ -433,12 +424,12 @@ class Builder:
                 else:
                     raise RuntimeError('Cannot open {}'.format(keyring))
 
-                dest = '{}/suites/{}/overlay/etc/apt/trusted.gpg.d/{}'.format(
-                    self.worker.scratch,
-                    apt_suite,
+                dest = os.path.join(
+                    scratch, 'suites', apt_suite, 'overlay',
+                    'etc', 'apt', 'trusted.gpg.d',
                     os.path.basename(keyring),
                 )
-                self.worker.install_file(os.path.abspath(keyring), dest)
+                shutil.copyfile(keyring, dest)
 
                 argv.append('-t')
                 argv.append(
@@ -458,17 +449,13 @@ class Builder:
                     self.yaml_dump_one_line(components)))
 
             argv.append(dest_recipe)
-            self.worker.check_call(argv)
+            subprocess.check_call(argv)
 
             os.rename(output + '.new', output)
 
     def ensure_local_repo(self):
-        self.host_worker.check_call([
-            'install',
-            '-d',
-            os.path.dirname(self.repo),
-        ])
-        self.host_worker.check_call([
+        os.makedirs(os.path.dirname(self.repo), 0o755, exist_ok=True)
+        subprocess.check_call([
             'ostree',
             '--repo=' + self.repo,
             'init',
@@ -490,14 +477,13 @@ class Builder:
         )
 
         with ExitStack() as stack:
-            stack.enter_context(self.worker)
+            scratch = stack.enter_context(
+                TemporaryDirectory(prefix='flatdeb.')
+            )
             self.ensure_build_area()
 
-            dest_recipe = '{}/{}'.format(
-                self.worker.scratch,
-                'flatdeb.yaml',
-            )
-            self.worker.install_file(_DEBOS_RUNTIMES_RECIPE, dest_recipe)
+            dest_recipe = os.path.join(scratch, 'flatdeb.yaml')
+            shutil.copyfile(_DEBOS_RUNTIMES_RECIPE, dest_recipe)
 
             for helper in (
                 'apt-install',
@@ -512,19 +498,16 @@ class Builder:
                 'usrmerge',
                 'write-manifest',
             ):
-                dest = '{}/{}'.format(
-                    self.worker.scratch,
-                    helper,
-                )
-                self.worker.install_file(
+                dest = os.path.join(scratch, helper)
+                shutil.copyfile(
                     os.path.join(
                         os.path.dirname(__file__),
                         'flatdeb',
                         helper,
                     ),
                     dest,
-                    permissions=0o755,
                 )
+                os.chmod(dest, 0o755)
 
             prefix = self.runtime_details['id_prefix']
 
@@ -575,14 +558,9 @@ class Builder:
                     argv.append('packages:{}'.format(
                         self.yaml_dump_one_line(packages)))
 
-                    dest = '{}/runtimes/{}'.format(
-                        self.worker.scratch,
-                        runtime,
-                    )
-                    subprocess.check_call([
-                        'install', '-d', dest,
-                    ])
-                    dest = dest + '/packages.yaml'
+                    dest = os.path.join(scratch, 'runtimes', runtime)
+                    os.makedirs(dest, 0o755, exist_ok=True)
+                    dest = os.path.join(dest, 'packages.yaml')
 
                     with open(dest, 'w', encoding='utf-8') as writer:
                         yaml.safe_dump(packages, stream=writer)
@@ -590,10 +568,7 @@ class Builder:
                 script = self.runtime_details.get('post_script', '')
 
                 if script:
-                    dest = '{}/{}'.format(
-                        self.worker.scratch,
-                        'post_script',
-                    )
+                    dest = os.path.join(scratch, 'post_script')
 
                     with open(dest, 'w', encoding='utf-8') as writer:
                         writer.write('#!/bin/sh\n')
@@ -634,14 +609,9 @@ class Builder:
                             'sdk_packages:{}'.format(
                                 self.yaml_dump_one_line(sdk_packages)))
 
-                        dest = '{}/runtimes/{}'.format(
-                            self.worker.scratch,
-                            runtime,
-                        )
-                        subprocess.check_call([
-                            'install', '-d', dest,
-                        ])
-                        dest = dest + '/sdk_packages.yaml'
+                        dest = os.path.join(scratch, 'runtimes', runtime)
+                        os.makedirs(dest, 0o755, exist_ok=True)
+                        dest = os.path.join(dest, 'sdk_packages.yaml')
 
                         with open(dest, 'w', encoding='utf-8') as writer:
                             yaml.safe_dump(sdk_packages, stream=writer)
@@ -649,10 +619,7 @@ class Builder:
                     script = sdk_details.get('post_script', '')
 
                     if script:
-                        dest = '{}/{}'.format(
-                            self.worker.scratch,
-                            'sdk_post_script',
-                        )
+                        dest = os.path.join(scratch, 'sdk_post_script')
 
                         with open(dest, 'w', encoding='utf-8') as writer:
                             writer.write('#!/bin/sh\n')
@@ -667,10 +634,7 @@ class Builder:
                     script = platform_details.get('post_script', '')
 
                     if script:
-                        dest = '{}/{}'.format(
-                            self.worker.scratch,
-                            'platform_post_script',
-                        )
+                        dest = os.path.join(scratch, 'platform_post_script')
 
                         with open(dest, 'w', encoding='utf-8') as writer:
                             writer.write('#!/bin/sh\n')
@@ -681,10 +645,12 @@ class Builder:
                         argv.append('-t')
                         argv.append('platform_post_script:platform_post_script')
 
-                self.create_flatpak_manifest_overlay(prefix, runtime, sdk=sdk)
+                overlay = os.path.join(scratch, 'runtimes', runtime, 'overlay')
+                self.create_flatpak_manifest_overlay(
+                    overlay, prefix, runtime, sdk=sdk)
 
                 argv.append(dest_recipe)
-                self.worker.check_call(argv)
+                subprocess.check_call(argv)
 
                 if sdk:
                     output = os.path.join(self.build_area, sources_tarball)
@@ -696,7 +662,7 @@ class Builder:
             # Don't keep the history in this working repository:
             # if history is desired, mirror the commits into a public
             # repository and maintain history there.
-            self.worker.check_call([
+            subprocess.check_call([
                 'time',
                 'ostree',
                 '--repo=' + self.repo,
@@ -705,7 +671,7 @@ class Builder:
                 '--depth=1',
             ])
 
-            self.worker.check_call([
+            subprocess.check_call([
                 'time',
                 'flatpak',
                 'build-update-repo',
@@ -721,7 +687,7 @@ class Builder:
                     )
                     output = os.path.join(self.build_area, bundle)
 
-                    self.worker.check_call([
+                    subprocess.check_call([
                         'time',
                         'flatpak',
                         'build-bundle',
@@ -740,74 +706,195 @@ class Builder:
         created from the same base have their version numbers
         aligned.
         """
-        with TemporaryDirectory(prefix='flatdeb-apt.') as t:
-            # Set up the apt sources
+        os.makedirs(os.path.join(overlay, 'etc', 'apt'), 0o755, exist_ok=True)
 
-            to_copy = os.path.join(t, 'sources.list')
-
-            with open(to_copy, 'w', encoding='utf-8') as writer:
-                for source in self.suite_details['sources']:
-                    suite = source.get('apt_suite', self.apt_suite)
-                    suite = suite.replace('*', self.apt_suite)
-                    components = source.get(
+        with open(
+            os.path.join(overlay, 'etc', 'apt', 'sources.list'),
+            'w',
+            encoding='utf-8'
+        ) as writer:
+            for source in self.suite_details['sources']:
+                suite = source.get('apt_suite', self.apt_suite)
+                suite = suite.replace('*', self.apt_suite)
+                components = source.get(
+                    'apt_components',
+                    self.suite_details.get(
                         'apt_components',
-                        self.suite_details.get(
-                            'apt_components',
-                            ['main']))
+                        ['main']))
 
-                    options = []
+                options = []
 
-                    if source.get('apt_trusted', False):
-                        options.append('trusted=yes')
+                if source.get('apt_trusted', False):
+                    options.append('trusted=yes')
 
-                    if options:
-                        options_str = ' [' + ' '.join(options) + ']'
+                if options:
+                    options_str = ' [' + ' '.join(options) + ']'
+                else:
+                    options_str = ''
+
+                for prefix in ('deb', 'deb-src'):
+                    writer.write('{}{} {} {} {}\n'.format(
+                        prefix,
+                        options_str,
+                        source['apt_uri'],
+                        suite,
+                        ' '.join(components),
+                    ))
+
+                keyring = source.get('keyring')
+
+                if keyring is not None:
+                    if os.path.exists(os.path.join('suites', keyring)):
+                        keyring = os.path.join('suites', keyring)
+                    elif os.path.exists(keyring):
+                        pass
                     else:
-                        options_str = ''
+                        raise RuntimeError('Cannot open {}'.format(keyring))
 
-                    for prefix in ('deb', 'deb-src'):
-                        writer.write('{}{} {} {} {}\n'.format(
-                            prefix,
-                            options_str,
-                            source['apt_uri'],
-                            suite,
-                            ' '.join(components),
-                        ))
+                    shutil.copyfile(
+                        os.path.abspath(keyring),
+                        os.path.join(
+                            overlay,
+                            'etc', 'apt', 'trusted.gpg.d',
+                            os.path.basename(keyring),
+                        ),
+                    )
 
-                    keyring = source.get('keyring')
+    def create_flatpak_manifest_overlay(
+        self,
+        overlay,
+        prefix,
+        runtime,
+        sdk=False,
+    ):
+        metadata = os.path.join(overlay, 'ostree', 'main', 'metadata')
+        os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
 
-                    if keyring is not None:
-                        if os.path.exists(os.path.join('suites', keyring)):
-                            keyring = os.path.join('suites', keyring)
-                        elif os.path.exists(keyring):
-                            pass
-                        else:
-                            raise RuntimeError('Cannot open {}'.format(keyring))
-
-                        self.worker.install_file(
-                            os.path.abspath(keyring),
-                            '{}/etc/apt/trusted.gpg.d/{}'.format(
-                                overlay,
-                                os.path.basename(keyring),
-                            ),
-                        )
-
-            self.worker.install_file(
-                to_copy,
-                '{}/etc/apt/sources.list'.format(overlay),
+        keyfile = GLib.KeyFile()
+        keyfile.set_string('Runtime', 'name', runtime)
+        keyfile.set_string(
+            'Runtime', 'runtime',
+            '{}.Platform/{}/{}'.format(
+                prefix,
+                self.flatpak_arch,
+                self.runtime_branch,
             )
-
-    def create_flatpak_manifest_overlay(self, prefix, runtime, sdk=False):
-        overlay = '{}/runtimes/{}/overlay'.format(
-            self.worker.scratch,
-            runtime,
+        )
+        keyfile.set_string(
+            'Runtime', 'sdk',
+            '{}.Sdk/{}/{}'.format(
+                prefix,
+                self.flatpak_arch,
+                self.runtime_branch,
+            )
         )
 
-        with TemporaryDirectory(prefix='flatdeb-ostreeify.') as t:
-            metadata = os.path.join(t, 'metadata')
+        keyfile.set_string(
+            'Runtime', 'x-flatdeb-sources',
+            '{}.Sdk.Sources/{}/{}'.format(
+                prefix,
+                self.flatpak_arch,
+                self.runtime_branch,
+            ),
+        )
+
+        keyfile.set_string(
+            'Environment', 'XDG_DATA_DIRS',
+            ':'.join([
+                '/app/share', '/usr/share', '/usr/share/runtime/share',
+            ]),
+        )
+
+        search_path = []
+
+        for arch in self.dpkg_archs:
+            search_path.append('/app/lib/{}'.format(self.multiarch_tuple(arch)))
+
+        search_path.append('/app/lib')
+
+        keyfile.set_string(
+            'Environment', 'LD_LIBRARY_PATH', ':'.join(search_path),
+        )
+
+        if True:    # TODO: 'libgstreamer1.0-0' in installed:
+            search_path = []
+
+            for arch in self.dpkg_archs:
+                search_path.append(
+                    '/app/lib/{}/gstreamer-1.0'.format(
+                        self.multiarch_tuple(arch)))
+
+            search_path.append('/app/lib/gstreamer-1.0')
+
+            for arch in self.dpkg_archs:
+                search_path.append(
+                    '/usr/lib/extensions/{}/gstreamer-1.0'.format(
+                        self.multiarch_tuple(arch)))
+
+            search_path.append('/usr/lib/extensions/gstreamer-1.0')
+
+            for arch in self.dpkg_archs:
+                search_path.append(
+                    '/usr/lib/{}/gstreamer-1.0'.format(
+                        self.multiarch_tuple(arch)))
+
+            search_path.append('/usr/lib/gstreamer-1.0')
+
+            keyfile.set_string(
+                'Environment', 'GST_PLUGIN_SYSTEM_PATH',
+                ':'.join(search_path),
+            )
+
+        if True:    # TODO: 'libgirepository-1.0-1' in installed:
+            search_path = []
+
+            for arch in self.dpkg_archs:
+                search_path.append(
+                    '/app/lib/{}/girepository-1.0'.format(
+                        self.multiarch_tuple(arch)))
+
+            search_path.append('/app/lib/girepository-1.0')
+
+            keyfile.set_string(
+                'Environment', 'GI_TYPELIB_PATH',
+                ':'.join(search_path),
+            )
+
+        keyfile.set_string(
+            'Runtime', 'x-flatdeb-version', VERSION,
+        )
+
+        for ext, detail in self.runtime_details.get(
+                'add-extensions', {}
+                ).items():
+            group = 'Extension {}'.format(ext)
+
+            os.makedirs(
+                os.path.join(
+                    overlay, 'ostree', 'main', 'files',
+                    detail['directory'],
+                ),
+                0o755,
+                exist_ok=True,
+            )
+
+            for k, v in detail.items():
+                if isinstance(v, str):
+                    keyfile.set_string(group, k, v)
+                elif isinstance(v, bool):
+                    keyfile.set_boolean(group, k, v)
+                else:
+                    raise RuntimeError(
+                        'Unknown type {} in {}'.format(v, ext))
+
+        keyfile.save_to_file(metadata)
+
+        if sdk:
+            metadata = os.path.join(overlay, 'ostree', 'source', 'metadata')
+            os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
 
             keyfile = GLib.KeyFile()
-            keyfile.set_string('Runtime', 'name', runtime)
+            keyfile.set_string('Runtime', 'name', runtime + '.Sources')
             keyfile.set_string(
                 'Runtime', 'runtime',
                 '{}.Platform/{}/{}'.format(
@@ -826,149 +913,12 @@ class Builder:
             )
 
             keyfile.set_string(
-                'Runtime', 'x-flatdeb-sources',
-                '{}.Sdk.Sources/{}/{}'.format(
-                    prefix,
-                    self.flatpak_arch,
-                    self.runtime_branch,
-                ),
-            )
-
-            keyfile.set_string(
-                'Environment', 'XDG_DATA_DIRS',
-                ':'.join([
-                    '/app/share', '/usr/share', '/usr/share/runtime/share',
-                ]),
-            )
-
-            search_path = []
-
-            for arch in self.dpkg_archs:
-                search_path.append('/app/lib/{}'.format(self.multiarch_tuple(arch)))
-
-            search_path.append('/app/lib')
-
-            keyfile.set_string(
-                'Environment', 'LD_LIBRARY_PATH', ':'.join(search_path),
-            )
-
-            if True:    # TODO: 'libgstreamer1.0-0' in installed:
-                search_path = []
-
-                for arch in self.dpkg_archs:
-                    search_path.append(
-                        '/app/lib/{}/gstreamer-1.0'.format(
-                            self.multiarch_tuple(arch)))
-
-                search_path.append('/app/lib/gstreamer-1.0')
-
-                for arch in self.dpkg_archs:
-                    search_path.append(
-                        '/usr/lib/extensions/{}/gstreamer-1.0'.format(
-                            self.multiarch_tuple(arch)))
-
-                search_path.append('/usr/lib/extensions/gstreamer-1.0')
-
-                for arch in self.dpkg_archs:
-                    search_path.append(
-                        '/usr/lib/{}/gstreamer-1.0'.format(
-                            self.multiarch_tuple(arch)))
-
-                search_path.append('/usr/lib/gstreamer-1.0')
-
-                keyfile.set_string(
-                    'Environment', 'GST_PLUGIN_SYSTEM_PATH',
-                    ':'.join(search_path),
-                )
-
-            if True:    # TODO: 'libgirepository-1.0-1' in installed:
-                search_path = []
-
-                for arch in self.dpkg_archs:
-                    search_path.append(
-                        '/app/lib/{}/girepository-1.0'.format(
-                            self.multiarch_tuple(arch)))
-
-                search_path.append('/app/lib/girepository-1.0')
-
-                keyfile.set_string(
-                    'Environment', 'GI_TYPELIB_PATH',
-                    ':'.join(search_path),
-                )
-
-            keyfile.set_string(
                 'Runtime', 'x-flatdeb-version', VERSION,
             )
 
-            for ext, detail in self.runtime_details.get(
-                    'add-extensions', {}
-                    ).items():
-                group = 'Extension {}'.format(ext)
-
-                self.worker.check_call([
-                    'install', '-d',
-                    '{}/ostree/main/files/{}'.format(
-                        overlay, detail['directory']),
-                ])
-
-                for k, v in detail.items():
-                    if isinstance(v, str):
-                        keyfile.set_string(group, k, v)
-                    elif isinstance(v, bool):
-                        keyfile.set_boolean(group, k, v)
-                    else:
-                        raise RuntimeError(
-                            'Unknown type {} in {}'.format(v, ext))
-
             keyfile.save_to_file(metadata)
 
-            self.worker.check_call([
-                'install', '-d', '{}/ostree/main'.format(overlay),
-            ])
-            self.worker.install_file(
-                metadata,
-                '{}/ostree/main/metadata'.format(overlay),
-            )
-
-        if sdk:
-            with TemporaryDirectory(prefix='flatdeb-ostreeify.') as t:
-                metadata = os.path.join(t, 'metadata')
-
-                keyfile = GLib.KeyFile()
-                keyfile.set_string('Runtime', 'name', runtime + '.Sources')
-                keyfile.set_string(
-                    'Runtime', 'runtime',
-                    '{}.Platform/{}/{}'.format(
-                        prefix,
-                        self.flatpak_arch,
-                        self.runtime_branch,
-                    )
-                )
-                keyfile.set_string(
-                    'Runtime', 'sdk',
-                    '{}.Sdk/{}/{}'.format(
-                        prefix,
-                        self.flatpak_arch,
-                        self.runtime_branch,
-                    )
-                )
-
-                keyfile.set_string(
-                    'Runtime', 'x-flatdeb-version', VERSION,
-                )
-
-                keyfile.save_to_file(metadata)
-
-                self.worker.check_call([
-                    'install', '-d', '{}/ostree/source'.format(overlay),
-                ])
-                self.worker.install_file(
-                    metadata,
-                    '{}/ostree/source/metadata'.format(overlay),
-                )
-
     def command_app(self, *, app_branch, yaml_manifest, **kwargs):
-        self.worker.require_extended_attributes()
         self.ensure_local_repo()
 
         with open(yaml_manifest, encoding='utf-8') as reader:
@@ -992,28 +942,25 @@ class Builder:
         manifest['runtime-version'] = self.runtime_branch
 
         with ExitStack() as stack:
-            stack.enter_context(self.worker)
+            # We assume /var/tmp has xattr support
+            scratch = stack.enter_context(
+                TemporaryDirectory(prefix='flatdeb.', dir='/var/tmp')
+            )
             self.ensure_build_area()
             self.ensure_local_repo()
-            t = stack.enter_context(
-                TemporaryDirectory(prefix='flatpak-app.')
-            )
 
-            self.worker.check_call([
-                'mkdir', '-p', '{}/home'.format(self.worker.scratch),
-            ])
-
-            self.worker.check_call([
+            os.makedirs(os.path.join(scratch, 'home'), 0o755, exist_ok=True)
+            subprocess.check_call([
                 'env',
-                'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                'XDG_DATA_HOME={}/home'.format(scratch),
                 'flatpak', '--user',
                 'remote-add', '--if-not-exists', '--no-gpg-verify',
                 'flatdeb',
                 'http://192.168.122.1:3142/local/flatdeb/repo',
             ])
-            self.worker.check_call([
+            subprocess.check_call([
                 'env',
-                'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                'XDG_DATA_HOME={}/home'.format(scratch),
                 'flatpak', '--user',
                 'remote-modify', '--no-gpg-verify',
                 '--url=http://192.168.122.1:3142/local/flatdeb/repo',
@@ -1022,9 +969,9 @@ class Builder:
 
             for runtime in (manifest['sdk'], manifest['runtime']):
                 # This may fail: we might already have it.
-                self.worker.call([
+                subprocess.call([
                     'env',
-                    'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                    'XDG_DATA_HOME={}/home'.format(scratch),
                     'flatpak', '--user',
                     'install', 'flatdeb',
                     '{}/{}/{}'.format(
@@ -1033,9 +980,9 @@ class Builder:
                         self.runtime_branch,
                     ),
                 ])
-                self.worker.check_call([
+                subprocess.check_call([
                     'env',
-                    'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                    'XDG_DATA_HOME={}/home'.format(scratch),
                     'flatpak', '--user',
                     'update',
                     '{}/{}/{}'.format(
@@ -1052,18 +999,19 @@ class Builder:
                     for source in sources:
                         if 'path' in source:
                             if source.get('type') == 'git':
-                                clone = self.worker.check_output([
-                                    'mktemp', '-d',
-                                    '-p', self.worker.scratch,
-                                    'flatdeb-git.XXXXXX',
-                                ]).decode('utf-8').rstrip('\n')
-                                uploader = self.host_worker.Popen([
+                                clone = stack.enter_context(
+                                    TemporaryDirectory(
+                                        prefix='flatdeb-git.',
+                                        dir=scratch,
+                                    ),
+                                )
+                                uploader = subprocess.Popen([
                                     'tar',
                                     '-cf-',
                                     '-C', source['path'],
                                     '.',
                                 ], stdout=subprocess.PIPE)
-                                self.worker.check_call([
+                                subprocess.check_call([
                                     'tar',
                                     '-xf-',
                                     '-C', clone,
@@ -1071,40 +1019,40 @@ class Builder:
                                 uploader.wait()
                                 source['path'] = clone
                             else:
-                                d = self.worker.check_output([
-                                    'mktemp', '-d',
-                                    '-p', self.worker.scratch,
-                                    'flatdeb-path.XXXXXX',
-                                ]).decode('utf-8').rstrip('\n')
-                                clone = '{}/{}'.format(
+                                d = stack.enter_context(
+                                    TemporaryDirectory(
+                                        prefix='flatdeb-path.',
+                                        dir=scratch,
+                                    ),
+                                )
+                                clone = os.path.join(
                                     d, os.path.basename(source['path']),
                                 )
-
-                                permissions = 0o644
+                                shutil.copyfile(
+                                    source['path'],
+                                    clone,
+                                )
 
                                 if GLib.file_test(
                                         source['path'],
                                         GLib.FileTest.IS_EXECUTABLE,
                                 ):
-                                    permissions = 0o755
+                                    os.chmod(clone, 0o755)
+                                else:
+                                    os.chmod(clone, 0o644)
 
-                                self.worker.install_file(
-                                    source['path'],
-                                    clone,
-                                    permissions,
-                                )
                                 source['path'] = clone
 
                     if 'x-flatdeb-apt-packages' in module:
-                        packages = self.worker.check_output([
-                            'mktemp', '-d',
-                            '-p', self.worker.scratch,
-                            'flatdeb-debs.XXXXXX',
-                        ]).decode('utf-8').rstrip('\n')
-
-                        self.worker.check_call([
+                        packages = stack.enter_context(
+                            TemporaryDirectory(
+                                prefix='flatdeb-debs.',
+                                dir=scratch,
+                            ),
+                        )
+                        subprocess.check_call([
                             'env',
-                            'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                            'XDG_DATA_HOME={}/home'.format(scratch),
                             'flatpak', 'run',
                             '--filesystem={}'.format(packages),
                             '--share=network',
@@ -1167,7 +1115,7 @@ class Builder:
                             'sh',   # argv[0]
                         ] + module['x-flatdeb-apt-packages'])
 
-                        obtained = self.worker.check_output([
+                        obtained = subprocess.check_output([
                             'sh', '-euc',
                             'cd "$1"\n'
                             'find * -type f -print0 | xargs -0 sha256sum -b\n'
@@ -1193,75 +1141,54 @@ class Builder:
                                 ))
                             })
 
-            remote_manifest = '{}/{}.json'.format(
-                self.worker.scratch,
-                manifest['id'],
-            )
+            json_manifest = os.path.join(scratch, manifest['id'] + '.json')
+            os.makedirs(os.path.join(self.build_area, '.flatpak-builder'))
 
-            self.worker.check_call([
-                'mkdir', '-p',
-                '{}/.flatpak-builder'.format(self.build_area),
-            ])
-            if self.build_area != self.worker.scratch:
-                self.worker.check_call([
+            if self.build_area != scratch:
+                subprocess.check_call([
                     'ln', '-nsf',
-                    '{}/.flatpak-builder'.format(self.build_area),
-                    '{}/'.format(self.worker.scratch),
+                    os.path.join(self.build_area, '.flatpak-builder'),
+                    '{}/'.format(scratch),
                 ])
 
-            with TemporaryDirectory(prefix='flatdeb-manifest.') as t:
-                json_manifest = os.path.join(t, manifest['id'] + '.json')
+            with open(json_manifest, 'w', encoding='utf-8') as writer:
+                json.dump(manifest, writer, indent=2, sort_keys=True)
 
-                with open(
-                        json_manifest, 'w', encoding='utf-8',
-                ) as writer:
-                    json.dump(manifest, writer, indent=2, sort_keys=True)
-
-                self.worker.install_file(json_manifest, remote_manifest)
-
-            self.worker.check_call([
+            subprocess.check_call([
                 'env',
                 'DEBIAN_FRONTEND=noninteractive',
-                'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
+                'XDG_DATA_HOME={}/home'.format(scratch),
                 'http_proxy=http://192.168.122.1:3142',
                 'sh', '-euc',
                 'cd "$1"; shift; exec "$@"',
                 'sh',                   # argv[0]
-                self.worker.scratch,    # directory to cd into
+                scratch,                # directory to cd into
                 'flatpak-builder',
                 '--arch={}'.format(self.flatpak_arch),
                 '--repo={}'.format(self.repo),
                 '--bundle-sources',
-                '{}/workdir'.format(self.worker.scratch),
-                remote_manifest,
+                os.path.join(scratch, 'workdir'),
+                json_manifest,
             ])
 
             if self.export_bundles:
-                self.worker.check_call([
-                    'time',
-                    'env',
-                    'XDG_DATA_HOME={}/home'.format(self.worker.scratch),
-                    'flatpak',
-                    'build-bundle',
-                    self.repo,
-                    '{}/bundle'.format(self.worker.scratch),
-                    manifest['id'],
-                    manifest['branch'],
-                ])
-
                 bundle = '{}-{}-{}.bundle'.format(
                     manifest['id'],
                     self.flatpak_arch,
                     manifest['branch'],
                 )
                 output = os.path.join(self.build_area, bundle)
-
-                with open(output + '.new', 'wb') as writer:
-                    self.worker.check_call([
-                        'cat',
-                        '{}/bundle'.format(self.worker.scratch),
-                    ], stdout=writer)
-
+                subprocess.check_call([
+                    'time',
+                    'env',
+                    'XDG_DATA_HOME={}/home'.format(scratch),
+                    'flatpak',
+                    'build-bundle',
+                    self.repo,
+                    output + '.new',
+                    manifest['id'],
+                    manifest['branch'],
+                ])
                 os.rename(output + '.new', output)
 
 if __name__ == '__main__':
