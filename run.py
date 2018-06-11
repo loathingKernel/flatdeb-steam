@@ -500,6 +500,7 @@ class Builder:
             self.worker.install_file(_DEBOS_RUNTIMES_RECIPE, dest_recipe)
 
             for helper in (
+                'apt-install',
                 'clean-up-base',
                 'collect-source-code',
                 'disable-services',
@@ -574,6 +575,18 @@ class Builder:
                     argv.append('packages:{}'.format(
                         self.yaml_dump_one_line(packages)))
 
+                    dest = '{}/runtimes/{}'.format(
+                        self.worker.scratch,
+                        runtime,
+                    )
+                    subprocess.check_call([
+                        'install', '-d', dest,
+                    ])
+                    dest = dest + '/packages.yaml'
+
+                    with open(dest, 'w', encoding='utf-8') as writer:
+                        yaml.safe_dump(packages, stream=writer)
+
                 script = self.runtime_details.get('post_script', '')
 
                 if script:
@@ -620,6 +633,18 @@ class Builder:
                         argv.append(
                             'sdk_packages:{}'.format(
                                 self.yaml_dump_one_line(sdk_packages)))
+
+                        dest = '{}/runtimes/{}'.format(
+                            self.worker.scratch,
+                            runtime,
+                        )
+                        subprocess.check_call([
+                            'install', '-d', dest,
+                        ])
+                        dest = dest + '/sdk_packages.yaml'
+
+                        with open(dest, 'w', encoding='utf-8') as writer:
+                            yaml.safe_dump(sdk_packages, stream=writer)
 
                     script = sdk_details.get('post_script', '')
 

@@ -1,3 +1,4 @@
+{{- $apt_debug := or .apt_debug "" -}}
 {{- $architecture := or .architecture "amd64" -}}
 {{- $suite := or .suite "stretch" -}}
 {{- $flatpak_arch := or .flatpak_arch $architecture -}}
@@ -38,9 +39,15 @@ actions:
     command: '"$RECIPEDIR/prepare-runtime" "$ROOTDIR"'
 
   {{ if $packages }}
+  {{ if $apt_debug }}
+  - action: run
+    chroot: false
+    command: $RECIPEDIR/apt-install "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/packages.yaml"
+  {{ else }}
   - action: apt
     recommends: false
     packages: {{ $packages }}
+  {{ end }}
   {{ end }}
 
   # TODO: Everything before this step is common to the Platform and SDK
@@ -48,9 +55,15 @@ actions:
   # We do this as a separate step in case it involves removing any
   # of the common packages
   {{ if and $sdk $sdk_packages }}
+  {{ if $apt_debug }}
+  - action: run
+    chroot: false
+    command: $RECIPEDIR/apt-install "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/sdk_packages.yaml"
+  {{ else }}
   - action: apt
     recommends: false
     packages: {{ $sdk_packages }}
+  {{ end }}
   {{ end }}
 
   {{ if not $sdk }}
