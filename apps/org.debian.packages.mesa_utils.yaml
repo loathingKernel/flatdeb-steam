@@ -4,7 +4,6 @@ branch: master
 runtime: net.debian.flatpak.Games.Platform
 sdk: net.debian.flatpak.Games.Sdk
 command: glxgears
-writable-sdk: true
 finish-args:
   - --share=ipc
   - --socket=x11

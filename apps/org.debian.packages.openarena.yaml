@@ -5,7 +5,6 @@ runtime: net.debian.flatpak.Games.Platform
 sdk: net.debian.flatpak.Games.Sdk
 #var: net.debian.flatpak.Games.Sdk.Var
 command: openarena
-writable-sdk: true
 finish-args:
   - --filesystem=~/.openarena:create
   - --share=ipc
