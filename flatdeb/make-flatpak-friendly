@@ -58,6 +58,7 @@ rm -fr --one-file-system usr/local
 rm -fr --one-file-system \
     etc/apparmor \
     etc/apparmor.d \
+    etc/bindresvport.blacklist \
     etc/console-setup \
     etc/cron.daily \
     etc/cron.hourly \
@@ -69,6 +70,7 @@ rm -fr --one-file-system \
     etc/emacs \
     etc/fstab \
     etc/fstab.d \
+    etc/gai.conf \
     etc/group- \
     etc/gshadow- \
     etc/hostname \
@@ -86,6 +88,7 @@ rm -fr --one-file-system \
     etc/issue.net \
     etc/kbd \
     etc/kernel \
+    etc/libaudit.conf \
     etc/localtime \
     etc/logcheck \
     etc/login.defs \
@@ -96,6 +99,7 @@ rm -fr --one-file-system \
     etc/mailname \
     etc/modprobe.d \
     etc/modules \
+    etc/motd \
     etc/network \
     etc/networks \
     etc/nologin \
@@ -112,6 +116,7 @@ rm -fr --one-file-system \
     etc/rc4.d \
     etc/rc5.d \
     etc/rc6.d \
+    etc/rcS.d \
     etc/resolv.conf \
     etc/resolvconf \
     etc/rmt \
@@ -120,8 +125,10 @@ rm -fr --one-file-system \
     etc/rsyslog.d \
     etc/securetty \
     etc/security \
+    etc/selinux \
     etc/shadow- \
     etc/shells \
+    etc/staff-group-for-usr-local \
     etc/subgid- \
     etc/subuid- \
     etc/sudoers \
@@ -129,13 +136,20 @@ rm -fr --one-file-system \
     etc/sysctl.conf \
     etc/sysctl.d \
     etc/systemd \
+    etc/terminfo \
     etc/timezone \
     etc/udev \
     etc/update-motd.d \
     var/backups \
     var/cache \
+    var/lib/aptitude/pkgstates.old \
+    var/lib/binfmts \
+    var/lib/dbus/machine-id \
+    var/lib/dpkg/available-old \
+    var/lib/dpkg/diversions-old \
     var/lib/dpkg/status-old \
     var/lib/dpkg/statoverride \
+    var/lib/urandom \
     "var/local" \
     var/lock \
     var/log \
@@ -144,6 +158,16 @@ rm -fr --one-file-system \
     var/run \
     var/spool \
     ${NULL}
+
+for d in \
+    var/lib/dbus \
+    var/lib/misc \
+    var/lib \
+; do
+    if [ -d "$d" ]; then
+        rmdir --ignore-fail-on-non-empty "$d"
+    fi
+done
 
 if [ -n "$sdk" ]; then
     install -d var/cache/apt/archives/partial
@@ -157,6 +181,7 @@ if [ -n "$sdk" ]; then
 else
     rm -fr --one-file-system \
         etc/adduser.conf \
+        etc/alternatives \
         etc/apt \
         etc/bash_completion.d \
         etc/dpkg \
@@ -165,6 +190,7 @@ else
         etc/deluser.conf \
         etc/gdb \
         etc/gpasswd \
+        etc/gshadow \
         etc/groff \
         etc/group \
         etc/mailcap \
