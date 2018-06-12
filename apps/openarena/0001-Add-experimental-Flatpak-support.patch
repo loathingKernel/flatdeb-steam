@@ -1,0 +1,298 @@
+From ea53d2a31a18d20e25b8738b0872994da8a323b8 Mon Sep 17 00:00:00 2001
+From: Simon McVittie <smcv@debian.org>
+Date: Tue, 28 Nov 2017 15:33:30 +0000
+Subject: [PATCH] Add experimental Flatpak support
+
+If built with build profile pkg.flatpak.app, relocate to /app and do
+not build the openarena-server package.
+---
+ debian/control                                |  2 +
+ ...openarena.desktop => openarena.desktop.in} |  2 +-
+ debian/openarena.install                      | 12 ++--
+ debian/openarena.links                        | 28 ++++----
+ debian/rules                                  | 67 ++++++++++++++-----
+ debian/scripts/openarena.in                   | 10 ++-
+ debian/source/lintian-overrides               |  5 ++
+ 7 files changed, 87 insertions(+), 39 deletions(-)
+ rename debian/{openarena.desktop => openarena.desktop.in} (91%)
+ mode change 100644 => 100755 debian/openarena.install
+ mode change 100644 => 100755 debian/openarena.links
+ create mode 100644 debian/source/lintian-overrides
+
+diff --git a/debian/control b/debian/control
+index 7aae40f3..d633c418 100644
+--- a/debian/control
++++ b/debian/control
+@@ -8,6 +8,7 @@ Uploaders:
+  Simon McVittie <smcv@debian.org>,
+ Build-Depends:
+  debhelper (>= 10),
++ dh-exec,
+  dpkg-dev (>= 1.16.1),
+  ioquake3-server (>= 1.36+u20150730+dfsg1-1~),
+ Standards-Version: 4.1.4
+@@ -44,6 +45,7 @@ Description: fast-paced 3D first-person shooter
+  This package installs the OpenArena client.
+ 
+ Package: openarena-server
++Build-Profiles: <!pkg.flatpak.app>
+ Architecture: any
+ Depends:
+  adduser,
+diff --git a/debian/openarena.desktop b/debian/openarena.desktop.in
+similarity index 91%
+rename from debian/openarena.desktop
+rename to debian/openarena.desktop.in
+index ea3bae61..50ec568c 100644
+--- a/debian/openarena.desktop
++++ b/debian/openarena.desktop.in
+@@ -2,7 +2,7 @@
+ Name=OpenArena
+ Comment=A fast-paced 3D first-person shooter, similar to id Software Inc.'s Quake III Arena
+ Comment[de]=Ein hektischer und netzwerkfähiger 3D Ego-Shooter, ähnlich zu Quake III Arena von id Software Inc.
+-Exec=/usr/games/openarena
++Exec=@gamesbindir@/openarena
+ Terminal=false
+ Icon=openarena128
+ Type=Application
+diff --git a/debian/openarena.install b/debian/openarena.install
+old mode 100644
+new mode 100755
+index 7bccbd3c..5b79fbab
+--- a/debian/openarena.install
++++ b/debian/openarena.install
+@@ -1,5 +1,7 @@
+-debian/openarena.desktop usr/share/applications
+-debian/openarena128.png usr/share/icons/hicolor/128x128/apps
+-debian/scripts/openarena usr/games
+-usr/lib/openarena/*/*.so
+-usr/lib/openarena/*/*/*.so
++#!/usr/bin/dh-exec
++
++debian/openarena.desktop ${datadir}/applications
++debian/openarena128.png ${datadir}/icons/hicolor/128x128/apps
++debian/scripts/openarena ${gamesbindir}
++${pkglibdir}/*/*.so
++${pkglibdir}/*/*/*.so
+diff --git a/debian/openarena.links b/debian/openarena.links
+old mode 100644
+new mode 100755
+index 52e939c2..72bf6a18
+--- a/debian/openarena.links
++++ b/debian/openarena.links
+@@ -1,13 +1,15 @@
+-usr/share/doc/openarena-088-data/CREDITS-0.8.8 usr/share/doc/openarena/CREDITS
+-usr/share/doc/openarena-088-data/readme_088.txt.gz usr/share/doc/openarena/README.gz
+-usr/share/doc/openarena-data/changelog.gz usr/share/doc/openarena/changelog.gz
+-usr/share/games/openarena/baseoa/pak0.pk3 usr/lib/openarena/baseoa/pak0.pk3
+-usr/share/games/openarena/baseoa/pak1-maps.pk3 usr/lib/openarena/baseoa/pak1-maps.pk3
+-usr/share/games/openarena/baseoa/pak2-players-mature.pk3 usr/lib/openarena/baseoa/pak2-players-mature.pk3
+-usr/share/games/openarena/baseoa/pak2-players.pk3 usr/lib/openarena/baseoa/pak2-players.pk3
+-usr/share/games/openarena/baseoa/pak4-textures.pk3 usr/lib/openarena/baseoa/pak4-textures.pk3
+-usr/share/games/openarena/baseoa/pak5-TA.pk3 usr/lib/openarena/baseoa/pak5-TA.pk3
+-usr/share/games/openarena/baseoa/pak6-misc.pk3 usr/lib/openarena/baseoa/pak6-misc.pk3
+-usr/share/games/openarena/baseoa/pak6-patch085.pk3 usr/lib/openarena/baseoa/pak6-patch085.pk3
+-usr/share/games/openarena/baseoa/pak6-patch088.pk3 usr/lib/openarena/baseoa/pak6-patch088.pk3
+-usr/share/games/openarena/missionpack/mp-pak0.pk3 usr/lib/openarena/missionpack/mp-pak0.pk3
++#!/usr/bin/dh-exec
++
++${docdir}/openarena-088-data/CREDITS-0.8.8 ${docdir}/openarena/CREDITS
++${docdir}/openarena-088-data/readme_088.txt.gz ${docdir}/openarena/README.gz
++${docdir}/openarena-data/changelog.gz ${docdir}/openarena/changelog.gz
++${pkggamesdatadir}/baseoa/pak0.pk3 ${pkglibdir}/baseoa/pak0.pk3
++${pkggamesdatadir}/baseoa/pak1-maps.pk3 ${pkglibdir}/baseoa/pak1-maps.pk3
++${pkggamesdatadir}/baseoa/pak2-players-mature.pk3 ${pkglibdir}/baseoa/pak2-players-mature.pk3
++${pkggamesdatadir}/baseoa/pak2-players.pk3 ${pkglibdir}/baseoa/pak2-players.pk3
++${pkggamesdatadir}/baseoa/pak4-textures.pk3 ${pkglibdir}/baseoa/pak4-textures.pk3
++${pkggamesdatadir}/baseoa/pak5-TA.pk3 ${pkglibdir}/baseoa/pak5-TA.pk3
++${pkggamesdatadir}/baseoa/pak6-misc.pk3 ${pkglibdir}/baseoa/pak6-misc.pk3
++${pkggamesdatadir}/baseoa/pak6-patch085.pk3 ${pkglibdir}/baseoa/pak6-patch085.pk3
++${pkggamesdatadir}/baseoa/pak6-patch088.pk3 ${pkglibdir}/baseoa/pak6-patch088.pk3
++${pkggamesdatadir}/missionpack/mp-pak0.pk3 ${pkglibdir}/missionpack/mp-pak0.pk3
+diff --git a/debian/rules b/debian/rules
+index 7f6ea085..f5050c25 100755
+--- a/debian/rules
++++ b/debian/rules
+@@ -10,6 +10,22 @@ DEB_CFLAGS_MAINT_APPEND := \
+ 	$(NULL)
+ 
+ include /usr/share/dpkg/default.mk
++binaries := $(shell dh_listpackages)
++
++ifneq ($(filter pkg.flatpak.app,$(DEB_BUILD_PROFILES)),)
++export prefix = /app
++export gamesbindir = ${prefix}/bin
++else
++export prefix = /usr
++export gamesbindir = ${prefix}/games
++endif
++
++export datadir = ${prefix}/share
++export docdir = ${datadir}/doc
++export gamesdatadir = ${datadir}/games
++export libdir = ${prefix}/lib
++export pkggamesdatadir = ${gamesdatadir}/openarena
++export pkglibdir = ${libdir}/openarena
+ 
+ %:
+ 	dh $@
+@@ -20,6 +36,9 @@ else
+ TARGET = debug
+ endif
+ 
++# Find q3arch via $PATH so it works with or without being in /app
++PATH := ${datadir}/ioquake3:/usr/share/ioquake3:${PATH}
++
+ common_options = \
+ 	V=1 \
+ 	BUILD_STANDALONE=1 \
+@@ -32,7 +51,7 @@ common_options = \
+ 	USE_INTERNAL_SPEEX=0 \
+ 	USE_INTERNAL_ZLIB=0 \
+ 	USE_LOCAL_HEADERS=0 \
+-	$(shell /usr/share/ioquake3/q3arch make ${DEB_HOST_GNU_CPU} ${DEB_HOST_GNU_SYSTEM}) \
++	$(shell q3arch make ${DEB_HOST_GNU_CPU} ${DEB_HOST_GNU_SYSTEM}) \
+ 	SDL_CFLAGS= \
+ 	BUILD_CLIENT=0 \
+ 	BUILD_SERVER=0 \
+@@ -58,19 +77,26 @@ override_dh_auto_build:
+ 	dh_auto_build -- $(common_options) $(GAME_OPTIONS) $(TARGET)
+ 	dh_auto_build -- $(common_options) $(GAME_081_OPTIONS) $(TARGET)
+ 	sed \
++		-e 's!@libdir@!${libdir}!' \
+ 		-e 's!@IOQ3BINARY@!ioquake3!' \
+ 		-e 's!@IOQ3SELF@!openarena!' \
+ 		-e 's!@IOQ3ROLE@!client!' \
+-		-e 's!@FS_BASEPATH@!/usr/lib/openarena!' \
++		-e 's!@FS_BASEPATH@!${pkglibdir}!' \
+ 		< debian/scripts/openarena.in > debian/scripts/openarena
++	chmod +x debian/scripts/openarena
+ 	sed \
++		-e 's!@gamesbindir@!${gamesbindir}!' \
++		< debian/openarena.desktop.in > debian/openarena.desktop
++ifneq ($(filter openarena-server,$(binaries)),)
++	sed \
++		-e 's!@libdir@!${libdir}!' \
+ 		-e 's!@IOQ3BINARY@!ioq3ded!' \
+ 		-e 's!@IOQ3SELF@!openarena-server!' \
+ 		-e 's!@IOQ3ROLE@!server!' \
+-		-e 's!@FS_BASEPATH@!/usr/lib/openarena-server!' \
++		-e 's!@FS_BASEPATH@!${libdir}/openarena-server!' \
+ 		< debian/scripts/openarena.in > debian/scripts/openarena-server
+-	chmod +x debian/scripts/openarena
+ 	chmod +x debian/scripts/openarena-server
++endif
+ 
+ override_dh_clean:
+ 	dh_clean --exclude README-0.8.8~
+@@ -78,41 +104,44 @@ override_dh_clean:
+ override_dh_auto_clean:
+ 	rm -f build-stamp
+ 	rm -rf build
++	rm -f debian/openarena.desktop
+ 	rm -f debian/scripts/openarena
+ 	rm -f debian/scripts/openarena-server
+ 
+ override_dh_auto_install: DESTDIR = debian/tmp
+ override_dh_auto_install:
+-	install -d $(DESTDIR)/usr/games
+-	install -d $(DESTDIR)/usr/lib/openarena/baseoa/pak0/
+-	install -d $(DESTDIR)/usr/lib/openarena/baseoa/pak6-patch085/
+-	install -d $(DESTDIR)/usr/lib/openarena/baseoa/pak6-patch088/
+-	install -d $(DESTDIR)/usr/lib/openarena/missionpack/
+-	install -d $(DESTDIR)/usr/lib/openarena-server/baseoa/
+-	install -d $(DESTDIR)/usr/lib/openarena-server/missionpack/
++	install -d $(DESTDIR)${gamesbindir}
++	install -d $(DESTDIR)${pkglibdir}/baseoa/pak0/
++	install -d $(DESTDIR)${pkglibdir}/baseoa/pak6-patch085/
++	install -d $(DESTDIR)${pkglibdir}/baseoa/pak6-patch088/
++	install -d $(DESTDIR)${pkglibdir}/missionpack/
+ 	# The client currently needs two builds:
+ 	# * one compatible with OA 0.8.1 pure servers
+ 	# * one compatible with OA 0.8.5 and 0.8.8 pure servers
+ 	# On impure servers, we default to the latest.
+ 	install -m644 build/0.8.1-compat/baseq3/*.so \
+-		$(DESTDIR)/usr/lib/openarena/baseoa/pak0/
++		$(DESTDIR)${pkglibdir}/baseoa/pak0/
+ 	install -m644 build/normal/baseq3/*.so \
+-		$(DESTDIR)/usr/lib/openarena/baseoa/pak6-patch088
+-	( cd $(DESTDIR)/usr/lib/openarena/baseoa/pak6-patch085 && \
++		$(DESTDIR)${pkglibdir}/baseoa/pak6-patch088
++	( cd $(DESTDIR)${pkglibdir}/baseoa/pak6-patch085 && \
+ 		ln -s ../pak6-patch088/*.so . )
+-	( cd $(DESTDIR)/usr/lib/openarena/baseoa && \
++	( cd $(DESTDIR)${pkglibdir}/baseoa && \
+ 		ln -s pak6-patch088/*.so . )
+ 	# The "mission pack" doesn't currently have incompatible versions so
+ 	# just use the latest
+ 	install -m644 build/normal/missionpack/*.so\
+-		$(DESTDIR)/usr/lib/openarena/missionpack/
++		$(DESTDIR)${pkglibdir}/missionpack/
++ifneq ($(filter openarena-server,$(binaries)),)
++	install -d $(DESTDIR)${libdir}/openarena-server/baseoa/
++	install -d $(DESTDIR)${libdir}/openarena-server/missionpack/
+ 	# The server only needs the latest version, since it's the server
+ 	# that determines which version clients are expected to be
+ 	# compatible with
+ 	install -m644 build/normal/baseq3/qagame*.so \
+-		$(DESTDIR)/usr/lib/openarena-server/baseoa/
++		$(DESTDIR)${libdir}/openarena-server/baseoa/
+ 	install -m644 build/normal/missionpack/qagame*.so\
+-		$(DESTDIR)/usr/lib/openarena-server/missionpack/
++		$(DESTDIR)${libdir}/openarena-server/missionpack/
++endif
+ 
+ override_dh_strip:
+ 	# Don't generate openarena-server-dbgsym since it contains files
+@@ -120,7 +149,9 @@ override_dh_strip:
+ 	# when compared with openarena-data, so it doesn't seem worthwhile
+ 	# to add an openarena-common package to make them shareable.
+ 	dh_strip -popenarena --dbgsym-migration='openarena-dbg (<< 0.8.8-19~)'
++ifneq ($(filter openarena-server,$(binaries)),)
+ 	dh_strip -popenarena-server --no-automatic-dbgsym
++endif
+ 
+ # ---------------------------------------------------------------------------
+ 
+diff --git a/debian/scripts/openarena.in b/debian/scripts/openarena.in
+index 37189806..89551777 100644
+--- a/debian/scripts/openarena.in
++++ b/debian/scripts/openarena.in
+@@ -1,15 +1,21 @@
+ #!/bin/sh
+ 
++libdir=@libdir@
+ # quake3 or quake3-server or whatever
+ IOQ3SELF=@IOQ3SELF@
+ # "server" or "client"
+ IOQ3ROLE=@IOQ3ROLE@
+ # ioquake3 or ioq3ded
+ IOQ3BINARY=@IOQ3BINARY@
+-# /usr/lib/openarena or /usr/lib/openarena-server
++# ${libdir}/openarena or ${libdir}/openarena-server
+ FS_BASEPATH=@FS_BASEPATH@
+ 
+-ENGINE="/usr/lib/ioquake3/${IOQ3BINARY}"
++# Be independent of whether ioquake3 has also been relocated
++if [ -e "${libdir}/ioquake3/${IOQ3BINARY}" ]; then
++    ENGINE="${libdir}/ioquake3/${IOQ3BINARY}"
++else
++    ENGINE="/usr/lib/ioquake3/${IOQ3BINARY}"
++fi
+ 
+ DEBUGGER="$OPENARENA_DEBUGGER"
+ 
+diff --git a/debian/source/lintian-overrides b/debian/source/lintian-overrides
+new file mode 100644
+index 00000000..a6f48b46
+--- /dev/null
++++ b/debian/source/lintian-overrides
+@@ -0,0 +1,5 @@
++dh-exec-subst-unknown-variable debian/openarena.install datadir
++dh-exec-subst-unknown-variable debian/openarena.install gamesbindir
++dh-exec-subst-unknown-variable debian/openarena.install pkglibdir
++dh-exec-subst-unknown-variable debian/openarena.links docdir
++dh-exec-subst-unknown-variable debian/openarena.links pkggamesdatadir
+-- 
+2.17.1
+
