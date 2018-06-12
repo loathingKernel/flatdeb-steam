@@ -1072,7 +1072,7 @@ class Builder:
                             'sh',
                             '-euc',
 
-                            'cp -a /usr/var /\n'
+                            'cp -PRp /usr/var /\n'
                             'install -d /var/cache/apt/archives/partial\n'
                             'fakeroot apt-get update\n'
                             'fakeroot apt-get -y --download-only \\\n'

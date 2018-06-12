@@ -1,6 +1,6 @@
 all:
 	if ! [ -d /var/lib/dpkg ]; then \
-		cp -a /usr/var /; \
+		cp -PRp /usr/var /; \
 	fi
 	set -e; \
 	if test -d src; then \
