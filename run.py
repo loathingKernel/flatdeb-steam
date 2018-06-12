@@ -258,6 +258,7 @@ class Builder:
         parser.add_argument('--suite', '-d', default=self.apt_suite)
         parser.add_argument('--architecture', '--arch', '-a')
         parser.add_argument('--runtime-branch', default=self.runtime_branch)
+        parser.add_argument('--version', action='store_true')
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         subparser = subparsers.add_parser(
@@ -284,6 +285,10 @@ class Builder:
         )
 
         args = parser.parse_args()
+
+        if args.version:
+            print('flatdeb {}'.format(VERSION))
+            return
 
         if args.chdir is not None:
             os.chdir(args.chdir)
