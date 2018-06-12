@@ -306,7 +306,7 @@ class Builder:
 
         self.flatpak_arch = self.dpkg_to_flatpak_arch(self.primary_dpkg_arch)
 
-        os.makedirs(self.build_area, exist_ok=True)
+        self.ensure_build_area()
         os.makedirs(os.path.dirname(self.repo), exist_ok=True)
 
         if args.command is None:
@@ -334,6 +334,7 @@ class Builder:
     def ensure_build_area(self):
         os.makedirs(self.xdg_cache_dir, 0o700, exist_ok=True)
         os.makedirs(self.build_area, 0o755, exist_ok=True)
+        os.makedirs(os.path.join(self.build_area, 'tmp'), exist_ok=True)
 
     def command_base(self, **kwargs):
         with ExitStack() as stack:
@@ -942,12 +943,15 @@ class Builder:
         manifest['runtime-version'] = self.runtime_branch
 
         with ExitStack() as stack:
-            # We assume /var/tmp has xattr support
-            scratch = stack.enter_context(
-                TemporaryDirectory(prefix='flatdeb.', dir='/var/tmp')
-            )
+            # We assume the build area has xattr support
             self.ensure_build_area()
             self.ensure_local_repo()
+            scratch = stack.enter_context(
+                TemporaryDirectory(
+                    prefix='flatdeb.',
+                    dir=os.path.join(self.build_area, 'tmp'),
+                )
+            )
 
             os.makedirs(os.path.join(scratch, 'home'), 0o755, exist_ok=True)
             subprocess.check_call([
@@ -1142,7 +1146,10 @@ class Builder:
                             })
 
             json_manifest = os.path.join(scratch, manifest['id'] + '.json')
-            os.makedirs(os.path.join(self.build_area, '.flatpak-builder'))
+            os.makedirs(
+                os.path.join(self.build_area, '.flatpak-builder'),
+                exist_ok=True,
+            )
 
             if self.build_area != scratch:
                 subprocess.check_call([
