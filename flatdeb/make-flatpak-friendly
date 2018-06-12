@@ -152,7 +152,8 @@ if [ -n "$sdk" ]; then
     # This is only useful if the SDK has libnss-extrausers
     cp etc/passwd var/lib/extrausers/passwd
     cp etc/group var/lib/extrausers/groups
-    mv var usr/var
+    install -d usr
+    mv var usr
 else
     rm -fr --one-file-system \
         etc/adduser.conf \
