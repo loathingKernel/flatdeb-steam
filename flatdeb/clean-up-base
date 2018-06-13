@@ -65,12 +65,12 @@ set_file_contents () {
 
 find "$sysroot/usr/share/doc" -xdev -not -name copyright -not -type d -delete
 find "$sysroot/usr/share/doc" -depth -xdev -type d -empty -delete
-rm -fr "$sysroot/usr/share/doc/doc-base"
-rm -fr "$sysroot/usr/share/doc/groff"
-rm -fr "$sysroot/usr/share/doc/info"
-rm -fr "$sysroot/usr/share/doc/linda"
-rm -fr "$sysroot/usr/share/doc/lintian"
-rm -fr "$sysroot/usr/share/doc/man"
+rm -fr "$sysroot/usr/share/doc-base"
+rm -fr "$sysroot/usr/share/groff"
+rm -fr "$sysroot/usr/share/info"
+rm -fr "$sysroot/usr/share/linda"
+rm -fr "$sysroot/usr/share/lintian"
+rm -fr "$sysroot/usr/share/man"
 
 # For license compliance, we should keep the copyright
 # files intact
@@ -78,12 +78,12 @@ set_file_contents etc/dpkg/dpkg.cfg.d/flatpak-runtime <<EOF
 force-unsafe-io
 path-exclude /usr/share/doc/*/*
 path-include /usr/share/doc/*/copyright
-path-exclude /usr/share/doc/doc-base/*
-path-exclude /usr/share/doc/groff/*
-path-exclude /usr/share/doc/info/*
-path-exclude /usr/share/doc/linda/*
-path-exclude /usr/share/doc/lintian/*
-path-exclude /usr/share/doc/man/*
+path-exclude /usr/share/doc-base/*
+path-exclude /usr/share/groff/*
+path-exclude /usr/share/info/*
+path-exclude /usr/share/linda/*
+path-exclude /usr/share/lintian/*
+path-exclude /usr/share/man/*
 EOF
 
 set_file_contents etc/apt/apt.conf.d/flatpak-runtime <<EOF
