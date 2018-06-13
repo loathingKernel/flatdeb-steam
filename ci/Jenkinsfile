@@ -1,0 +1,136 @@
+#!/usr/bin/env groovy
+/*
+ * SPDX-License-Identifier: LGPL-2.1+
+ *
+ * Copyright © 2017-2018 Collabora Ltd
+ *
+ * This package is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This package is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this package.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ */
+@Library('steamos-ci') _
+
+pipeline {
+  agent {
+    docker {
+      label 'docker-slave'
+      args '--device=/dev/kvm'
+      image "docker-registry.internal.collabora.com/steamos/package-builder:stretch"
+      registryUrl 'https://docker-registry.internal.collabora.com'
+      registryCredentialsId 'ccu-docker-internal-collabora-com'
+      alwaysPull true
+    }
+  }
+
+  environment {
+    GOBIN="${env.WORKSPACE}/bin"
+    GOPATH="${env.WORKSPACE}/go"
+    HOME="${env.WORKSPACE}"
+    NSS_WRAPPER_PASSWD="${env.WORKSPACE}/passwd"
+    NSS_WRAPPER_GROUP="/dev/null"
+    PATH="${env.WORKSPACE}/bin:/usr/local/bin:/usr/bin:/bin"
+    PYTHONUNBUFFERED="1"
+    TMPDIR="${env.WORKSPACE}"
+    XDG_CACHE_HOME="${env.WORKSPACE}/cache"
+    suites="stretch"
+    archs="amd64 i386"
+    runtimes="Base Games"
+  }
+
+  options {
+    timestamps()
+    skipDefaultCheckout()
+  }
+
+  stages {
+    stage ("setup") {
+      steps {
+        sh '''
+        set -e
+        echo "jenkins::$(id -u):$(id -g):Jenkins:$(pwd):/bin/sh" > passwd
+        mkdir -p "$XDG_CACHE_HOME"
+        git config --global user.name Jenkins
+        git config --global user.email nobody@example.com
+        '''
+        checkoutCollaboraGitlab('smcv/flatdeb', 'wip/ci', 'src')
+        sh '''
+        set -e
+        export LD_PRELOAD=libnss_wrapper.so
+
+        mkdir -p "$HOME/go"
+
+        go get -v -x github.com/go-debos/fakemachine/cmd/fakemachine
+        (
+        cd ~/go/src/github.com/go-debos/fakemachine
+        git remote add smcv https://github.com/smcv/fakemachine
+        git fetch smcv
+        git merge smcv/test
+        )
+        go install -v -x github.com/go-debos/fakemachine/cmd/fakemachine
+
+        go get -v -x github.com/go-debos/debos/cmd/debos
+        (
+        cd ~/go/src/github.com/go-debos/debos
+        git remote add smcv https://github.com/smcv/debos
+        git fetch smcv
+        git merge smcv/test
+        )
+        go install -v -x github.com/go-debos/debos/cmd/debos
+        '''
+      }
+    }
+
+    stage ("base") {
+      steps {
+        sh '''
+        set -e
+        export LD_PRELOAD=libnss_wrapper.so
+        cd src
+        for suite in $suites; do
+          for arch in $archs; do
+            ./run.py --suite "$suite" --arch "$arch" base
+          done
+        done
+        ls -sh "$XDG_CACHE_HOME/flatdeb"
+        ostree refs --repo "$XDG_CACHE_HOME"/flatdeb/repo|LC_ALL=C sort -u
+        '''
+      }
+    }
+
+    stage ("runtimes") {
+      steps {
+        sh '''
+        set -e
+        export LD_PRELOAD=libnss_wrapper.so
+        cd src
+        for suite in $suites; do
+          for arch in $archs; do
+            for rt in $runtimes; do
+              ./run.py --suite "$suite" --arch "$arch" runtimes "runtimes/net.debian.flatpak.$rt.yaml"
+            done
+          done
+        done
+        ls -sh "$XDG_CACHE_HOME/flatdeb"
+        ostree refs --repo "$XDG_CACHE_HOME"/flatdeb/repo|LC_ALL=C sort -u
+        '''
+      }
+    }
+  }
+
+  post {
+    always {
+      deleteDir()
+    }
+  }
+}
+/* vim:set sw=2 sts=2 et: */
