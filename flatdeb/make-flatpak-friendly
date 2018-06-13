@@ -110,7 +110,7 @@ rm -fr --one-file-system \
     etc/ppp \
     "etc/rc.local" \
     etc/rc0.d \
-    etc/rc1/d \
+    etc/rc1.d \
     etc/rc2.d \
     etc/rc3.d \
     etc/rc4.d \
