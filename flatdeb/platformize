@@ -108,11 +108,11 @@ for package in \
     if chroot "$sysroot" dpkg-query --show "$package" >/dev/null; then
         unwanted+=("$package")
     fi
-
-    if ! chroot "$sysroot" dpkg-query --show python; then
-        unwanted+=(python-minimal python2.7-minimal)
-    fi
 done
+
+if ! chroot "$sysroot" dpkg-query --show python; then
+    unwanted+=(python-minimal python2.7-minimal)
+fi
 
 if [ -n "${unwanted[*]}" ]; then
     echo "Packages we will forcibly remove (first round):"
@@ -152,11 +152,11 @@ for package in \
     if chroot "$sysroot" dpkg-query --show "$package" >/dev/null; then
         unwanted+=("$package")
     fi
-
-    if ! chroot "$sysroot" dpkg-query --show perl; then
-        unwanted+=(perl-base)
-    fi
 done
+
+if ! chroot "$sysroot" dpkg-query --show perl; then
+    unwanted+=(perl-base)
+fi
 
 if [ -n "${unwanted[*]}" ]; then
     echo "Packages we will forcibly remove (second round):"
