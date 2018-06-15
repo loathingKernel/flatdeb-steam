@@ -70,21 +70,9 @@ pipeline {
         mkdir -p "$HOME/go"
 
         go get -v -x github.com/go-debos/fakemachine/cmd/fakemachine
-        (
-        cd ~/go/src/github.com/go-debos/fakemachine
-        git remote add smcv https://github.com/smcv/fakemachine
-        git fetch smcv
-        git merge smcv/test
-        )
         go install -v -x github.com/go-debos/fakemachine/cmd/fakemachine
 
         go get -v -x github.com/go-debos/debos/cmd/debos
-        (
-        cd ~/go/src/github.com/go-debos/debos
-        git remote add smcv https://github.com/smcv/debos
-        git fetch smcv
-        git merge smcv/test
-        )
         go install -v -x github.com/go-debos/debos/cmd/debos
         '''
       }
