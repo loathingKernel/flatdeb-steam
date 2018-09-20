@@ -1,0 +1,169 @@
+#!/bin/bash
+
+# Copyright © 2016-2017 Simon McVittie
+# Copyright © 2017-2018 Collabora Ltd.
+#
+# SPDX-License-Identifier: MIT
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Disable services in a chroot.
+
+set -e
+set -u
+set -x
+set -o pipefail
+
+me="$(basename "$0")"
+
+if [ "$#" != 1 ] || [ "$1" = '--help' ] || [ "x$(id -u)" != x0 ] ||
+        ! [ -d "$1" ]; then
+    echo "$me: Usage:" >&2
+    echo "    $me SYSROOT" >&2
+    echo "" >&2
+    echo "Run this script as root." >&2
+    exit 2
+fi
+
+sysroot="$1"
+cd "$sysroot"
+
+in_chroot () {
+    systemd-nspawn --directory="$sysroot" --as-pid2 \
+    env DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes \
+    "$@"
+}
+
+list_packages_ignore_arch () {
+    in_chroot dpkg-query --show -f '${Package}\n' | LC_ALL=C sort -u
+}
+
+declare -a unwanted=()
+
+echo "Packages installed at the moment:"
+list_packages_ignore_arch | sed -ne 's/^/- /'
+
+for package in \
+    aptitude \
+    fakeroot \
+    libfakeroot \
+; do \
+    if chroot "$sysroot" dpkg-query --show "$package" >/dev/null; then
+        unwanted+=("$package")
+    fi
+done
+
+if [ -n "${unwanted[*]}" ]; then
+    echo "Packages we will remove (before autoremove):"
+    for p in "${unwanted[@]}"; do
+        echo "- $p"
+    done
+
+    in_chroot apt-get -y purge "${unwanted[@]}"
+fi
+
+in_chroot apt-get -y --purge autoremove
+
+echo "Packages installed before destroying Essential set:"
+list_packages_ignore_arch | sed -ne 's/^/- /'
+
+unwanted=()
+
+# These are Essential (or at least important) but serve no
+# purpose in an immutable runtime with no init. Note that
+# order is important: adduser needs to be removed before
+# debconf. We remove these particular packages first because
+# they try to invoke other packages we want to remove in
+# their postrm maintainer scripts.
+for package in \
+    adduser \
+    apt \
+    gnupg \
+    ifupdown \
+    initramfs-tools \
+    initramfs-tools-bin \
+    initscripts \
+    lsb-base \
+    module-init-tools \
+    plymouth \
+    tcpd \
+; do \
+    if chroot "$sysroot" dpkg-query --show "$package" >/dev/null; then
+        unwanted+=("$package")
+    fi
+done
+
+if ! chroot "$sysroot" dpkg-query --show python; then
+    unwanted+=(python-minimal python2.7-minimal)
+fi
+
+if [ -n "${unwanted[*]}" ]; then
+    echo "Packages we will forcibly remove (first round):"
+    for p in "${unwanted[@]}"; do
+        echo "- $p"
+    done
+
+    in_chroot dpkg --purge --force-remove-essential --force-depends \
+        "${unwanted[@]}"
+fi
+
+# Second round of removals
+unwanted=()
+
+for package in \
+    busybox-initramfs \
+    debconf \
+    debian-archive-keyring \
+    e2fsprogs \
+    init \
+    init-system-helpers \
+    insserv \
+    iproute \
+    iproute2 \
+    login \
+    mount \
+    mountall \
+    passwd \
+    systemd \
+    systemd-sysv \
+    sysv-rc \
+    ubuntu-archive-keyring \
+    ubuntu-keyring \
+    udev \
+    upstart \
+; do \
+    if chroot "$sysroot" dpkg-query --show "$package" >/dev/null; then
+        unwanted+=("$package")
+    fi
+done
+
+if ! chroot "$sysroot" dpkg-query --show perl; then
+    unwanted+=(perl-base)
+fi
+
+if [ -n "${unwanted[*]}" ]; then
+    echo "Packages we will forcibly remove (second round):"
+    for p in "${unwanted[@]}"; do
+        echo "- $p"
+    done
+
+    in_chroot dpkg --purge --force-remove-essential --force-depends \
+        "${unwanted[@]}"
+fi

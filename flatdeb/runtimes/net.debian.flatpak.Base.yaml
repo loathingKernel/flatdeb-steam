@@ -1,0 +1,22 @@
+---
+id_prefix: net.debian.flatpak.Base
+
+add_packages_multiarch:
+  - libc6
+  - libstdc++6
+
+sdk:
+  add_packages:
+    - apt-forktracer
+    - build-essential
+    - busybox-static
+    - ccache
+    - debhelper
+    - dpkg-dev
+    - fakeroot
+    - gdb
+    - libc6-dbg
+    - ltrace
+    - strace
+    - valgrind
+...

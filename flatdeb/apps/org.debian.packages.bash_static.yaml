@@ -1,0 +1,18 @@
+---
+id: org.debian.packages.bash_static
+branch: stretch
+runtime: net.debian.flatpak.Base.Platform
+runtime-version: stretch
+sdk: net.debian.flatpak.Base.Sdk
+command: bash-static
+modules:
+  - name: bash-static
+    x-flatdeb-apt-packages:
+      - bash-static
+    sources:
+      - type: file
+        path: deb-buildapi/configure
+        dest: '.'
+      - type: file
+        path: deb-buildapi/Makefile
+...

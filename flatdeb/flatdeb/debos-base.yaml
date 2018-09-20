@@ -1,0 +1,103 @@
+{{- $architecture := or .architecture "amd64" -}}
+{{- /* Use a YAML list here */ -}}
+{{- $components := or .components "" -}}
+{{- $suite := or .suite "stretch" -}}
+{{- $foreignarchs := or .foreignarchs "" -}}
+{{- $mirror := or .mirror "http://deb.debian.org/debian" -}}
+{{- $mergedusr := or .mergedusr "false" }}
+{{- $keyring := or .keyring "" -}}
+{{- $keyringpackage := or .keyringpackage "" -}}
+{{- $version := or .version "0" -}}
+{{- $ospack := or .ospack (printf "base_%s_%s_%s.tar.gz" $suite $version $architecture) -}}
+
+architecture: {{ $architecture }}
+
+actions:
+  # Make sure Ubuntu precise doesn't try to migrate /run
+  - action: run
+    command: |
+      install -d "$ROOTDIR"
+      install -d "$ROOTDIR/run"
+      install -d "$ROOTDIR/var"
+      ln -fns /run "$ROOTDIR/var/run"
+      ln -fns /dev/shm "$ROOTDIR/run/shm"
+
+  - action: debootstrap
+    suite: {{ $suite }}
+    {{ if $components }}
+    components: {{ $components }}
+    {{ end }}
+    mirror: {{ $mirror }}
+    {{ if $keyring }}
+    keyring-file: {{ $keyring }}
+    {{ end }}
+    {{ if $keyringpackage }}
+    keyring-package: {{ $keyringpackage }}
+    {{ end }}
+    {{ if eq $mergedusr "after_debootstrap" }}
+    merged-usr: false
+    {{ else }}
+    merged-usr: {{ $mergedusr }}
+    {{ end }}
+    variant: minbase
+    # TODO: flatdeb has historically used a configurable
+    # debootstrap_script, but debos doesn't support scripts other
+    # than 'unstable'. Does the Debian script work for precise and
+    # produce the same results as the 'precise' script?
+    # https://github.com/go-debos/debos/issues/16
+
+  - action: apt
+    recommends: false
+    packages:
+      - apt-transport-https
+      {{ if $keyringpackage }}
+      - {{ $keyringpackage }}
+      {{ end }}
+
+  - action: overlay
+    source: suites/{{ $suite }}/overlay
+
+  - action: run
+    chroot: false
+    command: 'rm -fr "$ROOTDIR/etc/apt/sources.list.d"'
+
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/disable-services" "$ROOTDIR"'
+
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/clean-up-base" "$ROOTDIR"'
+
+  {{ if eq $mergedusr "after_debootstrap" }}
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/usrmerge" "$ROOTDIR"'
+  {{ end }}
+
+  {{ if $foreignarchs }}
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/add-foreign-architectures" "$ROOTDIR" {{ $foreignarchs }}'
+  {{ end }}
+
+  - action: run
+    chroot: true
+    command: 'apt-get -y -q update'
+
+  - action: run
+    chroot: true
+    command: 'DEBIAN_FRONTEND=noninteractive apt-get -y -q dist-upgrade'
+
+  - action: run
+    chroot: true
+    command: 'dpkg-query -W'
+
+  # No point in archiving these
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/clean-up-before-pack" "$ROOTDIR"'
+
+  - action: pack
+    compression: gz
+    file: {{ $ospack }}

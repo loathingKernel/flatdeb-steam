@@ -1,0 +1,178 @@
+{{- $apt_debug := or .apt_debug "" -}}
+{{- $architecture := or .architecture "amd64" -}}
+{{- $suite := or .suite "stretch" -}}
+{{- $flatpak_arch := or .flatpak_arch $architecture -}}
+{{- $packages := or .packages "" -}}
+{{- $post_script := or .post_script "" -}}
+{{- $sdk := or .sdk "" -}}
+{{- $sdk_packages := or .sdk_packages "" -}}
+{{- $sdk_post_script := or .sdk_post_script "" -}}
+{{- $platform_post_script := or .platform_post_script "" -}}
+{{- $strip_source_version_suffix := or .strip_source_version_suffix "" -}}
+{{- $version := or .version "0" -}}
+{{- $ospack := or .ospack (printf "base_%s_%s_%s.tar.gz" $suite $version $architecture) -}}
+{{- $runtime := .runtime -}}
+{{- $runtime_branch := or .runtime_branch "master" -}}
+{{- $ostree_tarball := or .ostree_tarball (printf "ostree_%s_%s_%s.tar.gz" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $sources_tarball := or .sources_tarball (printf "sources_%s_%s_%s.tar.gz" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $repo := or .repo "repo" -}}
+
+architecture: {{ $architecture }}
+
+actions:
+  - action: unpack
+    compression: gz
+    file: {{ $ospack }}
+
+  # TODO: This duplicates what we should have done in debos-base.yaml
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/disable-services" "$ROOTDIR"'
+
+  # TODO: This duplicates what we should have done in debos-base.yaml
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/clean-up-base" "$ROOTDIR"'
+
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/prepare-runtime" "$ROOTDIR"'
+
+  {{ if $packages }}
+  {{ if $apt_debug }}
+  - action: run
+    chroot: false
+    command: $RECIPEDIR/apt-install "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/packages.yaml"
+  {{ else }}
+  - action: apt
+    recommends: false
+    packages: {{ $packages }}
+  {{ end }}
+  {{ end }}
+
+  # TODO: Everything before this step is common to the Platform and SDK
+
+  # We do this as a separate step in case it involves removing any
+  # of the common packages
+  {{ if and $sdk $sdk_packages }}
+  {{ if $apt_debug }}
+  - action: run
+    chroot: false
+    command: $RECIPEDIR/apt-install "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/sdk_packages.yaml"
+  {{ else }}
+  - action: apt
+    recommends: false
+    packages: {{ $sdk_packages }}
+  {{ end }}
+  {{ end }}
+
+  {{ if not $sdk }}
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/platformize" "$ROOTDIR"'
+  {{ end }}
+
+  {{ if $post_script }}
+  - action: run
+    chroot: true
+    script: '{{ $post_script }}'
+  {{ end }}
+
+  {{ if $sdk }}
+  {{ if $sdk_post_script }}
+  - action: run
+    chroot: true
+    script: '{{ $sdk_post_script }}'
+  {{ end }}
+  {{ else }}
+  {{ if $platform_post_script }}
+  - action: run
+    chroot: true
+    script: '{{ $platform_post_script }}'
+  {{ end }}
+  {{ end }}
+
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/write-manifest" "$ROOTDIR"'
+
+  {{ if $sdk }}
+  - action: run
+    chroot: false
+    command: 'cp "$RECIPEDIR/manifest.dpkg.platform" "$ROOTDIR/usr"'
+  - action: run
+    chroot: false
+    command: 'cp "$RECIPEDIR/manifest.dpkg.built-using.platform" "$ROOTDIR/usr"'
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/collect-source-code" --strip-source-version-suffix="{{ $strip_source_version_suffix }}" "$ROOTDIR"'
+  {{ else }}
+  - action: run
+    chroot: false
+    command: 'cp "$ROOTDIR/usr/manifest.dpkg" "$RECIPEDIR/manifest.dpkg.platform"'
+  - action: run
+    chroot: false
+    command: 'cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$RECIPEDIR/manifest.dpkg.built-using.platform"'
+  - action: run
+    chroot: true
+    command: 'dpkg --purge --force-remove-essential --force-depends dpkg'
+  {{ end }}
+
+  - action: run
+    chroot: true
+    script: hard-link-alternatives
+
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/usrmerge" "$ROOTDIR"'
+
+  - action: run
+    chroot: true
+    script: put-ldconfig-in-path
+
+  {{ if $sdk }}
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/make-flatpak-friendly" --sdk "$ROOTDIR"'
+  {{ else }}
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/make-flatpak-friendly" "$ROOTDIR"'
+  {{ end }}
+
+  # TODO: Move lib/debug, zoneinfo, locales into extensions
+  # TODO: Hook point for GL, instead of just Mesa
+  # TODO: GStreamer extension
+  # TODO: Icon theme, Gtk theme extension
+  # TODO: VAAPI extension
+  # TODO: SDK extension
+  # TODO: ca-certificates extension to get newer certs?
+
+  - action: run
+    chroot: false
+    command: 'install -d "$ROOTDIR/ostree/main"'
+
+  - action: run
+    chroot: false
+    command: 'mv "$ROOTDIR/usr" "$ROOTDIR/ostree/main/files"'
+
+  - action: overlay
+    source: runtimes/{{ $runtime }}/overlay
+
+  - action: run
+    chroot: false
+    command: 'tar -zcf "$ARTIFACTDIR/{{ $ostree_tarball }}" -C "$ROOTDIR/ostree/main" files metadata'
+
+  {{ if $sdk }}
+  - action: run
+    chroot: false
+    command: 'tar -zcf "$ARTIFACTDIR/{{ $sources_tarball }}" -C "$ROOTDIR/ostree/source" .'
+
+  - action: run
+    chroot: false
+    command: 'ostree --repo="$ARTIFACTDIR/{{ $repo }}" commit --branch="runtime/{{ $runtime }}.Sources/{{ $flatpak_arch }}/{{ $runtime_branch }}" --subject=Update --tree=dir="$ROOTDIR/ostree/source" --fsync=false'
+  {{ end }}
+
+  - action: run
+    chroot: false
+    command: 'ostree --repo="$ARTIFACTDIR/{{ $repo }}" commit --branch="runtime/{{ $runtime }}/{{ $flatpak_arch }}/{{ $runtime_branch }}" --subject=Update --tree=dir="$ROOTDIR/ostree/main" --fsync=false'
