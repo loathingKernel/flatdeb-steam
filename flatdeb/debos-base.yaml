@@ -9,6 +9,7 @@
 {{- $keyringpackage := or .keyringpackage "" -}}
 {{- $version := or .version "0" -}}
 {{- $ospack := or .ospack (printf "base_%s_%s_%s.tar.gz" $suite $version $architecture) -}}
+{{- $manifest_prefix := or .manifest_prefix (printf "base_%s_%s_%s" $suite $version $architecture) -}}
 
 architecture: {{ $architecture }}
 
@@ -92,8 +93,11 @@ actions:
     command: 'DEBIAN_FRONTEND=noninteractive apt-get -y -q dist-upgrade'
 
   - action: run
-    chroot: true
-    command: 'dpkg-query -W'
+    chroot: false
+    command: |
+      "$RECIPEDIR/write-manifest" "$ROOTDIR"
+      cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg"
+      cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg.built-using"
 
   # No point in archiving these
   - action: run

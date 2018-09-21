@@ -360,6 +360,7 @@ class Builder:
                 'clean-up-before-pack',
                 'disable-services',
                 'usrmerge',
+                'write-manifest',
             ):
                 dest = os.path.join(scratch, helper)
                 shutil.copyfile(
@@ -410,6 +411,10 @@ class Builder:
                     self.suite_details['sources'][0]['apt_uri'],
                 ),
                 '-t', 'ospack:{}'.format(tarball + '.new'),
+                '-t', 'manifest_prefix:base-{}-{}'.format(
+                    self.apt_suite,
+                    ','.join(self.dpkg_archs),
+                ),
                 '-t', 'foreignarchs:{}'.format(
                     ' '.join(self.dpkg_archs[1:]),
                 ),
@@ -533,7 +538,7 @@ class Builder:
 
                 out_tarball = '{}-ostree-{}-{}.tar.gz'.format(
                     runtime,
-                    self.flatpak_arch,
+                    ','.join(self.dpkg_archs),
                     self.runtime_branch,
                 )
 
@@ -546,6 +551,11 @@ class Builder:
                     '-t', 'suite:{}'.format(self.apt_suite),
                     '-t', 'ospack:{}'.format(tarball),
                     '-t', 'ostree_tarball:{}'.format(out_tarball + '.new'),
+                    '-t', 'manifest_prefix:{}-ostree-{}-{}'.format(
+                        runtime,
+                        ','.join(self.dpkg_archs),
+                        self.runtime_branch,
+                    ),
                     '-t', 'runtime:{}'.format(runtime),
                     '-t', 'runtime_branch:{}'.format(self.runtime_branch),
                     '-t', 'strip_source_version_suffix:{}'.format(
@@ -588,7 +598,7 @@ class Builder:
                 if sdk:
                     sources_tarball = '{}-sources-{}-{}.tar.gz'.format(
                         runtime,
-                        self.flatpak_arch,
+                        ','.join(self.dpkg_archs),
                         self.runtime_branch,
                     )
 
@@ -688,7 +698,7 @@ class Builder:
                 for suffix in ('.Platform', '.Sdk'):
                     bundle = '{}-{}-{}.bundle'.format(
                         prefix + suffix,
-                        self.flatpak_arch,
+                        ','.join(self.dpkg_archs),
                         self.runtime_branch,
                     )
                     output = os.path.join(self.build_area, bundle)

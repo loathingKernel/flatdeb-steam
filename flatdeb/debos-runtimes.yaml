@@ -14,6 +14,7 @@
 {{- $runtime := .runtime -}}
 {{- $runtime_branch := or .runtime_branch "master" -}}
 {{- $ostree_tarball := or .ostree_tarball (printf "ostree_%s_%s_%s.tar.gz" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $manifest_prefix := or .manifest_prefix (printf "ostree_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
 {{- $sources_tarball := or .sources_tarball (printf "sources_%s_%s_%s.tar.gz" $runtime $flatpak_arch $runtime_branch) -}}
 {{- $repo := or .repo "repo" -}}
 
@@ -94,7 +95,10 @@ actions:
 
   - action: run
     chroot: false
-    command: '"$RECIPEDIR/write-manifest" "$ROOTDIR"'
+    command: |
+      "$RECIPEDIR/write-manifest" "$ROOTDIR"
+      cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg"
+      cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg.built-using"
 
   {{ if $sdk }}
   - action: run
