@@ -30,6 +30,8 @@ actions:
     mirror: {{ $mirror }}
     {{ if $keyring }}
     keyring-file: {{ $keyring }}
+    {{ else }}
+    check-gpg: false
     {{ end }}
     {{ if $keyringpackage }}
     keyring-package: {{ $keyringpackage }}
