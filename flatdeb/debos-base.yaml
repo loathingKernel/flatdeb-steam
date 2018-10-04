@@ -49,6 +49,17 @@ actions:
     # produce the same results as the 'precise' script?
     # https://github.com/go-debos/debos/issues/16
 
+  - action: overlay
+    source: suites/{{ $suite }}/overlay
+
+  - action: run
+    chroot: false
+    command: 'rm -fr "$ROOTDIR/etc/apt/sources.list.d"'
+
+  - action: run
+    chroot: false
+    command: 'find "$ROOTDIR/etc/apt" -ls'
+
   - action: apt
     recommends: false
     packages:
@@ -56,13 +67,6 @@ actions:
       {{ if $keyringpackage }}
       - {{ $keyringpackage }}
       {{ end }}
-
-  - action: overlay
-    source: suites/{{ $suite }}/overlay
-
-  - action: run
-    chroot: false
-    command: 'rm -fr "$ROOTDIR/etc/apt/sources.list.d"'
 
   - action: run
     chroot: false
