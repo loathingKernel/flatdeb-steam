@@ -46,6 +46,14 @@ sysroot="$1"
 cd "$sysroot"
 
 in_chroot () {
+    local var
+
+    for var in ftp_proxy http_proxy https_proxy no_proxy; do
+        if [ -n "${!var-}" ]; then
+            set -- "${var}=${!var}" "$@"
+        fi
+    done
+
     systemd-nspawn --directory="$sysroot" --as-pid2 \
     env DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes \
     "$@"

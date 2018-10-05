@@ -161,6 +161,10 @@ def main():
         'env',
     ]
 
+    for var in ('ftp_proxy', 'http_proxy', 'https_proxy', 'no_proxy'):
+        if var in os.environ:
+            in_chroot.append('{}={}'.format(var, os.environ[var]))
+
     manifest = os.path.join(args.sysroot, 'usr', 'manifest.dpkg')
     platform_manifest = os.path.join(
         args.sysroot, 'usr', 'manifest.dpkg.platform')
