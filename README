@@ -44,9 +44,6 @@ Then you can run:
     ./run.py --suite=stretch --arch=amd64 app \
         apps/org.debian.packages.mesa_utils.yaml
 
-If you aren't root and don't have the ability to run `sudo`, use
-`run-in-fakemachine` instead of `./run.py` for the `runtimes` steps.
-
 On the same machine, or a test machine onto which you have copied
 `$HOME/.cache/flatdeb/repo` with `rsync` or similar:
 
