@@ -24,6 +24,10 @@ Also edit org.debian.packages.openarena.yaml to specify where you have
 put local clones of ioquake3 and openarena if you can't (or don't
 want to) clone them via https.
 
+You will probably want to use a caching proxy such as apt-cacher-ng to
+download `.deb` packages, which you can do by prefixing all the commands
+below with `env http_proxy=http://192.168.122.1:3142` or similar.
+
 Finally, put a copy of debian-archive-keyring.gpg in this directory.
 
 Then you can run:
