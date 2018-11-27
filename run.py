@@ -671,9 +671,39 @@ class Builder:
                 if sdk:
                     output = os.path.join(self.build_area, sources_tarball)
                     os.rename(output + '.new', output)
+                    subprocess.check_call([
+                        'time',
+                        'ostree',
+                        '--repo=' + self.repo,
+                        'commit',
+                        '--branch=runtime/{}.Sources/{}/{}'.format(
+                            runtime,
+                            self.flatpak_arch,
+                            self.runtime_branch,
+                        ),
+                        '--subject=Update',
+                        '--tree=tar={}'.format(output),
+                        '--fsync=false',
+                        '--tar-autocreate-parents',
+                    ])
 
                 output = os.path.join(self.build_area, out_tarball)
                 os.rename(output + '.new', output)
+                subprocess.check_call([
+                    'time',
+                    'ostree',
+                    '--repo=' + self.repo,
+                    'commit',
+                    '--branch=runtime/{}/{}/{}'.format(
+                        runtime,
+                        self.flatpak_arch,
+                        self.runtime_branch,
+                    ),
+                    '--subject=Update',
+                    '--tree=tar={}'.format(output),
+                    '--fsync=false',
+                    '--tar-autocreate-parents',
+                ])
 
             # Don't keep the history in this working repository:
             # if history is desired, mirror the commits into a public

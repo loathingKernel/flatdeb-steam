@@ -171,12 +171,4 @@ actions:
   - action: run
     chroot: false
     command: 'tar -zcf "$ARTIFACTDIR/{{ $sources_tarball }}" -C "$ROOTDIR/ostree/source" .'
-
-  - action: run
-    chroot: false
-    command: 'ostree --repo="$ARTIFACTDIR/{{ $repo }}" commit --branch="runtime/{{ $runtime }}.Sources/{{ $flatpak_arch }}/{{ $runtime_branch }}" --subject=Update --tree=dir="$ROOTDIR/ostree/source" --fsync=false'
   {{ end }}
-
-  - action: run
-    chroot: false
-    command: 'ostree --repo="$ARTIFACTDIR/{{ $repo }}" commit --branch="runtime/{{ $runtime }}/{{ $flatpak_arch }}/{{ $runtime_branch }}" --subject=Update --tree=dir="$ROOTDIR/ostree/main" --fsync=false'
