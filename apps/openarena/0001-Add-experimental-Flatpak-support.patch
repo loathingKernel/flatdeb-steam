@@ -1,4 +1,4 @@
-From ea53d2a31a18d20e25b8738b0872994da8a323b8 Mon Sep 17 00:00:00 2001
+From 507e07512bfb10fbe9a208ea685b79e0108d5d67 Mon Sep 17 00:00:00 2001
 From: Simon McVittie <smcv@debian.org>
 Date: Tue, 28 Nov 2017 15:33:30 +0000
 Subject: [PATCH] Add experimental Flatpak support
@@ -19,10 +19,10 @@ not build the openarena-server package.
  mode change 100644 => 100755 debian/openarena.links
  create mode 100644 debian/source/lintian-overrides
 
-diff --git a/debian/control b/debian/control
-index 7aae40f3..d633c418 100644
---- a/debian/control
-+++ b/debian/control
+diff --git a/src/debian/control b/src/debian/control
+index 0c59dc0b..7057354c 100644
+--- a/src/debian/control
++++ b/src/debian/control
 @@ -8,6 +8,7 @@ Uploaders:
   Simon McVittie <smcv@debian.org>,
  Build-Depends:
@@ -30,7 +30,7 @@ index 7aae40f3..d633c418 100644
 + dh-exec,
   dpkg-dev (>= 1.16.1),
   ioquake3-server (>= 1.36+u20150730+dfsg1-1~),
- Standards-Version: 4.1.4
+ Standards-Version: 4.2.1
 @@ -44,6 +45,7 @@ Description: fast-paced 3D first-person shooter
   This package installs the OpenArena client.
  
@@ -39,13 +39,13 @@ index 7aae40f3..d633c418 100644
  Architecture: any
  Depends:
   adduser,
-diff --git a/debian/openarena.desktop b/debian/openarena.desktop.in
+diff --git a/src/debian/openarena.desktop b/src/debian/openarena.desktop.in
 similarity index 91%
 rename from debian/openarena.desktop
 rename to debian/openarena.desktop.in
 index ea3bae61..50ec568c 100644
---- a/debian/openarena.desktop
-+++ b/debian/openarena.desktop.in
+--- a/src/debian/openarena.desktop
++++ b/src/debian/openarena.desktop.in
 @@ -2,7 +2,7 @@
  Name=OpenArena
  Comment=A fast-paced 3D first-person shooter, similar to id Software Inc.'s Quake III Arena
@@ -55,12 +55,12 @@ index ea3bae61..50ec568c 100644
  Terminal=false
  Icon=openarena128
  Type=Application
-diff --git a/debian/openarena.install b/debian/openarena.install
+diff --git a/src/debian/openarena.install b/src/debian/openarena.install
 old mode 100644
 new mode 100755
 index 7bccbd3c..5b79fbab
---- a/debian/openarena.install
-+++ b/debian/openarena.install
+--- a/src/debian/openarena.install
++++ b/src/debian/openarena.install
 @@ -1,5 +1,7 @@
 -debian/openarena.desktop usr/share/applications
 -debian/openarena128.png usr/share/icons/hicolor/128x128/apps
@@ -74,12 +74,12 @@ index 7bccbd3c..5b79fbab
 +debian/scripts/openarena ${gamesbindir}
 +${pkglibdir}/*/*.so
 +${pkglibdir}/*/*/*.so
-diff --git a/debian/openarena.links b/debian/openarena.links
+diff --git a/src/debian/openarena.links b/src/debian/openarena.links
 old mode 100644
 new mode 100755
 index 52e939c2..72bf6a18
---- a/debian/openarena.links
-+++ b/debian/openarena.links
+--- a/src/debian/openarena.links
++++ b/src/debian/openarena.links
 @@ -1,13 +1,15 @@
 -usr/share/doc/openarena-088-data/CREDITS-0.8.8 usr/share/doc/openarena/CREDITS
 -usr/share/doc/openarena-088-data/readme_088.txt.gz usr/share/doc/openarena/README.gz
@@ -109,10 +109,10 @@ index 52e939c2..72bf6a18
 +${pkggamesdatadir}/baseoa/pak6-patch085.pk3 ${pkglibdir}/baseoa/pak6-patch085.pk3
 +${pkggamesdatadir}/baseoa/pak6-patch088.pk3 ${pkglibdir}/baseoa/pak6-patch088.pk3
 +${pkggamesdatadir}/missionpack/mp-pak0.pk3 ${pkglibdir}/missionpack/mp-pak0.pk3
-diff --git a/debian/rules b/debian/rules
+diff --git a/src/debian/rules b/src/debian/rules
 index 7f6ea085..f5050c25 100755
---- a/debian/rules
-+++ b/debian/rules
+--- a/src/debian/rules
++++ b/src/debian/rules
 @@ -10,6 +10,22 @@ DEB_CFLAGS_MAINT_APPEND := \
  	$(NULL)
  
@@ -254,10 +254,10 @@ index 7f6ea085..f5050c25 100755
  
  # ---------------------------------------------------------------------------
  
-diff --git a/debian/scripts/openarena.in b/debian/scripts/openarena.in
+diff --git a/src/debian/scripts/openarena.in b/src/debian/scripts/openarena.in
 index 37189806..89551777 100644
---- a/debian/scripts/openarena.in
-+++ b/debian/scripts/openarena.in
+--- a/src/debian/scripts/openarena.in
++++ b/src/debian/scripts/openarena.in
 @@ -1,15 +1,21 @@
  #!/bin/sh
  
@@ -282,11 +282,11 @@ index 37189806..89551777 100644
  
  DEBUGGER="$OPENARENA_DEBUGGER"
  
-diff --git a/debian/source/lintian-overrides b/debian/source/lintian-overrides
+diff --git a/src/debian/source/lintian-overrides b/src/debian/source/lintian-overrides
 new file mode 100644
 index 00000000..a6f48b46
 --- /dev/null
-+++ b/debian/source/lintian-overrides
++++ b/src/debian/source/lintian-overrides
 @@ -0,0 +1,5 @@
 +dh-exec-subst-unknown-variable debian/openarena.install datadir
 +dh-exec-subst-unknown-variable debian/openarena.install gamesbindir
@@ -294,5 +294,5 @@ index 00000000..a6f48b46
 +dh-exec-subst-unknown-variable debian/openarena.links docdir
 +dh-exec-subst-unknown-variable debian/openarena.links pkggamesdatadir
 -- 
-2.17.1
+2.20.0.rc1
 
