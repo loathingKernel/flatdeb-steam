@@ -20,9 +20,6 @@ Also install the latest versions of
 [fakemachine](https://github.com/go-debos/fakemachine)
 and [debos](https://github.com/go-debos/debos).
 
-Make sure the VM's /tmp is large and mounted with the "dev" option,
-and that its /var/tmp is large and supports extended attributes.
-
 Also edit org.debian.packages.openarena.yaml to specify where you have
 put local clones of ioquake3 and openarena if you can't (or don't
 want to) clone them via https.
