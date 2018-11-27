@@ -1022,7 +1022,7 @@ class Builder:
                     'env',
                     'XDG_DATA_HOME={}/home'.format(scratch),
                     'flatpak', '--user',
-                    'install', 'flatdeb',
+                    'install', '-y', 'flatdeb',
                     '{}/{}/{}'.format(
                         runtime,
                         self.flatpak_arch,
