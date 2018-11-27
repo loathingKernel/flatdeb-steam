@@ -23,23 +23,9 @@ and [debos](https://github.com/go-debos/debos).
 Make sure the VM's /tmp is large and mounted with the "dev" option,
 and that its /var/tmp is large and supports extended attributes.
 
-You need an apt-cacher-ng on http://192.168.122.1:3142 (currently
-hard-coded) visible to the VM. If you don't have that, edit run.py
-accordingly.
-
 Also edit org.debian.packages.openarena.yaml to specify where you have
 put local clones of ioquake3 and openarena if you can't (or don't
 want to) clone them via https.
-
-$HOME/.cache/flatdeb also needs to be made available via HTTP, at
-http://192.168.122.1:3142/local/flatdeb (again currently hard-coded). A
-convenient way to do this is to make it a symlink to a directory that is
-exported via apt-cacher-ng's LocalDirs directive:
-
-    $ cat /etc/apt-cacher-ng/local.conf
-    LocalDirs: local /srv/acng/local
-    $ ls -l ~/.cache/flatdeb
-    lrwxrwxrwx ... /home/user/.cache/flatdeb -> /srv/acng/local/flatdeb
 
 Finally, put a copy of debian-archive-keyring.gpg in this directory.
 

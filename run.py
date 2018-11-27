@@ -975,14 +975,14 @@ class Builder:
                 'flatpak', '--user',
                 'remote-add', '--if-not-exists', '--no-gpg-verify',
                 'flatdeb',
-                'http://192.168.122.1:3142/local/flatdeb/repo',
+                'file://{}'.format(urllib.parse.quote(self.repo)),
             ])
             subprocess.check_call([
                 'env',
                 'XDG_DATA_HOME={}/home'.format(scratch),
                 'flatpak', '--user',
                 'remote-modify', '--no-gpg-verify',
-                '--url=http://192.168.122.1:3142/local/flatdeb/repo',
+                '--url=file://{}'.format(urllib.parse.quote(self.repo)),
                 'flatdeb',
             ])
 
@@ -1082,7 +1082,6 @@ class Builder:
                                 self.runtime_branch,
                             ),
                             'DEBIAN_FRONTEND=noninteractive',
-                            'http_proxy=http://192.168.122.1:3142',
                             'export={}'.format(packages),
                             'sh',
                             '-euc',
@@ -1180,7 +1179,6 @@ class Builder:
                 'env',
                 'DEBIAN_FRONTEND=noninteractive',
                 'XDG_DATA_HOME={}/home'.format(scratch),
-                'http_proxy=http://192.168.122.1:3142',
                 'sh', '-euc',
                 'cd "$1"; shift; exec "$@"',
                 'sh',                   # argv[0]
