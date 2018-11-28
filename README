@@ -7,63 +7,43 @@ from Debian packages. This repository sets it up for Steam.
 Walkthrough
 -----------
 
-On a Debian 9 VM (assuming username "user"):
+On a Debian 9 VM:
 
-    adduser user sudo
-    visudo          # and set %sudo ALL=(ALL:ALL) NOPASSWD: ALL
     sensible-editor /etc/apt/sources.list    # and enable backports
-    apt install debootstrap openssh-server sudo systemd-container time
+    apt install debootstrap systemd-container time
+    apt install python3 python3-debian python3-gi python3-yaml
     apt install -t stretch-backports flatpak flatpak-builder ostree
-    passwd user     # and have a password
 
-Make sure the VM's /tmp is large and mounted with the "dev" option,
-and that its /var/tmp is large and supports extended attributes.
+(Or install on Debian testing/unstable.)
 
-On the host system (or the VM if you're running everything there):
+Also install the latest versions of
+[fakemachine](https://github.com/go-debos/fakemachine)
+and [debos](https://github.com/go-debos/debos).
 
-    apt install python3 python3-debian python3-gi python3-yaml sshfs
-
-You need an apt-cacher-ng on http://192.168.122.1:3142 (currently
-hard-coded), visible to both the host system and the VM. If you don't
-have that, edit run.py accordingly.
-
-$HOME/.cache/flatdeb on the host system also needs to be made available
-to both the host system and the VM via HTTP, at
-http://192.168.122.1:3142/local/flatdeb (again currently hard-coded). A
-convenient way to do this is to make it a symlink to a directory that is
-exported via apt-cacher-ng's LocalDirs directive:
-
-    $ cat /etc/apt-cacher-ng/local.conf
-    LocalDirs: local /srv/acng/local
-    $ ls -l ~/.cache/flatdeb
-    lrwxrwxrwx ... /home/user/.cache/flatdeb -> /srv/acng/local/flatdeb
+You will probably want to use a caching proxy such as apt-cacher-ng to
+download `.deb` packages, which you can do by prefixing all the commands
+below with `env http_proxy=http://192.168.122.1:3142` or similar.
 
 Finally, put exported Ubuntu, Steam Runtime and SteamOS keys in
 suites/valve-archive-keyring.gpg (0x9E46D8DCD0BBF5AE and
 0x7DEEB7438ABDDD96), suites/valve-steam-keyring.gpg (0xF24AEA9FB05498B7)
 and suites/ubuntu-archive-keyring.gpg (ubuntu-archive-keyring).
 
-On the host (assuming VM is "ikea.virt"):
+Then you can run:
 
-    ssh-copy-id ikea.virt   # if not already done
-    git submodule update    # if not already done
-    flatdeb/run.py --remote=ikea.virt --suite=scout_beta \
-        --arch=amd64,i386 base
-    flatdeb/run.py --remote=ikea.virt --suite=scout_beta \
-        --arch=i386 base
-    flatdeb/run.py --remote=ikea.virt --suite=scout_beta \
-        --arch=amd64,i386 runtimes \
+    flatdeb/run.py --suite=scout_beta --arch=amd64,i386 base
+    flatdeb/run.py --suite=scout_beta --arch=i386 base
+    flatdeb/run.py --suite=scout_beta --arch=amd64,i386 runtimes \
         runtimes/com.valvesoftware.SteamRuntime.yaml
-    flatdeb/run.py --remote=ikea.virt --suite=scout_beta \
-        --arch=i386 runtimes \
+    flatdeb/run.py --suite=scout_beta --arch=i386 runtimes \
         runtimes/com.valvesoftware.SteamRuntime.yaml
-    flatdeb/run.py --remote=ikea.virt --arch=amd64,i386 app \
+    flatdeb/run.py --arch=amd64,i386 app \
         apps/org.debian.packages.mesa_utils.yaml
-    flatdeb/run.py --remote=ikea.virt --arch=i386 app \
+    flatdeb/run.py --arch=i386 app \
         apps/org.debian.packages.mesa_utils.yaml
-    flatdeb/run.py --remote=ikea.virt --arch=amd64,i386 app \
+    flatdeb/run.py --arch=amd64,i386 app \
         apps/com.valvesoftware.Steam.yaml
-    flatdeb/run.py --remote=ikea.virt --arch=i386 app \
+    flatdeb/run.py --arch=i386 app \
         apps/com.valvesoftware.Steam.yaml
 
 On the host, or a test machine onto which you have copied
