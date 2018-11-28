@@ -2,20 +2,16 @@
 apt_components:
   - main
 debootstrap_script: 'precise'
-# The precise debootstrap script isn't compatible with merged /usr, and
-# neither is the precise package set, but we can do it after upgrading to
-# scout.
+# """
+# A copy of the C library was found in an unexpected directory:
+#   '/usr/lib/x86_64-linux-gnu/libc-2.15.so'
+# It is not safe to upgrade the C library in this situation;
+# please remove that copy of the C library or get it out of
+# '/usr/lib/x86_64-linux-gnu' and try again.
+# """
 can_merge_usr: after_debootstrap
 strip_source_version_suffix: '\+srt[0-9]+'
 sources:
-  - apt_uri: 'http://archive.ubuntu.com/ubuntu'
-    apt_suite: 'precise'
-    keyring: 'ubuntu-archive-keyring.gpg'
-    apt_components:
-      - main
-      - universe
-      - restricted
-      - multiverse
   - apt_uri: 'http://repo.steampowered.com/steamrt'
     keyring: 'valve-archive-keyring.gpg'
     apt_components:
@@ -25,16 +21,3 @@ sources:
     keyring: 'valve-steam-keyring.gpg'
     apt_components:
       - steam
-  - apt_uri: 'https://people.collabora.com/~smcv/steamrt'
-    # apt_uri: 'http://192.168.122.1:3142/local/steamrt'
-    apt_trusted: true
-    apt_suite: 'scout-runtime'
-    apt_components:
-      - main
-  - apt_uri: 'https://people.collabora.com/~smcv/steamrt'
-    # apt_uri: 'http://192.168.122.1:3142/local/steamrt'
-    apt_trusted: true
-    apt_suite: 'scout-multiarch'
-    apt_components:
-      - main
-...
