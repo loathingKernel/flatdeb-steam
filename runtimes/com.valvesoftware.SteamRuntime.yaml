@@ -229,6 +229,12 @@ add_packages_multiarch:
   - libtxc-dxtn-s2tc0
 
 add_packages:
+  # Not in the real Runtime, but Steam tries to run it. Since Ubuntu
+  # 14.10 (utopic) and Debian 8 (jessie) it's in coreutils instead.
+  - realpath
+
+# Disabled for now
+.add_packages:
   - zenity
 
   # Not in the real Runtime, but steam-launcher dependencies
@@ -255,10 +261,6 @@ add_packages:
   # Not in the real Runtime, but Steam tries to run "xdg-user-dir %s".
   # So does libcef.so.
   - xdg-user-dirs
-
-  # Not in the real Runtime, but Steam tries to run it. Since Ubuntu
-  # 14.10 (utopic) and Debian 8 (jessie) it's in coreutils instead.
-  - realpath
 
 platform:
   null: null
