@@ -102,6 +102,7 @@ actions:
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg"
       cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg.built-using"
+      cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.deb822.gz"
 
   # No point in archiving these
   - action: run

@@ -99,6 +99,7 @@ actions:
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg"
       cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg.built-using"
+      cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.deb822.gz"
 
   {{ if $sdk }}
   - action: run
@@ -109,6 +110,9 @@ actions:
     command: 'cp "$RECIPEDIR/manifest.dpkg.built-using.platform" "$ROOTDIR/usr"'
   - action: run
     chroot: false
+    command: 'cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"'
+  - action: run
+    chroot: false
     command: '"$RECIPEDIR/collect-source-code" --strip-source-version-suffix="{{ $strip_source_version_suffix }}" "$ROOTDIR"'
   {{ else }}
   - action: run
@@ -117,6 +121,9 @@ actions:
   - action: run
     chroot: false
     command: 'cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$RECIPEDIR/manifest.dpkg.built-using.platform"'
+  - action: run
+    chroot: false
+    command: 'mv "$ROOTDIR/usr/manifest.deb822.gz" "$RECIPEDIR/manifest.platform.deb822.gz"'
   - action: run
     chroot: true
     command: 'dpkg --purge --force-remove-essential --force-depends dpkg'

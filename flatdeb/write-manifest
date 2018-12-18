@@ -100,6 +100,11 @@ if in_chroot dpkg --compare-versions "$dpkg_version" ge 1.16.2; then
     in_chroot dpkg-query -W -f \
         '${binary:Package}\t${Version}\t${Source}\t${Installed-Size}\n' \
         | LC_ALL=C sort -u >&3
+    in_chroot dpkg-query -W -f '${binary:Package}\n' \
+        | LC_ALL=C sort -u \
+        | in_chroot xargs -d '\n' dpkg-query -s \
+        | gzip -9nc \
+        > "$sysroot/usr/manifest.deb822.gz"
 else
     in_chroot dpkg-query -W -f \
         '${Package}:${Architecture}\t${Version}\t${Source}\t${Installed-Size}\n' \
