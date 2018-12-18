@@ -138,6 +138,10 @@ if ! is_installed python; then
     unwanted+=(python-minimal python2.7-minimal)
 fi
 
+if ! ( is_installed gnupg || is_installed gnupg2 || is_installed gnupg1 ); then
+    unwanted+=(gpgv)
+fi
+
 if [ -n "${unwanted[*]}" ]; then
     echo "Packages we will forcibly remove (first round):"
     for p in "${unwanted[@]}"; do
