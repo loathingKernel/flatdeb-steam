@@ -30,7 +30,6 @@ id_prefix: com.valvesoftware.SteamRuntime
 add_packages_multiarch:
   - dconf-gsettings-backend
   - freeglut3
-  - gcc-4.6-base
   - gtk2-engines
   - gtk2-engines-murrine
   - gtk2-engines-pixbuf
