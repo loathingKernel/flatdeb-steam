@@ -277,6 +277,10 @@ platform:
   null: null
 
 sdk:
+  add_packages_multiarch:
+    - libopus-dev
+    - libopusfile-dev
+
   # Not adding these to the SDK for now to get a baseline for what's
   # needed for a self-contained image
   .add_packages:
@@ -368,8 +372,6 @@ sdk:
     - libnss3-dev
     - libogg-dev
     - libopenal-dev
-    - libopus-dev
-    - libopusfile-dev
     - liborc-0.4-dev
     - libp11-kit-dev
     - libpango1.0-dev
