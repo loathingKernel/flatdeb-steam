@@ -286,6 +286,7 @@ sdk:
     - debhelper
     - dpkg-dev
     - fakeroot
+    - fcitx-libs-dev
     - freeglut3-dev
     - g++-4.8
     - gcc-4.8
