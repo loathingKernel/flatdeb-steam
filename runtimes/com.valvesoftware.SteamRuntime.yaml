@@ -233,21 +233,28 @@ add_packages_multiarch:
   - libtxc-dxtn-s2tc0
 
 add_packages:
+  # Not in the real Runtime, but useful and depended on by Steam
+  - curl
+  - file
+
   # Not in the real Runtime, but Steam tries to run it. Since Ubuntu
   # 14.10 (utopic) and Debian 8 (jessie) it's in coreutils instead.
   - realpath
 
-# Disabled for now
-.add_packages:
+  # Not in the real Runtime, but useful for debugging.
+  - xterm
+
+  # Not in the real Runtime, but xz is a basic tool
+  - xz-utils
+
+  # In the real Runtime, although it apparently doesn't work
   - zenity
 
+# These are disabled for now
+.add_packages:
   # Not in the real Runtime, but steam-launcher dependencies
-  - curl
-  - file
   - python
   - python-apt
-  - xterm
-  - xz-utils
 
   # Not in the real Runtime, but Steam tries to run lspci
   - pciutils
