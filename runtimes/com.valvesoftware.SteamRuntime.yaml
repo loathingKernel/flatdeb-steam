@@ -226,6 +226,7 @@ add_packages_multiarch:
   - libxxf86vm1
   - zlib1g
 
+.add_packages_multiarch:
   # Not in the real Runtime, but needed for Intel gfx
   - libgl1-mesa-dri
   - libgl1-mesa-glx
