@@ -195,22 +195,3 @@ if [ -n "${unwanted[*]}" ]; then
     in_chroot dpkg --purge --force-remove-essential --force-depends \
         "${unwanted[@]}"
 fi
-
-unwanted=()
-
-echo "Purging leftover configuration files:"
-in_chroot dpkg-query --show -f '${Status}:${Package}\n' \
-| while read -r line; do
-    case "$line" in
-        (*\ config-files:*)
-            p="${line##*:}"
-            echo "- $p"
-            unwanted+=("$p")
-            ;;
-    esac
-done
-
-if [ -n "${unwanted[*]}" ]; then
-    in_chroot dpkg --purge --force-remove-essential --force-depends \
-        "${unwanted[@]}"
-fi

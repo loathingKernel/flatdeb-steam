@@ -505,6 +505,7 @@ class Builder:
                 'make-flatpak-friendly',
                 'platformize',
                 'prepare-runtime',
+                'purge-conffiles',
                 'put-ldconfig-in-path',
                 'usrmerge',
                 'write-manifest',

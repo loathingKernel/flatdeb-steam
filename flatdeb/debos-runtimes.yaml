@@ -73,6 +73,10 @@ actions:
     command: '"$RECIPEDIR/platformize" "$ROOTDIR"'
   {{ end }}
 
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
+
   {{ if $post_script }}
   - action: run
     chroot: true
@@ -92,6 +96,10 @@ actions:
     script: '{{ $platform_post_script }}'
   {{ end }}
   {{ end }}
+
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
 
   - action: run
     chroot: false
