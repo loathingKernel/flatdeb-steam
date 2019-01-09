@@ -87,7 +87,7 @@ usrmerge () {
 ( cd "$sysroot"; find bin sbin lib* -not -xtype d -print0 ) |
 while read -r -d '' f; do
     if chroot "$sysroot" test -e "/usr/$f"; then
-        usrmerge "$sysroot" "/$f"
+        usrmerge "/$f"
     fi
 done
 
