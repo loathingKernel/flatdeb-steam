@@ -226,8 +226,10 @@ add_packages_multiarch:
   - libxxf86vm1
   - zlib1g
 
-.add_packages_multiarch:
-  # Not in the real Runtime, but needed for Intel gfx
+  # Not in the real Runtime, but needed for Intel gfx.
+  # libgl1-mesa-glx is pulled in by libglew1.10 etc., so we might as
+  # well include a complete (albeit obsolete) copy of Mesa that can
+  # at least run llvmpipe
   - libgl1-mesa-dri
   - libgl1-mesa-glx
   - libtxc-dxtn-s2tc0
