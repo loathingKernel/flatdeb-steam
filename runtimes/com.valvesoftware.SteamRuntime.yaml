@@ -239,6 +239,9 @@ add_packages:
   - curl
   - file
 
+  # Not in the real Runtime, but Steam tries to run lspci
+  - pciutils
+
   # Not in the real Runtime, but Steam tries to run it. Since Ubuntu
   # 14.10 (utopic) and Debian 8 (jessie) it's in coreutils instead.
   - realpath
@@ -257,9 +260,6 @@ add_packages:
   # Not in the real Runtime, but steam-launcher dependencies
   - python
   - python-apt
-
-  # Not in the real Runtime, but Steam tries to run lspci
-  - pciutils
 
   # Not in the real Runtime, but Steam tries to run xdg-open; also
   # strings(1) says steamui.so runs xdg-icon-resource forceupdate,
