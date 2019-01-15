@@ -14,6 +14,7 @@
 {{- $runtime := .runtime -}}
 {{- $runtime_branch := or .runtime_branch "master" -}}
 {{- $ostree_tarball := or .ostree_tarball (printf "ostree_%s_%s_%s.tar.gz" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $manifest_prefix := or .manifest_prefix (printf "ostree_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
 {{- $sources_tarball := or .sources_tarball (printf "sources_%s_%s_%s.tar.gz" $runtime $flatpak_arch $runtime_branch) -}}
 {{- $repo := or .repo "repo" -}}
 
@@ -72,6 +73,10 @@ actions:
     command: '"$RECIPEDIR/platformize" "$ROOTDIR"'
   {{ end }}
 
+  - action: run
+    chroot: false
+    command: '"$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
+
   {{ if $post_script }}
   - action: run
     chroot: true
@@ -94,7 +99,15 @@ actions:
 
   - action: run
     chroot: false
-    command: '"$RECIPEDIR/write-manifest" "$ROOTDIR"'
+    command: '"$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
+
+  - action: run
+    chroot: false
+    command: |
+      "$RECIPEDIR/write-manifest" "$ROOTDIR"
+      cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg"
+      cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg.built-using"
+      cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.deb822.gz"
 
   {{ if $sdk }}
   - action: run
@@ -105,6 +118,9 @@ actions:
     command: 'cp "$RECIPEDIR/manifest.dpkg.built-using.platform" "$ROOTDIR/usr"'
   - action: run
     chroot: false
+    command: 'cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"'
+  - action: run
+    chroot: false
     command: '"$RECIPEDIR/collect-source-code" --strip-source-version-suffix="{{ $strip_source_version_suffix }}" "$ROOTDIR"'
   {{ else }}
   - action: run
@@ -113,6 +129,9 @@ actions:
   - action: run
     chroot: false
     command: 'cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$RECIPEDIR/manifest.dpkg.built-using.platform"'
+  - action: run
+    chroot: false
+    command: 'mv "$ROOTDIR/usr/manifest.deb822.gz" "$RECIPEDIR/manifest.platform.deb822.gz"'
   - action: run
     chroot: true
     command: 'dpkg --purge --force-remove-essential --force-depends dpkg'
@@ -167,12 +186,4 @@ actions:
   - action: run
     chroot: false
     command: 'tar -zcf "$ARTIFACTDIR/{{ $sources_tarball }}" -C "$ROOTDIR/ostree/source" .'
-
-  - action: run
-    chroot: false
-    command: 'ostree --repo="$ARTIFACTDIR/{{ $repo }}" commit --branch="runtime/{{ $runtime }}.Sources/{{ $flatpak_arch }}/{{ $runtime_branch }}" --subject=Update --tree=dir="$ROOTDIR/ostree/source" --fsync=false'
   {{ end }}
-
-  - action: run
-    chroot: false
-    command: 'ostree --repo="$ARTIFACTDIR/{{ $repo }}" commit --branch="runtime/{{ $runtime }}/{{ $flatpak_arch }}/{{ $runtime_branch }}" --subject=Update --tree=dir="$ROOTDIR/ostree/main" --fsync=false'

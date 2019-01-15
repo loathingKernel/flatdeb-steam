@@ -7,37 +7,26 @@ from Debian packages.
 Walkthrough
 -----------
 
-On a Debian 9 VM (assuming username "user"):
+On a Debian 9 VM:
 
     sensible-editor /etc/apt/sources.list    # and enable backports
     apt install debootstrap systemd-container time
     apt install python3 python3-debian python3-gi python3-yaml
     apt install -t stretch-backports flatpak flatpak-builder ostree
 
+(Or install on Debian testing/unstable.)
+
 Also install the latest versions of
 [fakemachine](https://github.com/go-debos/fakemachine)
 and [debos](https://github.com/go-debos/debos).
-
-Make sure the VM's /tmp is large and mounted with the "dev" option,
-and that its /var/tmp is large and supports extended attributes.
-
-You need an apt-cacher-ng on http://192.168.122.1:3142 (currently
-hard-coded) visible to the VM. If you don't have that, edit run.py
-accordingly.
 
 Also edit org.debian.packages.openarena.yaml to specify where you have
 put local clones of ioquake3 and openarena if you can't (or don't
 want to) clone them via https.
 
-$HOME/.cache/flatdeb also needs to be made available via HTTP, at
-http://192.168.122.1:3142/local/flatdeb (again currently hard-coded). A
-convenient way to do this is to make it a symlink to a directory that is
-exported via apt-cacher-ng's LocalDirs directive:
-
-    $ cat /etc/apt-cacher-ng/local.conf
-    LocalDirs: local /srv/acng/local
-    $ ls -l ~/.cache/flatdeb
-    lrwxrwxrwx ... /home/user/.cache/flatdeb -> /srv/acng/local/flatdeb
+You will probably want to use a caching proxy such as apt-cacher-ng to
+download `.deb` packages, which you can do by prefixing all the commands
+below with `env http_proxy=http://192.168.122.1:3142` or similar.
 
 Finally, put a copy of debian-archive-keyring.gpg in this directory.
 
@@ -54,9 +43,6 @@ Then you can run:
         apps/org.debian.packages.openarena.yaml
     ./run.py --suite=stretch --arch=amd64 app \
         apps/org.debian.packages.mesa_utils.yaml
-
-If you aren't root and don't have the ability to run `sudo`, use
-`run-in-fakemachine` instead of `./run.py` for the `runtimes` steps.
 
 On the same machine, or a test machine onto which you have copied
 `$HOME/.cache/flatdeb/repo` with `rsync` or similar:

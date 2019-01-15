@@ -34,6 +34,7 @@ This is basically debos' apt action, but with more debugging.
 
 import argparse
 import logging
+import os
 import subprocess
 import sys
 import yaml
@@ -63,6 +64,10 @@ def main():
         '--as-pid2',
         'env', 'DEBIAN_FRONTEND=noninteractive',
     ]
+
+    for var in ('ftp_proxy', 'http_proxy', 'https_proxy', 'no_proxy'):
+        if var in os.environ:
+            in_chroot.append('{}={}'.format(var, os.environ[var]))
 
     subprocess.check_call(in_chroot + [
         'apt-get', 'update',

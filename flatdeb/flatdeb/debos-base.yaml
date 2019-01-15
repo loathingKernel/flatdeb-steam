@@ -9,6 +9,7 @@
 {{- $keyringpackage := or .keyringpackage "" -}}
 {{- $version := or .version "0" -}}
 {{- $ospack := or .ospack (printf "base_%s_%s_%s.tar.gz" $suite $version $architecture) -}}
+{{- $manifest_prefix := or .manifest_prefix (printf "base_%s_%s_%s" $suite $version $architecture) -}}
 
 architecture: {{ $architecture }}
 
@@ -30,6 +31,8 @@ actions:
     mirror: {{ $mirror }}
     {{ if $keyring }}
     keyring-file: {{ $keyring }}
+    {{ else }}
+    check-gpg: false
     {{ end }}
     {{ if $keyringpackage }}
     keyring-package: {{ $keyringpackage }}
@@ -46,6 +49,17 @@ actions:
     # produce the same results as the 'precise' script?
     # https://github.com/go-debos/debos/issues/16
 
+  - action: overlay
+    source: suites/{{ $suite }}/overlay
+
+  - action: run
+    chroot: false
+    command: 'rm -fr "$ROOTDIR/etc/apt/sources.list.d"'
+
+  - action: run
+    chroot: false
+    command: 'find "$ROOTDIR/etc/apt" -ls'
+
   - action: apt
     recommends: false
     packages:
@@ -53,13 +67,6 @@ actions:
       {{ if $keyringpackage }}
       - {{ $keyringpackage }}
       {{ end }}
-
-  - action: overlay
-    source: suites/{{ $suite }}/overlay
-
-  - action: run
-    chroot: false
-    command: 'rm -fr "$ROOTDIR/etc/apt/sources.list.d"'
 
   - action: run
     chroot: false
@@ -90,8 +97,12 @@ actions:
     command: 'DEBIAN_FRONTEND=noninteractive apt-get -y -q dist-upgrade'
 
   - action: run
-    chroot: true
-    command: 'dpkg-query -W'
+    chroot: false
+    command: |
+      "$RECIPEDIR/write-manifest" "$ROOTDIR"
+      cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg"
+      cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg.built-using"
+      cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.deb822.gz"
 
   # No point in archiving these
   - action: run

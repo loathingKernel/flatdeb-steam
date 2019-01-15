@@ -18,18 +18,14 @@ modules:
     sources:
       - type: git
         dest: src
-        url: https://anonscm.debian.org/git/pkg-games/ioquake3.git
+        url: https://salsa.debian.org/games-team/ioquake3.git
         # Or replace with a local checkout:
         #path: /home/smcv/src/debian/ioquake3    # TODO: edit me
-        branch: debian/stretch
+        branch: debian/master
       - type: file
         path: deb-buildapi/configure
       - type: file
         path: deb-buildapi/Makefile
-      - type: patch
-        path: apps/ioquake3/0001-Don-t-set-DEFAULT_BASEDIR.patch
-      - type: patch
-        path: apps/ioquake3/0002-Skip-dh_apparmor-when-built-with-profile-pkg.flatpak.patch
     cleanup:
       - ioq3ded*
       - qagame*.so
@@ -37,7 +33,7 @@ modules:
     sources:
       - type: git
         dest: src
-        url: https://anonscm.debian.org/git/pkg-games/openarena.git
+        url: https://salsa.debian.org/games-team/openarena.git
         # Or replace with a local checkout:
         #path: /home/smcv/src/debian/openarena   # TODO: edit me
         branch: debian/master
