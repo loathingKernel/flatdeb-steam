@@ -239,6 +239,9 @@ add_packages:
   - curl
   - file
 
+  # Not in the real Runtime, but xdg-open is useful
+  - flatpak-xdg-utils
+
   # Not in the real Runtime, but Steam tries to run lspci
   - pciutils
 
@@ -254,6 +257,10 @@ add_packages:
 
   # In the real Runtime, although it apparently doesn't work
   - zenity
+
+post_script: |
+  ln -s /usr/libexec/flatpak-xdg-utils/xdg-email /usr/bin/
+  ln -s /usr/libexec/flatpak-xdg-utils/xdg-open /usr/bin/
 
 platform:
   null: null
