@@ -261,6 +261,8 @@ add_packages:
 post_script: |
   ln -s /usr/libexec/flatpak-xdg-utils/xdg-email /usr/bin/
   ln -s /usr/libexec/flatpak-xdg-utils/xdg-open /usr/bin/
+  install -d -m755 /usr/lib/locale
+  install -d -m755 /usr/share/i18n
 
 platform:
   null: null
