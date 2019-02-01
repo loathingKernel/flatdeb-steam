@@ -1,0 +1,9 @@
+---
+apt_components:
+  - main
+  - universe
+debootstrap_script: 'bionic'
+can_merge_usr: true
+sources:
+  - apt_uri: 'http://archive.ubuntu.com/ubuntu'
+    keyring: 'ubuntu-archive-keyring.gpg'
