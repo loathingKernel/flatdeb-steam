@@ -64,7 +64,6 @@ add_packages_multiarch:
   - libfontconfig1
   - libfreetype6
   - libgcc1
-  - libgconf-2-4
   - libgdk-pixbuf2.0-0
   - libglib2.0-0
   - libglu1-mesa
