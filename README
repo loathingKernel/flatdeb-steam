@@ -34,9 +34,9 @@ Then you can run:
     flatdeb/run.py --suite=scout_beta --arch=amd64,i386 base
     flatdeb/run.py --suite=scout_beta --arch=i386 base
     flatdeb/run.py --suite=scout_beta --arch=amd64,i386 runtimes \
-        runtimes/com.valvesoftware.SteamRuntime.yaml
+        runtimes/scout.yaml
     flatdeb/run.py --suite=scout_beta --arch=i386 runtimes \
-        runtimes/com.valvesoftware.SteamRuntime.yaml
+        runtimes/scout.yaml
     flatdeb/run.py --arch=amd64,i386 app \
         apps/org.debian.packages.mesa_utils.yaml
     flatdeb/run.py --arch=i386 app \
