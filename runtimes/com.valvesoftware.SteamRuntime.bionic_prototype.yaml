@@ -144,7 +144,6 @@ add_packages_multiarch:
   - libwind0-heimdal
   - libwrap0
   - libx11-6
-  - libx11-data
   - libx11-xcb1
   - libxau6
   - libxaw7
@@ -199,6 +198,8 @@ add_packages_multiarch:
   - libgl1-mesa-glx
 
 add_packages:
+  - libx11-data
+
   # Not in the real Runtime, but useful and depended on by Steam
   - curl
   - file
