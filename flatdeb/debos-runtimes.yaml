@@ -27,21 +27,25 @@ actions:
 
   # TODO: This duplicates what we should have done in debos-base.yaml
   - action: run
+    label: disable-services
     chroot: false
     command: '"$RECIPEDIR/disable-services" "$ROOTDIR"'
 
   # TODO: This duplicates what we should have done in debos-base.yaml
   - action: run
+    label: clean-up-base
     chroot: false
     command: '"$RECIPEDIR/clean-up-base" "$ROOTDIR"'
 
   - action: run
+    label: prepare-runtime
     chroot: false
     command: '"$RECIPEDIR/prepare-runtime" "$ROOTDIR"'
 
   {{ if $packages }}
   {{ if $apt_debug }}
   - action: run
+    label: apt-install
     chroot: false
     command: $RECIPEDIR/apt-install "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/packages.yaml"
   {{ else }}
@@ -58,6 +62,7 @@ actions:
   {{ if and $sdk $sdk_packages }}
   {{ if $apt_debug }}
   - action: run
+    label: apt-install
     chroot: false
     command: $RECIPEDIR/apt-install "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/sdk_packages.yaml"
   {{ else }}
@@ -69,16 +74,19 @@ actions:
 
   {{ if not $sdk }}
   - action: run
+    label: platformize
     chroot: false
     command: '"$RECIPEDIR/platformize" "$ROOTDIR"'
   {{ end }}
 
   - action: run
+    label: purge-conffiles
     chroot: false
     command: '"$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
 
   {{ if $post_script }}
   - action: run
+    label: post_script
     chroot: true
     script: '{{ $post_script }}'
   {{ end }}
@@ -86,22 +94,26 @@ actions:
   {{ if $sdk }}
   {{ if $sdk_post_script }}
   - action: run
+    label: sdk_post_script
     chroot: true
     script: '{{ $sdk_post_script }}'
   {{ end }}
   {{ else }}
   {{ if $platform_post_script }}
   - action: run
+    label: platform_post_script
     chroot: true
     script: '{{ $platform_post_script }}'
   {{ end }}
   {{ end }}
 
   - action: run
+    label: purge-conffiles again
     chroot: false
     command: '"$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
 
   - action: run
+    label: write-manifest
     chroot: false
     command: |
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
@@ -111,50 +123,63 @@ actions:
 
   {{ if $sdk }}
   - action: run
+    label: copy manifest from platform
     chroot: false
     command: 'cp "$RECIPEDIR/manifest.dpkg.platform" "$ROOTDIR/usr"'
   - action: run
+    label: copy manifest from platform
     chroot: false
     command: 'cp "$RECIPEDIR/manifest.dpkg.built-using.platform" "$ROOTDIR/usr"'
   - action: run
+    label: copy manifest from platform
     chroot: false
     command: 'cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"'
   - action: run
+    label: collect-source-code
     chroot: false
     command: '"$RECIPEDIR/collect-source-code" --strip-source-version-suffix="{{ $strip_source_version_suffix }}" "$ROOTDIR"'
   {{ else }}
   - action: run
+    label: copy manifest for SDK
     chroot: false
     command: 'cp "$ROOTDIR/usr/manifest.dpkg" "$RECIPEDIR/manifest.dpkg.platform"'
   - action: run
+    label: copy manifest for SDK
     chroot: false
     command: 'cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$RECIPEDIR/manifest.dpkg.built-using.platform"'
   - action: run
+    label: copy manifest for SDK
     chroot: false
     command: 'mv "$ROOTDIR/usr/manifest.deb822.gz" "$RECIPEDIR/manifest.platform.deb822.gz"'
   - action: run
+    label: dpkg --purge dpkg
     chroot: true
     command: 'dpkg --purge --force-remove-essential --force-depends dpkg'
   {{ end }}
 
   - action: run
+    label: hard-link-alternatives
     chroot: true
     script: hard-link-alternatives
 
   - action: run
+    label: usrmerge
     chroot: false
     command: '"$RECIPEDIR/usrmerge" "$ROOTDIR"'
 
   - action: run
+    label: put-ldconfig-in-path
     chroot: true
     script: put-ldconfig-in-path
 
   {{ if $sdk }}
   - action: run
+    label: make-flatpak-friendly --sdk
     chroot: false
     command: '"$RECIPEDIR/make-flatpak-friendly" --sdk "$ROOTDIR"'
   {{ else }}
   - action: run
+    label: make-flatpak-friendly
     chroot: false
     command: '"$RECIPEDIR/make-flatpak-friendly" "$ROOTDIR"'
   {{ end }}
@@ -168,10 +193,12 @@ actions:
   # TODO: ca-certificates extension to get newer certs?
 
   - action: run
+    label: create ostree/main
     chroot: false
     command: 'install -d "$ROOTDIR/ostree/main"'
 
   - action: run
+    label: move usr to ostree/main/files
     chroot: false
     command: 'mv "$ROOTDIR/usr" "$ROOTDIR/ostree/main/files"'
 
@@ -179,11 +206,13 @@ actions:
     source: runtimes/{{ $runtime }}/overlay
 
   - action: run
+    label: pack ostree/main
     chroot: false
     command: 'tar -zcf "$ARTIFACTDIR/{{ $ostree_tarball }}" -C "$ROOTDIR/ostree/main" files metadata'
 
   {{ if $sdk }}
   - action: run
+    label: pack ostree/source
     chroot: false
     command: 'tar -zcf "$ARTIFACTDIR/{{ $sources_tarball }}" -C "$ROOTDIR/ostree/source" .'
   {{ end }}
