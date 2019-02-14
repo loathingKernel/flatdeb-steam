@@ -100,6 +100,38 @@ class AptSource:
         self.components = components
         self.trusted = trusted
 
+    @classmethod
+    def from_string(
+        cls,
+        line,
+    ):
+        tokens = line.split()
+        trusted = False
+
+        if len(tokens) < 4:
+            raise ValueError(
+                'apt sources must be specified in the form '
+                '"deb http://URL SUITE COMPONENT [COMPONENT...]"')
+
+        if tokens[0] not in ('deb', 'deb-src'):
+            raise ValueError(
+                'apt sources must start with "deb " or "deb-src "')
+
+        if tokens[1] == '[trusted=yes]':
+            trusted = True
+            tokens = [tokens[0]] + tokens[2:]
+        elif tokens[1].startswith('['):
+            raise ValueError(
+                'The only apt source option supported is [trusted=yes]')
+
+        return cls(
+            kind=tokens[0],
+            uri=tokens[1],
+            suite=tokens[2],
+            components=tokens[3:],
+            trusted=trusted,
+        )
+
     def __str__(self):
         if self.trusted:
             maybe_options = ' [trusted=yes]'
@@ -301,6 +333,14 @@ class Builder:
         parser.add_argument('--architecture', '--arch', '-a')
         parser.add_argument('--runtime-branch', default=self.runtime_branch)
         parser.add_argument('--version', action='store_true')
+        parser.add_argument(
+            '--replace-apt-source', action='append', default=[])
+        parser.add_argument(
+            '--remove-apt-source', action='append', default=[])
+        parser.add_argument(
+            '--add-apt-source', action='append', default=[])
+        parser.add_argument(
+            '--add-apt-keyring', action='append', default=[])
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         subparser = subparsers.add_parser(
@@ -327,6 +367,12 @@ class Builder:
         )
 
         args = parser.parse_args()
+
+        for replacement in args.replace_apt_source:
+            if '=' not in replacement:
+                parser.error(
+                    '--replace-apt-source argument must be in the form '
+                    '"LABEL=deb http://ARCHIVE SUITE COMPONENT[...]"')
 
         if args.version:
             print('flatdeb {}'.format(VERSION))
@@ -382,6 +428,30 @@ class Builder:
             )
             trusted = source.get('apt_trusted', False)
 
+            if 'label' in source:
+                replaced = False
+
+                for replacement in reversed(args.replace_apt_source):
+                    key, value = replacement.split('=', 1)
+
+                    if key == source['label']:
+                        tokens = value.split()
+
+                        if tokens[0] == 'both':
+                            self.apt_sources.append(
+                                AptSource.from_string('deb' + value[4:]))
+                            self.apt_sources.append(
+                                AptSource.from_string('deb-src' + value[4:]))
+                        else:
+                            self.apt_sources.append(
+                                AptSource.from_string(value))
+
+                        replaced = True
+                        break
+
+                if replaced or source['label'] in args.remove_apt_source:
+                    continue
+
             if source.get('deb', True):
                 self.apt_sources.append(AptSource(
                     'deb', uri, suite,
@@ -395,6 +465,12 @@ class Builder:
                     components=components,
                     trusted=trusted,
                 ))
+
+            for addition in args.add_apt_source:
+                self.apt_sources.append(AptSource.from_string(addition))
+
+            for addition in args.add_apt_keyring:
+                self.apt_keyrings.append(addition)
 
         if self.apt_sources[0].kind != 'deb':
             parser.error('First apt source must provide .deb packages')
