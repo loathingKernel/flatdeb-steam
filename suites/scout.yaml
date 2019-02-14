@@ -12,11 +12,13 @@ debootstrap_script: 'precise'
 can_merge_usr: after_debootstrap
 strip_source_version_suffix: '\+srt[0-9]+'
 sources:
-  - apt_uri: 'http://repo.steampowered.com/steamrt'
+  - label: steamrt
+    apt_uri: 'http://repo.steampowered.com/steamrt'
     keyring: 'valve-archive-keyring.gpg'
     apt_components:
       - main
-  - apt_uri: 'http://repo.steampowered.com/steam'
+  - label: steam
+    apt_uri: 'http://repo.steampowered.com/steam'
     apt_suite: 'precise'
     keyring: 'valve-steam-keyring.gpg'
     apt_components:
