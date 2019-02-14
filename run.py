@@ -106,7 +106,7 @@ class Builder:
         self.build_area = os.path.join(
             self.xdg_cache_dir, 'flatdeb',
         )
-        self.repo = os.path.join(self.build_area, 'repo')
+        self.ostree_repo = os.path.join(self.build_area, 'ostree-repo')
 
         self.__dpkg_archs = []
         self.flatpak_arch = None
@@ -263,7 +263,7 @@ class Builder:
             '--export-bundles', action='store_true', default=False,
         )
         parser.add_argument('--build-area', default=self.build_area)
-        parser.add_argument('--repo', default=self.repo)
+        parser.add_argument('--ostree-repo', default=self.ostree_repo)
         parser.add_argument('--suite', '-d', default=self.apt_suite)
         parser.add_argument('--architecture', '--arch', '-a')
         parser.add_argument('--runtime-branch', default=self.runtime_branch)
@@ -305,7 +305,7 @@ class Builder:
         self.build_area = args.build_area
         self.apt_suite = args.suite
         self.runtime_branch = args.runtime_branch
-        self.repo = args.repo
+        self.ostree_repo = args.ostree_repo
         self.export_bundles = args.export_bundles
         self.ostree_mode = args.ostree_mode
 
@@ -321,7 +321,7 @@ class Builder:
         self.flatpak_arch = self.dpkg_to_flatpak_arch(self.primary_dpkg_arch)
 
         self.ensure_build_area()
-        os.makedirs(os.path.dirname(self.repo), exist_ok=True)
+        os.makedirs(os.path.dirname(self.ostree_repo), exist_ok=True)
 
         if args.command is None:
             parser.error('A command is required')
@@ -475,10 +475,10 @@ class Builder:
             os.rename(output + '.new', output)
 
     def ensure_local_repo(self):
-        os.makedirs(os.path.dirname(self.repo), 0o755, exist_ok=True)
+        os.makedirs(os.path.dirname(self.ostree_repo), 0o755, exist_ok=True)
         subprocess.check_call([
             'ostree',
-            '--repo=' + self.repo,
+            '--repo=' + self.ostree_repo,
             'init',
             '--mode={}'.format(self.ostree_mode),
         ])
@@ -573,7 +573,7 @@ class Builder:
                     '-t', 'runtime_branch:{}'.format(self.runtime_branch),
                     '-t', 'strip_source_version_suffix:{}'.format(
                         self.strip_source_version_suffix),
-                    '-t', 'repo:repo',
+                    '-t', 'ostree_repo:ostree_repo',
                 ]
 
                 if packages:
@@ -688,7 +688,7 @@ class Builder:
                     subprocess.check_call([
                         'time',
                         'ostree',
-                        '--repo=' + self.repo,
+                        '--repo=' + self.ostree_repo,
                         'commit',
                         '--branch=runtime/{}.Sources/{}/{}'.format(
                             runtime,
@@ -706,7 +706,7 @@ class Builder:
                 subprocess.check_call([
                     'time',
                     'ostree',
-                    '--repo=' + self.repo,
+                    '--repo=' + self.ostree_repo,
                     'commit',
                     '--branch=runtime/{}/{}/{}'.format(
                         runtime,
@@ -725,7 +725,7 @@ class Builder:
             subprocess.check_call([
                 'time',
                 'ostree',
-                '--repo=' + self.repo,
+                '--repo=' + self.ostree_repo,
                 'prune',
                 '--refs-only',
                 '--depth=1',
@@ -735,7 +735,7 @@ class Builder:
                 'time',
                 'flatpak',
                 'build-update-repo',
-                self.repo,
+                self.ostree_repo,
             ])
 
             if self.export_bundles:
@@ -752,7 +752,7 @@ class Builder:
                         'flatpak',
                         'build-bundle',
                         '--runtime',
-                        self.repo,
+                        self.ostree_repo,
                         output + '.new',
                         prefix + suffix,
                         self.runtime_branch,
@@ -1020,14 +1020,14 @@ class Builder:
                 'flatpak', '--user',
                 'remote-add', '--if-not-exists', '--no-gpg-verify',
                 'flatdeb',
-                'file://{}'.format(urllib.parse.quote(self.repo)),
+                'file://{}'.format(urllib.parse.quote(self.ostree_repo)),
             ])
             subprocess.check_call([
                 'env',
                 'XDG_DATA_HOME={}/home'.format(scratch),
                 'flatpak', '--user',
                 'remote-modify', '--no-gpg-verify',
-                '--url=file://{}'.format(urllib.parse.quote(self.repo)),
+                '--url=file://{}'.format(urllib.parse.quote(self.ostree_repo)),
                 'flatdeb',
             ])
 
@@ -1230,7 +1230,7 @@ class Builder:
                 scratch,                # directory to cd into
                 'flatpak-builder',
                 '--arch={}'.format(self.flatpak_arch),
-                '--repo={}'.format(self.repo),
+                '--repo={}'.format(self.ostree_repo),
                 '--bundle-sources',
                 os.path.join(scratch, 'workdir'),
                 json_manifest,
@@ -1249,7 +1249,7 @@ class Builder:
                     'XDG_DATA_HOME={}/home'.format(scratch),
                     'flatpak',
                     'build-bundle',
-                    self.repo,
+                    self.ostree_repo,
                     output + '.new',
                     manifest['id'],
                     manifest['branch'],
