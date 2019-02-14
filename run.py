@@ -84,6 +84,37 @@ _DEBOS_BASE_RECIPE = os.path.join(
 _DEBOS_RUNTIMES_RECIPE = os.path.join(
     os.path.dirname(__file__), 'flatdeb', 'debos-runtimes.yaml')
 
+
+class AptSource:
+    def __init__(
+        self,
+        kind,
+        uri,
+        suite,
+        components=('main',),
+        trusted=False
+    ):
+        self.kind = kind
+        self.uri = uri
+        self.suite = suite
+        self.components = components
+        self.trusted = trusted
+
+    def __str__(self):
+        if self.trusted:
+            maybe_options = ' [trusted=yes]'
+        else:
+            maybe_options = ''
+
+        return '%s%s %s %s %s' % (
+            self.kind,
+            maybe_options,
+            self.uri,
+            self.suite,
+            ' '.join(self.components),
+        )
+
+
 class Builder:
 
     """
@@ -118,6 +149,8 @@ class Builder:
         self.export_bundles = False
         self.sources_required = set()
         self.strip_source_version_suffix = None
+        self.apt_keyrings = []
+        self.apt_sources = []
 
         self.logger = logger.getChild('Builder')
 
@@ -334,6 +367,38 @@ class Builder:
         self.strip_source_version_suffix = self.suite_details.get(
             'strip_source_version_suffix', '')
 
+        for source in self.suite_details['sources']:
+            keyring = source.get('keyring')
+
+            if keyring is not None:
+                self.apt_keyrings.append(keyring)
+
+            uri = source['apt_uri']
+            suite = source.get('apt_suite', self.apt_suite)
+            suite = suite.replace('*', self.apt_suite)
+            components = source.get(
+                'apt_components',
+                self.suite_details.get('apt_components', ['main'])
+            )
+            trusted = source.get('apt_trusted', False)
+
+            if source.get('deb', True):
+                self.apt_sources.append(AptSource(
+                    'deb', uri, suite,
+                    components=components,
+                    trusted=trusted,
+                ))
+
+            if source.get('deb-src', True):
+                self.apt_sources.append(AptSource(
+                    'deb-src', uri, suite,
+                    components=components,
+                    trusted=trusted,
+                ))
+
+        if self.apt_sources[0].kind != 'deb':
+            parser.error('First apt source must provide .deb packages')
+
         getattr(
             self, 'command_' + args.command.replace('-', '_'))(**vars(args))
 
@@ -342,8 +407,8 @@ class Builder:
 
     @property
     def apt_uris(self):
-        for source in self.suite_details['sources']:
-            yield source['apt_uri']
+        for source in self.apt_sources:
+            yield source.uri
 
     def ensure_build_area(self):
         os.makedirs(self.xdg_cache_dir, 0o700, exist_ok=True)
@@ -357,9 +422,8 @@ class Builder:
             )
             self.ensure_build_area()
 
-            apt_suite = self.suite_details['sources'][0].get(
-                'apt_suite', self.apt_suite)
-
+            # debootstrap only supports one suite, so we use the first
+            apt_suite = self.apt_sources[0].suite
             dest_recipe = os.path.join(scratch, 'flatdeb.yaml')
             shutil.copyfile(_DEBOS_BASE_RECIPE, dest_recipe)
 
@@ -417,7 +481,7 @@ class Builder:
                 '-t', 'architecture:{}'.format(self.primary_dpkg_arch),
                 '-t', 'suite:{}'.format(apt_suite),
                 '-t', 'mirror:{}'.format(
-                    self.suite_details['sources'][0]['apt_uri'],
+                    self.apt_sources[0].uri,
                 ),
                 '-t', 'ospack:{}'.format(tarball + '.new'),
                 '-t', 'manifest_prefix:base-{}-{}'.format(
@@ -434,9 +498,7 @@ class Builder:
                 ),
             ]
 
-            keyring = self.suite_details['sources'][0].get('keyring')
-
-            if keyring is not None:
+            for keyring in self.apt_keyrings:
                 if os.path.exists(os.path.join('suites', keyring)):
                     keyring = os.path.join('suites', keyring)
                 elif os.path.exists(keyring):
@@ -459,10 +521,12 @@ class Builder:
                         os.path.basename(keyring),
                     )
                 )
-            else:
-                keyring = ''
 
-            components = self.suite_details.get('apt_components', ['main'])
+                # debootstrap only supports one keyring and one apt source,
+                # so we take the first one
+                break
+
+            components = self.apt_sources[0].components
 
             if components:
                 argv.append('-t')
@@ -773,52 +837,25 @@ class Builder:
             'w',
             encoding='utf-8'
         ) as writer:
-            for source in self.suite_details['sources']:
-                suite = source.get('apt_suite', self.apt_suite)
-                suite = suite.replace('*', self.apt_suite)
-                components = source.get(
-                    'apt_components',
-                    self.suite_details.get(
-                        'apt_components',
-                        ['main']))
+            for source in self.apt_sources:
+                writer.write('{}\n'.format(source))
 
-                options = []
-
-                if source.get('apt_trusted', False):
-                    options.append('trusted=yes')
-
-                if options:
-                    options_str = ' [' + ' '.join(options) + ']'
+            for keyring in self.apt_keyrings:
+                if os.path.exists(os.path.join('suites', keyring)):
+                    keyring = os.path.join('suites', keyring)
+                elif os.path.exists(keyring):
+                    pass
                 else:
-                    options_str = ''
+                    raise RuntimeError('Cannot open {}'.format(keyring))
 
-                for prefix in ('deb', 'deb-src'):
-                    writer.write('{}{} {} {} {}\n'.format(
-                        prefix,
-                        options_str,
-                        source['apt_uri'],
-                        suite,
-                        ' '.join(components),
-                    ))
-
-                keyring = source.get('keyring')
-
-                if keyring is not None:
-                    if os.path.exists(os.path.join('suites', keyring)):
-                        keyring = os.path.join('suites', keyring)
-                    elif os.path.exists(keyring):
-                        pass
-                    else:
-                        raise RuntimeError('Cannot open {}'.format(keyring))
-
-                    shutil.copyfile(
-                        os.path.abspath(keyring),
-                        os.path.join(
-                            overlay,
-                            'etc', 'apt', 'trusted.gpg.d',
-                            os.path.basename(keyring),
-                        ),
-                    )
+                shutil.copyfile(
+                    os.path.abspath(keyring),
+                    os.path.join(
+                        overlay,
+                        'etc', 'apt', 'trusted.gpg.d',
+                        os.path.basename(keyring),
+                    ),
+                )
 
     def create_flatpak_manifest_overlay(
         self,
