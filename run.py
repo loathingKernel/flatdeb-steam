@@ -235,7 +235,9 @@ class Builder:
             exit_code = subprocess.call(
                 ['dpkg-architecture', '--host-arch', self.primary_dpkg_arch,
                  '--is', arch_spec])
-            self.__primary_dpkg_arch_matches_cache[arch_spec] = (exit_code == 0)
+            self.__primary_dpkg_arch_matches_cache[arch_spec] = (
+                exit_code == 0
+            )
 
         return self.__primary_dpkg_arch_matches_cache[arch_spec]
 
@@ -444,7 +446,8 @@ class Builder:
 
                 argv.append('-t')
                 argv.append(
-                    'keyring:suites/{}/overlay/etc/apt/trusted.gpg.d/{}'.format(
+                    'keyring:suites/{}/overlay/etc/apt/trusted.gpg.d/'
+                    '{}'.format(
                         apt_suite,
                         os.path.basename(keyring),
                     )
@@ -528,7 +531,9 @@ class Builder:
             for sdk in (False, True):
                 packages = list(self.runtime_details.get('add_packages', []))
 
-                for p in self.runtime_details.get('add_packages_multiarch', []):
+                for p in self.runtime_details.get(
+                    'add_packages_multiarch', []
+                ):
                     for a in self.dpkg_archs:
                         packages.append(p + ':' + a)
 
@@ -660,7 +665,8 @@ class Builder:
 
                         os.chmod(dest, 0o755)
                         argv.append('-t')
-                        argv.append('platform_post_script:platform_post_script')
+                        argv.append(
+                            'platform_post_script:platform_post_script')
 
                 overlay = os.path.join(scratch, 'runtimes', runtime, 'overlay')
                 self.create_flatpak_manifest_overlay(
@@ -855,7 +861,8 @@ class Builder:
         search_path = []
 
         for arch in self.dpkg_archs:
-            search_path.append('/app/lib/{}'.format(self.multiarch_tuple(arch)))
+            search_path.append('/app/lib/{}'.format(
+                self.multiarch_tuple(arch)))
 
         search_path.append('/app/lib')
 
@@ -1149,9 +1156,9 @@ class Builder:
                             '            version="${version%)}"\n'
                             '            source="${bu%(*}"\n'
                             '            ( cd "$export" && \\\n'
-                            '                 apt-get -y --download-only \\\n'
-                            '                 -oAPT::Get::Only-Source=true \\\n'
-                            '                 source "$source=$version"\n'
+                            '               apt-get -y --download-only \\\n'
+                            '               -oAPT::Get::Only-Source=true \\\n'
+                            '               source "$source=$version"\n'
                             '            )\n'
                             '        done\n'
                             '        IFS="$oldIFS"\n'
