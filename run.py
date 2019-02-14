@@ -47,6 +47,13 @@ from tempfile import TemporaryDirectory
 import yaml
 from gi.repository import GLib
 
+try:
+    import typing
+except ImportError:
+    pass
+else:
+    typing  # silence "unused" warnings
+
 
 logger = logging.getLogger('flatdeb')
 
@@ -83,7 +90,7 @@ class Builder:
     Main object
     """
 
-    __multiarch_tuple_cache = {}
+    __multiarch_tuple_cache = {}    # type: typing.Dict[str, str]
 
     def __init__(self):
         #: The Debian suite to use
@@ -1248,6 +1255,7 @@ class Builder:
                     manifest['branch'],
                 ])
                 os.rename(output + '.new', output)
+
 
 if __name__ == '__main__':
     if sys.stderr.isatty():
