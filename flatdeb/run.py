@@ -47,6 +47,13 @@ from tempfile import TemporaryDirectory
 import yaml
 from gi.repository import GLib
 
+try:
+    import typing
+except ImportError:
+    pass
+else:
+    typing  # silence "unused" warnings
+
 
 logger = logging.getLogger('flatdeb')
 
@@ -77,13 +84,76 @@ _DEBOS_BASE_RECIPE = os.path.join(
 _DEBOS_RUNTIMES_RECIPE = os.path.join(
     os.path.dirname(__file__), 'flatdeb', 'debos-runtimes.yaml')
 
+
+class AptSource:
+    def __init__(
+        self,
+        kind,
+        uri,
+        suite,
+        components=('main',),
+        trusted=False
+    ):
+        self.kind = kind
+        self.uri = uri
+        self.suite = suite
+        self.components = components
+        self.trusted = trusted
+
+    @classmethod
+    def from_string(
+        cls,
+        line,
+    ):
+        tokens = line.split()
+        trusted = False
+
+        if len(tokens) < 4:
+            raise ValueError(
+                'apt sources must be specified in the form '
+                '"deb http://URL SUITE COMPONENT [COMPONENT...]"')
+
+        if tokens[0] not in ('deb', 'deb-src'):
+            raise ValueError(
+                'apt sources must start with "deb " or "deb-src "')
+
+        if tokens[1] == '[trusted=yes]':
+            trusted = True
+            tokens = [tokens[0]] + tokens[2:]
+        elif tokens[1].startswith('['):
+            raise ValueError(
+                'The only apt source option supported is [trusted=yes]')
+
+        return cls(
+            kind=tokens[0],
+            uri=tokens[1],
+            suite=tokens[2],
+            components=tokens[3:],
+            trusted=trusted,
+        )
+
+    def __str__(self):
+        if self.trusted:
+            maybe_options = ' [trusted=yes]'
+        else:
+            maybe_options = ''
+
+        return '%s%s %s %s %s' % (
+            self.kind,
+            maybe_options,
+            self.uri,
+            self.suite,
+            ' '.join(self.components),
+        )
+
+
 class Builder:
 
     """
     Main object
     """
 
-    __multiarch_tuple_cache = {}
+    __multiarch_tuple_cache = {}    # type: typing.Dict[str, str]
 
     def __init__(self):
         #: The Debian suite to use
@@ -99,7 +169,7 @@ class Builder:
         self.build_area = os.path.join(
             self.xdg_cache_dir, 'flatdeb',
         )
-        self.repo = os.path.join(self.build_area, 'repo')
+        self.ostree_repo = os.path.join(self.build_area, 'ostree-repo')
 
         self.__dpkg_archs = []
         self.flatpak_arch = None
@@ -111,6 +181,8 @@ class Builder:
         self.export_bundles = False
         self.sources_required = set()
         self.strip_source_version_suffix = None
+        self.apt_keyrings = []
+        self.apt_sources = []
 
         self.logger = logger.getChild('Builder')
 
@@ -235,7 +307,9 @@ class Builder:
             exit_code = subprocess.call(
                 ['dpkg-architecture', '--host-arch', self.primary_dpkg_arch,
                  '--is', arch_spec])
-            self.__primary_dpkg_arch_matches_cache[arch_spec] = (exit_code == 0)
+            self.__primary_dpkg_arch_matches_cache[arch_spec] = (
+                exit_code == 0
+            )
 
         return self.__primary_dpkg_arch_matches_cache[arch_spec]
 
@@ -254,11 +328,19 @@ class Builder:
             '--export-bundles', action='store_true', default=False,
         )
         parser.add_argument('--build-area', default=self.build_area)
-        parser.add_argument('--repo', default=self.repo)
+        parser.add_argument('--ostree-repo', default=self.ostree_repo)
         parser.add_argument('--suite', '-d', default=self.apt_suite)
         parser.add_argument('--architecture', '--arch', '-a')
         parser.add_argument('--runtime-branch', default=self.runtime_branch)
         parser.add_argument('--version', action='store_true')
+        parser.add_argument(
+            '--replace-apt-source', action='append', default=[])
+        parser.add_argument(
+            '--remove-apt-source', action='append', default=[])
+        parser.add_argument(
+            '--add-apt-source', action='append', default=[])
+        parser.add_argument(
+            '--add-apt-keyring', action='append', default=[])
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         subparser = subparsers.add_parser(
@@ -286,6 +368,12 @@ class Builder:
 
         args = parser.parse_args()
 
+        for replacement in args.replace_apt_source:
+            if '=' not in replacement:
+                parser.error(
+                    '--replace-apt-source argument must be in the form '
+                    '"LABEL=deb http://ARCHIVE SUITE COMPONENT[...]"')
+
         if args.version:
             print('flatdeb {}'.format(VERSION))
             return
@@ -296,7 +384,7 @@ class Builder:
         self.build_area = args.build_area
         self.apt_suite = args.suite
         self.runtime_branch = args.runtime_branch
-        self.repo = args.repo
+        self.ostree_repo = args.ostree_repo
         self.export_bundles = args.export_bundles
         self.ostree_mode = args.ostree_mode
 
@@ -312,7 +400,7 @@ class Builder:
         self.flatpak_arch = self.dpkg_to_flatpak_arch(self.primary_dpkg_arch)
 
         self.ensure_build_area()
-        os.makedirs(os.path.dirname(self.repo), exist_ok=True)
+        os.makedirs(os.path.dirname(self.ostree_repo), exist_ok=True)
 
         if args.command is None:
             parser.error('A command is required')
@@ -325,6 +413,68 @@ class Builder:
         self.strip_source_version_suffix = self.suite_details.get(
             'strip_source_version_suffix', '')
 
+        for source in self.suite_details['sources']:
+            keyring = source.get('keyring')
+
+            if keyring is not None:
+                self.apt_keyrings.append(keyring)
+
+            uri = source['apt_uri']
+            suite = source.get('apt_suite', self.apt_suite)
+            suite = suite.replace('*', self.apt_suite)
+            components = source.get(
+                'apt_components',
+                self.suite_details.get('apt_components', ['main'])
+            )
+            trusted = source.get('apt_trusted', False)
+
+            if 'label' in source:
+                replaced = False
+
+                for replacement in reversed(args.replace_apt_source):
+                    key, value = replacement.split('=', 1)
+
+                    if key == source['label']:
+                        tokens = value.split()
+
+                        if tokens[0] == 'both':
+                            self.apt_sources.append(
+                                AptSource.from_string('deb' + value[4:]))
+                            self.apt_sources.append(
+                                AptSource.from_string('deb-src' + value[4:]))
+                        else:
+                            self.apt_sources.append(
+                                AptSource.from_string(value))
+
+                        replaced = True
+                        break
+
+                if replaced or source['label'] in args.remove_apt_source:
+                    continue
+
+            if source.get('deb', True):
+                self.apt_sources.append(AptSource(
+                    'deb', uri, suite,
+                    components=components,
+                    trusted=trusted,
+                ))
+
+            if source.get('deb-src', True):
+                self.apt_sources.append(AptSource(
+                    'deb-src', uri, suite,
+                    components=components,
+                    trusted=trusted,
+                ))
+
+            for addition in args.add_apt_source:
+                self.apt_sources.append(AptSource.from_string(addition))
+
+            for addition in args.add_apt_keyring:
+                self.apt_keyrings.append(addition)
+
+        if self.apt_sources[0].kind != 'deb':
+            parser.error('First apt source must provide .deb packages')
+
         getattr(
             self, 'command_' + args.command.replace('-', '_'))(**vars(args))
 
@@ -333,8 +483,8 @@ class Builder:
 
     @property
     def apt_uris(self):
-        for source in self.suite_details['sources']:
-            yield source['apt_uri']
+        for source in self.apt_sources:
+            yield source.uri
 
     def ensure_build_area(self):
         os.makedirs(self.xdg_cache_dir, 0o700, exist_ok=True)
@@ -348,9 +498,8 @@ class Builder:
             )
             self.ensure_build_area()
 
-            apt_suite = self.suite_details['sources'][0].get(
-                'apt_suite', self.apt_suite)
-
+            # debootstrap only supports one suite, so we use the first
+            apt_suite = self.apt_sources[0].suite
             dest_recipe = os.path.join(scratch, 'flatdeb.yaml')
             shutil.copyfile(_DEBOS_BASE_RECIPE, dest_recipe)
 
@@ -408,7 +557,7 @@ class Builder:
                 '-t', 'architecture:{}'.format(self.primary_dpkg_arch),
                 '-t', 'suite:{}'.format(apt_suite),
                 '-t', 'mirror:{}'.format(
-                    self.suite_details['sources'][0]['apt_uri'],
+                    self.apt_sources[0].uri,
                 ),
                 '-t', 'ospack:{}'.format(tarball + '.new'),
                 '-t', 'manifest_prefix:base-{}-{}'.format(
@@ -425,9 +574,7 @@ class Builder:
                 ),
             ]
 
-            keyring = self.suite_details['sources'][0].get('keyring')
-
-            if keyring is not None:
+            for keyring in self.apt_keyrings:
                 if os.path.exists(os.path.join('suites', keyring)):
                     keyring = os.path.join('suites', keyring)
                 elif os.path.exists(keyring):
@@ -444,15 +591,18 @@ class Builder:
 
                 argv.append('-t')
                 argv.append(
-                    'keyring:suites/{}/overlay/etc/apt/trusted.gpg.d/{}'.format(
+                    'keyring:suites/{}/overlay/etc/apt/trusted.gpg.d/'
+                    '{}'.format(
                         apt_suite,
                         os.path.basename(keyring),
                     )
                 )
-            else:
-                keyring = ''
 
-            components = self.suite_details.get('apt_components', ['main'])
+                # debootstrap only supports one keyring and one apt source,
+                # so we take the first one
+                break
+
+            components = self.apt_sources[0].components
 
             if components:
                 argv.append('-t')
@@ -465,10 +615,10 @@ class Builder:
             os.rename(output + '.new', output)
 
     def ensure_local_repo(self):
-        os.makedirs(os.path.dirname(self.repo), 0o755, exist_ok=True)
+        os.makedirs(os.path.dirname(self.ostree_repo), 0o755, exist_ok=True)
         subprocess.check_call([
             'ostree',
-            '--repo=' + self.repo,
+            '--repo=' + self.ostree_repo,
             'init',
             '--mode={}'.format(self.ostree_mode),
         ])
@@ -528,7 +678,9 @@ class Builder:
             for sdk in (False, True):
                 packages = list(self.runtime_details.get('add_packages', []))
 
-                for p in self.runtime_details.get('add_packages_multiarch', []):
+                for p in self.runtime_details.get(
+                    'add_packages_multiarch', []
+                ):
                     for a in self.dpkg_archs:
                         packages.append(p + ':' + a)
 
@@ -561,7 +713,7 @@ class Builder:
                     '-t', 'runtime_branch:{}'.format(self.runtime_branch),
                     '-t', 'strip_source_version_suffix:{}'.format(
                         self.strip_source_version_suffix),
-                    '-t', 'repo:repo',
+                    '-t', 'ostree_repo:ostree_repo',
                 ]
 
                 if packages:
@@ -660,7 +812,8 @@ class Builder:
 
                         os.chmod(dest, 0o755)
                         argv.append('-t')
-                        argv.append('platform_post_script:platform_post_script')
+                        argv.append(
+                            'platform_post_script:platform_post_script')
 
                 overlay = os.path.join(scratch, 'runtimes', runtime, 'overlay')
                 self.create_flatpak_manifest_overlay(
@@ -675,7 +828,7 @@ class Builder:
                     subprocess.check_call([
                         'time',
                         'ostree',
-                        '--repo=' + self.repo,
+                        '--repo=' + self.ostree_repo,
                         'commit',
                         '--branch=runtime/{}.Sources/{}/{}'.format(
                             runtime,
@@ -693,7 +846,7 @@ class Builder:
                 subprocess.check_call([
                     'time',
                     'ostree',
-                    '--repo=' + self.repo,
+                    '--repo=' + self.ostree_repo,
                     'commit',
                     '--branch=runtime/{}/{}/{}'.format(
                         runtime,
@@ -712,7 +865,7 @@ class Builder:
             subprocess.check_call([
                 'time',
                 'ostree',
-                '--repo=' + self.repo,
+                '--repo=' + self.ostree_repo,
                 'prune',
                 '--refs-only',
                 '--depth=1',
@@ -722,7 +875,7 @@ class Builder:
                 'time',
                 'flatpak',
                 'build-update-repo',
-                self.repo,
+                self.ostree_repo,
             ])
 
             if self.export_bundles:
@@ -739,7 +892,7 @@ class Builder:
                         'flatpak',
                         'build-bundle',
                         '--runtime',
-                        self.repo,
+                        self.ostree_repo,
                         output + '.new',
                         prefix + suffix,
                         self.runtime_branch,
@@ -760,52 +913,25 @@ class Builder:
             'w',
             encoding='utf-8'
         ) as writer:
-            for source in self.suite_details['sources']:
-                suite = source.get('apt_suite', self.apt_suite)
-                suite = suite.replace('*', self.apt_suite)
-                components = source.get(
-                    'apt_components',
-                    self.suite_details.get(
-                        'apt_components',
-                        ['main']))
+            for source in self.apt_sources:
+                writer.write('{}\n'.format(source))
 
-                options = []
-
-                if source.get('apt_trusted', False):
-                    options.append('trusted=yes')
-
-                if options:
-                    options_str = ' [' + ' '.join(options) + ']'
+            for keyring in self.apt_keyrings:
+                if os.path.exists(os.path.join('suites', keyring)):
+                    keyring = os.path.join('suites', keyring)
+                elif os.path.exists(keyring):
+                    pass
                 else:
-                    options_str = ''
+                    raise RuntimeError('Cannot open {}'.format(keyring))
 
-                for prefix in ('deb', 'deb-src'):
-                    writer.write('{}{} {} {} {}\n'.format(
-                        prefix,
-                        options_str,
-                        source['apt_uri'],
-                        suite,
-                        ' '.join(components),
-                    ))
-
-                keyring = source.get('keyring')
-
-                if keyring is not None:
-                    if os.path.exists(os.path.join('suites', keyring)):
-                        keyring = os.path.join('suites', keyring)
-                    elif os.path.exists(keyring):
-                        pass
-                    else:
-                        raise RuntimeError('Cannot open {}'.format(keyring))
-
-                    shutil.copyfile(
-                        os.path.abspath(keyring),
-                        os.path.join(
-                            overlay,
-                            'etc', 'apt', 'trusted.gpg.d',
-                            os.path.basename(keyring),
-                        ),
-                    )
+                shutil.copyfile(
+                    os.path.abspath(keyring),
+                    os.path.join(
+                        overlay,
+                        'etc', 'apt', 'trusted.gpg.d',
+                        os.path.basename(keyring),
+                    ),
+                )
 
     def create_flatpak_manifest_overlay(
         self,
@@ -855,7 +981,8 @@ class Builder:
         search_path = []
 
         for arch in self.dpkg_archs:
-            search_path.append('/app/lib/{}'.format(self.multiarch_tuple(arch)))
+            search_path.append('/app/lib/{}'.format(
+                self.multiarch_tuple(arch)))
 
         search_path.append('/app/lib')
 
@@ -1006,14 +1133,14 @@ class Builder:
                 'flatpak', '--user',
                 'remote-add', '--if-not-exists', '--no-gpg-verify',
                 'flatdeb',
-                'file://{}'.format(urllib.parse.quote(self.repo)),
+                'file://{}'.format(urllib.parse.quote(self.ostree_repo)),
             ])
             subprocess.check_call([
                 'env',
                 'XDG_DATA_HOME={}/home'.format(scratch),
                 'flatpak', '--user',
                 'remote-modify', '--no-gpg-verify',
-                '--url=file://{}'.format(urllib.parse.quote(self.repo)),
+                '--url=file://{}'.format(urllib.parse.quote(self.ostree_repo)),
                 'flatdeb',
             ])
 
@@ -1149,9 +1276,9 @@ class Builder:
                             '            version="${version%)}"\n'
                             '            source="${bu%(*}"\n'
                             '            ( cd "$export" && \\\n'
-                            '                 apt-get -y --download-only \\\n'
-                            '                 -oAPT::Get::Only-Source=true \\\n'
-                            '                 source "$source=$version"\n'
+                            '               apt-get -y --download-only \\\n'
+                            '               -oAPT::Get::Only-Source=true \\\n'
+                            '               source "$source=$version"\n'
                             '            )\n'
                             '        done\n'
                             '        IFS="$oldIFS"\n'
@@ -1216,7 +1343,7 @@ class Builder:
                 scratch,                # directory to cd into
                 'flatpak-builder',
                 '--arch={}'.format(self.flatpak_arch),
-                '--repo={}'.format(self.repo),
+                '--repo={}'.format(self.ostree_repo),
                 '--bundle-sources',
                 os.path.join(scratch, 'workdir'),
                 json_manifest,
@@ -1235,12 +1362,13 @@ class Builder:
                     'XDG_DATA_HOME={}/home'.format(scratch),
                     'flatpak',
                     'build-bundle',
-                    self.repo,
+                    self.ostree_repo,
                     output + '.new',
                     manifest['id'],
                     manifest['branch'],
                 ])
                 os.rename(output + '.new', output)
+
 
 if __name__ == '__main__':
     if sys.stderr.isatty():
