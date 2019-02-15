@@ -51,12 +51,26 @@ in_chroot () {
 rm -fr \
 etc/.pwd.lock \
 etc/group- \
+etc/machine-id \
 etc/passwd- \
 etc/shadow- \
+etc/subgid- \
+etc/subuid- \
 home \
+media \
+mnt \
+opt \
 root \
+run \
+srv \
 tmp \
 var/cache \
+var/lib/aptitude/pkgstates.old \
+var/lib/dbus/machine-id \
+var/lib/dpkg/available-old \
+var/lib/dpkg/diversions-old \
+var/lib/dpkg/status-old \
+var/lib/urandom \
 var/lock \
 var/tmp \
 ${NULL}
