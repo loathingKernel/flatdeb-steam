@@ -43,6 +43,7 @@ sdk:
     - steamrt-libdevel
 
   add_packages:
+    - busybox
     - steamrt-dev
 
 ...
