@@ -51,8 +51,6 @@ set -x
 sysroot="$1"
 cd "$sysroot"
 
-chmod -R --changes "a-s,o-t,u=rwX,og=rX" .
-chown -R --changes "root:root" .
 rm -fr --one-file-system usr/local
 
 rm -fr --one-file-system \
@@ -168,6 +166,9 @@ for d in \
         rmdir --ignore-fail-on-non-empty "$d"
     fi
 done
+
+chmod -R --changes "a-s,o-t,u=rwX,og=rX" .
+chown -R --changes "root:root" .
 
 mv usr files
 
