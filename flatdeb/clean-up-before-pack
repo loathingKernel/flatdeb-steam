@@ -60,3 +60,9 @@ var/cache \
 var/lock \
 var/tmp \
 ${NULL}
+
+ln -s /run/lock var/lock
+install -d run
+install -d -m1777 tmp
+install -d var/cache
+install -d -m1777 var/tmp
