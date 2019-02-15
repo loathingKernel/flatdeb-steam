@@ -713,7 +713,6 @@ class Builder:
                     '-t', 'runtime_branch:{}'.format(self.runtime_branch),
                     '-t', 'strip_source_version_suffix:{}'.format(
                         self.strip_source_version_suffix),
-                    '-t', 'ostree_repo:ostree_repo',
                 ]
 
                 if packages:
