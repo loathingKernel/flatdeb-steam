@@ -689,11 +689,12 @@ class Builder:
                 else:
                     runtime = prefix + '.Platform'
 
-                out_tarball = '{}-ostree-{}-{}.tar.gz'.format(
+                ostree_prefix = '{}-ostree-{}-{}'.format(
                     runtime,
                     ','.join(self.dpkg_archs),
                     self.runtime_branch,
                 )
+                out_tarball = ostree_prefix + '.tar.gz'
 
                 argv = [
                     'debos',
@@ -703,12 +704,8 @@ class Builder:
                     '-t', 'flatpak_arch:{}'.format(self.flatpak_arch),
                     '-t', 'suite:{}'.format(self.apt_suite),
                     '-t', 'ospack:{}'.format(tarball),
+                    '-t', 'ostree_prefix:{}'.format(ostree_prefix),
                     '-t', 'ostree_tarball:{}'.format(out_tarball + '.new'),
-                    '-t', 'manifest_prefix:{}-ostree-{}-{}'.format(
-                        runtime,
-                        ','.join(self.dpkg_archs),
-                        self.runtime_branch,
-                    ),
                     '-t', 'runtime:{}'.format(runtime),
                     '-t', 'runtime_branch:{}'.format(self.runtime_branch),
                     '-t', 'strip_source_version_suffix:{}'.format(
@@ -944,7 +941,7 @@ class Builder:
         runtime,
         sdk=False,
     ):
-        metadata = os.path.join(overlay, 'ostree', 'main', 'metadata')
+        metadata = os.path.join(overlay, 'metadata')
         os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
 
         keyfile = GLib.KeyFile()
@@ -1049,7 +1046,7 @@ class Builder:
 
             os.makedirs(
                 os.path.join(
-                    overlay, 'ostree', 'main', 'files',
+                    overlay, 'files',
                     detail['directory'],
                 ),
                 0o755,
