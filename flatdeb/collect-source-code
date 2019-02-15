@@ -255,7 +255,9 @@ def main():
     if missing_sources:
         logger.warning('Missing source packages:')
 
-        with open(os.path.join(args.sysroot, 'MISSING.txt'), 'w') as writer:
+        with open(
+            os.path.join(args.sysroot, 'src', 'MISSING.txt'), 'w'
+        ) as writer:
             for p in sorted(missing_sources):
                 logger.warning('- %s', p)
                 writer.write('{}\n'.format(p))
