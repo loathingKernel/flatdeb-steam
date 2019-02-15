@@ -222,7 +222,7 @@ def main():
             'sh', '-euc',
             'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
             'sh',                       # argv[0]
-            '/ostree/source/files',     # working directory
+            '/src/files',               # working directory
             'apt-get', '-y', '--download-only', '-q', '-q',
             '-oAPT::Get::Only-Source=true', 'source',
         ] + sources)
@@ -237,7 +237,7 @@ def main():
                     'sh', '-euc',
                     'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
                     'sh',                       # argv[0]
-                    '/ostree/source/files',     # working directory
+                    '/src/files',               # working directory
                     'apt-get', '-y', '--download-only', '-q', '-q',
                     '-oAPT::Get::Only-Source=true', 'source',
                     source,
@@ -255,8 +255,10 @@ def main():
     if missing_sources:
         logger.warning('Missing source packages:')
 
-        for p in sorted(missing_sources):
-            logger.warning('- %s', p)
+        with open(os.path.join(args.sysroot, 'MISSING.txt'), 'w') as writer:
+            for p in sorted(missing_sources):
+                logger.warning('- %s', p)
+                writer.write('{}\n'.format(p))
 
         logger.warning('Check that this runtime is GPL-compliant!')
 

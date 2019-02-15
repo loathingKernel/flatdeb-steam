@@ -749,11 +749,12 @@ class Builder:
                     argv.append('post_script:post_script')
 
                 if sdk:
-                    sources_tarball = '{}-sources-{}-{}.tar.gz'.format(
+                    sources_prefix = '{}-sources-{}-{}'.format(
                         runtime,
                         ','.join(self.dpkg_archs),
                         self.runtime_branch,
                     )
+                    sources_tarball = sources_prefix + '.tar.gz'
 
                     sdk_details = self.runtime_details.get('sdk', {})
                     sdk_packages = list(sdk_details.get('add_packages', []))
@@ -761,6 +762,8 @@ class Builder:
                     argv.append('sdk:yes')
                     argv.append('-t')
                     argv.append('sources_tarball:' + sources_tarball + '.new')
+                    argv.append('-t')
+                    argv.append('sources_prefix:' + sources_prefix)
 
                     for p in sdk_details.get('add_packages_multiarch', []):
                         for a in self.dpkg_archs:
@@ -1064,7 +1067,7 @@ class Builder:
         keyfile.save_to_file(metadata)
 
         if sdk:
-            metadata = os.path.join(overlay, 'ostree', 'source', 'metadata')
+            metadata = os.path.join(overlay, 'src', 'metadata')
             os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
 
             keyfile = GLib.KeyFile()

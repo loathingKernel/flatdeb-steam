@@ -15,8 +15,9 @@
 {{- $runtime_branch := or .runtime_branch "master" -}}
 {{- $ostree_tarball := or .ostree_tarball (printf "ostree_%s_%s_%s.tar.gz" $runtime $flatpak_arch $runtime_branch) -}}
 {{- $manifest_prefix := or .manifest_prefix (printf "ostree_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
-{{- $sources_tarball := or .sources_tarball (printf "sources_%s_%s_%s.tar.gz" $runtime $flatpak_arch $runtime_branch) -}}
 {{- $ostree_repo := or .ostree_repo "ostree-repo" -}}
+{{- $sources_prefix := or .sources_prefix (printf "sources_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $sources_tarball := or .sources_tarball (printf "%s.tar.gz" $sources_prefix) -}}
 
 architecture: {{ $architecture }}
 
@@ -212,7 +213,22 @@ actions:
 
   {{ if $sdk }}
   - action: run
-    label: pack ostree/source
+    label: pack source code
     chroot: false
-    command: 'tar -zcf "$ARTIFACTDIR/{{ $sources_tarball }}" -C "$ROOTDIR/ostree/source" .'
+    command: >
+      echo;
+      tar -zcf "$ARTIFACTDIR/{{ $sources_tarball }}"
+      --numeric-owner
+      --sort=name
+      --transform="s,^./,,"
+      -C "$ROOTDIR/src"
+      .
+
+  - action: run
+    label: list of missing source code
+    chroot: false
+    command: >
+      test ! -e "$ROOTDIR/src/MISSING.txt" ||
+      cp -v "$ROOTDIR/src/MISSING.txt"
+      "$ARTIFACTDIR/{{ $sources_prefix }}.MISSING.txt"
   {{ end }}
