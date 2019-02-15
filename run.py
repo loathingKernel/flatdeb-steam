@@ -825,6 +825,7 @@ class Builder:
                 subprocess.check_call(argv)
 
                 if sdk:
+                    logger.info('Committing %s to OSTree', sources_tarball)
                     output = os.path.join(self.build_area, sources_tarball)
                     os.rename(output + '.new', output)
                     subprocess.check_call([
@@ -844,6 +845,7 @@ class Builder:
                     ])
 
                 output = os.path.join(self.build_area, out_tarball)
+                logger.info('Committing %s to OSTree', out_tarball)
                 os.rename(output + '.new', output)
                 subprocess.check_call([
                     'time',
