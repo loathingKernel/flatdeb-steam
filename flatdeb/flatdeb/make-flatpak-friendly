@@ -169,6 +169,8 @@ for d in \
     fi
 done
 
+mv usr files
+
 if [ -n "$sdk" ]; then
     install -d var/cache/apt/archives/partial
     install -d var/lib/extrausers
@@ -176,8 +178,8 @@ if [ -n "$sdk" ]; then
     # This is only useful if the SDK has libnss-extrausers
     cp etc/passwd var/lib/extrausers/passwd
     cp etc/group var/lib/extrausers/groups
-    install -d usr
-    mv var usr
+
+    mv var files
 else
     rm -fr --one-file-system \
         etc/adduser.conf \
@@ -210,5 +212,11 @@ else
         ${NULL}
 fi
 
-install -d usr
-mv etc usr
+rm -fr --one-file-system boot media mnt opt proc run srv sys tmp
+mkdir proc run sys tmp
+
+mv etc files
+
+ln -s files usr
+ln -s files/etc etc
+ln -s files/var var

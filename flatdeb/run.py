@@ -689,11 +689,12 @@ class Builder:
                 else:
                     runtime = prefix + '.Platform'
 
-                out_tarball = '{}-ostree-{}-{}.tar.gz'.format(
+                ostree_prefix = '{}-ostree-{}-{}'.format(
                     runtime,
                     ','.join(self.dpkg_archs),
                     self.runtime_branch,
                 )
+                out_tarball = ostree_prefix + '.tar.gz'
 
                 argv = [
                     'debos',
@@ -703,17 +704,12 @@ class Builder:
                     '-t', 'flatpak_arch:{}'.format(self.flatpak_arch),
                     '-t', 'suite:{}'.format(self.apt_suite),
                     '-t', 'ospack:{}'.format(tarball),
+                    '-t', 'ostree_prefix:{}'.format(ostree_prefix),
                     '-t', 'ostree_tarball:{}'.format(out_tarball + '.new'),
-                    '-t', 'manifest_prefix:{}-ostree-{}-{}'.format(
-                        runtime,
-                        ','.join(self.dpkg_archs),
-                        self.runtime_branch,
-                    ),
                     '-t', 'runtime:{}'.format(runtime),
                     '-t', 'runtime_branch:{}'.format(self.runtime_branch),
                     '-t', 'strip_source_version_suffix:{}'.format(
                         self.strip_source_version_suffix),
-                    '-t', 'ostree_repo:ostree_repo',
                 ]
 
                 if packages:
@@ -749,11 +745,12 @@ class Builder:
                     argv.append('post_script:post_script')
 
                 if sdk:
-                    sources_tarball = '{}-sources-{}-{}.tar.gz'.format(
+                    sources_prefix = '{}-sources-{}-{}'.format(
                         runtime,
                         ','.join(self.dpkg_archs),
                         self.runtime_branch,
                     )
+                    sources_tarball = sources_prefix + '.tar.gz'
 
                     sdk_details = self.runtime_details.get('sdk', {})
                     sdk_packages = list(sdk_details.get('add_packages', []))
@@ -761,6 +758,8 @@ class Builder:
                     argv.append('sdk:yes')
                     argv.append('-t')
                     argv.append('sources_tarball:' + sources_tarball + '.new')
+                    argv.append('-t')
+                    argv.append('sources_prefix:' + sources_prefix)
 
                     for p in sdk_details.get('add_packages_multiarch', []):
                         for a in self.dpkg_archs:
@@ -823,6 +822,7 @@ class Builder:
                 subprocess.check_call(argv)
 
                 if sdk:
+                    logger.info('Committing %s to OSTree', sources_tarball)
                     output = os.path.join(self.build_area, sources_tarball)
                     os.rename(output + '.new', output)
                     subprocess.check_call([
@@ -842,6 +842,7 @@ class Builder:
                     ])
 
                 output = os.path.join(self.build_area, out_tarball)
+                logger.info('Committing %s to OSTree', out_tarball)
                 os.rename(output + '.new', output)
                 subprocess.check_call([
                     'time',
@@ -940,7 +941,7 @@ class Builder:
         runtime,
         sdk=False,
     ):
-        metadata = os.path.join(overlay, 'ostree', 'main', 'metadata')
+        metadata = os.path.join(overlay, 'metadata')
         os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
 
         keyfile = GLib.KeyFile()
@@ -1045,7 +1046,7 @@ class Builder:
 
             os.makedirs(
                 os.path.join(
-                    overlay, 'ostree', 'main', 'files',
+                    overlay, 'files',
                     detail['directory'],
                 ),
                 0o755,
@@ -1064,7 +1065,7 @@ class Builder:
         keyfile.save_to_file(metadata)
 
         if sdk:
-            metadata = os.path.join(overlay, 'ostree', 'source', 'metadata')
+            metadata = os.path.join(overlay, 'src', 'metadata')
             os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
 
             keyfile = GLib.KeyFile()
