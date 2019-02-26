@@ -660,12 +660,12 @@ class Builder:
                 'clean-up-before-pack',
                 'collect-source-code',
                 'disable-services',
-                'hard-link-alternatives',
                 'make-flatpak-friendly',
                 'platformize',
                 'prepare-runtime',
                 'purge-conffiles',
                 'put-ldconfig-in-path',
+                'symlink-alternatives',
                 'usrmerge',
                 'write-manifest',
             ):
@@ -774,6 +774,9 @@ class Builder:
                         argv.append(
                             'sysroot_tarball:{}'.format(
                                 sysroot_tarball + '.new'))
+                    else:
+                        sysroot_prefix = None
+                        sysroot_tarball = None
 
                     sdk_details = self.runtime_details.get('sdk', {})
                     sdk_packages = list(sdk_details.get('add_packages', []))
@@ -845,8 +848,31 @@ class Builder:
                 subprocess.check_call(argv)
 
                 if sdk:
-                    if sysroot_tarball is not None:
+                    if sysroot_prefix is not None:
+                        assert sysroot_tarball is not None
                         output = os.path.join(self.build_area, sysroot_tarball)
+                        os.rename(output + '.new', output)
+
+                        output = os.path.join(
+                            self.build_area, sysroot_prefix + '.Dockerfile')
+
+                        with open(
+                            os.path.join(
+                                os.path.dirname(__file__), 'flatdeb',
+                                'Dockerfile.in'),
+                            'r',
+                            encoding='utf-8',
+                        ) as reader:
+                            content = reader.read()
+
+                        content = content.replace(
+                            '@sysroot_tarball@', sysroot_tarball)
+
+                        with open(
+                            output + '.new', 'w', encoding='utf-8'
+                        ) as writer:
+                            writer.write(content)
+
                         os.rename(output + '.new', output)
 
                     logger.info('Committing %s to OSTree', sources_tarball)

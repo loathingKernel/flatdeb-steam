@@ -194,9 +194,9 @@ actions:
   {{ end }}
 
   - action: run
-    label: hard-link-alternatives
+    label: symlink-alternatives
     chroot: true
-    script: hard-link-alternatives
+    script: symlink-alternatives
 
   {{ if $sdk }}
   - action: run
