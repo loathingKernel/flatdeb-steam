@@ -47,18 +47,24 @@ find / -xdev '(' \
 while [ $# -gt 0 ]; do
     old="$(readlink "$1")"
     if target="$(readlink -f "$1")"; then
-        rel_target="$target"
-        rel_link="$1"
-        # While the part up to the first / is equal, remove it
-        while [ "${rel_target%%/*}" = "${rel_link%%/*}" ]; do
-            rel_target="${rel_target#*/}"
-            rel_link="${rel_link#*/}"
-        done
-        # If the link has directories, add enough ../ to escape
-        while [ "${rel_link#*/}" != "${rel_link}" ]; do
-            rel_link="${rel_link#*/}"
-            rel_target="../${rel_target}"
-        done
+        rel_target="$target"    # /usr/bin/more
+        rel_link="$1"           # /usr/bin/pager
+        target_top="${rel_target#/}"    # usr/bin/more
+        target_top="${target_top%%/*}"  # usr
+        link_top="${rel_link#/}"        # usr/bin/pager
+        link_top="${link_top%%/*}"    # usr
+        if [ "$target_top" = "$link_top" ]; then
+            # While the part up to the first / is equal, remove it
+            while [ "${rel_target%%/*}" = "${rel_link%%/*}" ]; do
+                rel_target="${rel_target#*/}"
+                rel_link="${rel_link#*/}"
+            done
+            # If the link has directories, add enough ../ to escape
+            while [ "${rel_link#*/}" != "${rel_link}" ]; do
+                rel_link="${rel_link#*/}"
+                rel_target="../${rel_target}"
+            done
+        fi
         echo "Making $1 a symlink to $rel_target (was $old -> ... -> $target)"
         ln -fns "$rel_target" "$1"
     fi
