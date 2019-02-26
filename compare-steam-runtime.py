@@ -31,6 +31,7 @@ from debian.debian_support import Version
 
 import yaml
 
+
 def main(packages, *, manifest=None, steam=None):
     with open('runtimes/com.valvesoftware.SteamRuntime.yaml') as reader:
         source_manifest = yaml.safe_load(reader)
@@ -64,10 +65,12 @@ def main(packages, *, manifest=None, steam=None):
                     if (binary.endswith('-dev') or
                             binary.endswith('-multidev') or
                             binary.endswith('-dbg') or
-                            # Probably not intentionally in the user-facing Runtime?
+                            # Probably not intentionally in the user-facing
+                            # Runtime?
                             # https://github.com/ValveSoftware/steam-runtime/issues/76
                             binary.endswith('-pic') or
-                            # Probably not intentionally in the user-facing Runtime?
+                            # Probably not intentionally in the user-facing
+                            # Runtime?
                             # https://github.com/ValveSoftware/steam-runtime/issues/77
                             binary == 'nvidia-cg-toolkit'):
                         if binary in source_manifest['sdk'].get(
@@ -130,12 +133,10 @@ def main(packages, *, manifest=None, steam=None):
 
         architectures = set()
         flatpak_versions = {}
-        primary = None
 
         for line in records:
             if line[0].startswith('coreutils:'):
                 arch = line[0].split(':', 1)[1]
-                primary = arch
                 architectures.add(arch)
             elif line[0].startswith('libc6:'):
                 arch = line[0].split(':', 1)[1]
@@ -230,8 +231,9 @@ def main(packages, *, manifest=None, steam=None):
     print('...')
 
     if (missing_platform or missing_sdk or only_in_steam or
-            different_version or newer_in_steam):
+            newer_in_flatpak or newer_in_steam):
         raise SystemExit(1)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
