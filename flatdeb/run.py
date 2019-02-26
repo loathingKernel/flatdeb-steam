@@ -341,6 +341,8 @@ class Builder:
             '--add-apt-source', action='append', default=[])
         parser.add_argument(
             '--add-apt-keyring', action='append', default=[])
+        parser.add_argument(
+            '--generate-sysroot-tarball', action='store_true')
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         subparser = subparsers.add_parser(
@@ -623,7 +625,13 @@ class Builder:
             '--mode={}'.format(self.ostree_mode),
         ])
 
-    def command_runtimes(self, *, yaml_file, **kwargs):
+    def command_runtimes(
+        self,
+        *,
+        yaml_file,
+        generate_sysroot_tarball=False,
+        **kwargs
+    ):
         self.ensure_local_repo()
 
         if self.runtime_branch is None:
@@ -649,6 +657,7 @@ class Builder:
             for helper in (
                 'apt-install',
                 'clean-up-base',
+                'clean-up-before-pack',
                 'collect-source-code',
                 'disable-services',
                 'hard-link-alternatives',
@@ -752,6 +761,20 @@ class Builder:
                     )
                     sources_tarball = sources_prefix + '.tar.gz'
 
+                    if generate_sysroot_tarball:
+                        sysroot_prefix = '{}-sysroot-{}-{}'.format(
+                            runtime,
+                            ','.join(self.dpkg_archs),
+                            self.runtime_branch,
+                        )
+                        sysroot_tarball = sysroot_prefix + '.tar.gz'
+                        argv.append('-t')
+                        argv.append('sysroot_prefix:{}'.format(sysroot_prefix))
+                        argv.append('-t')
+                        argv.append(
+                            'sysroot_tarball:{}'.format(
+                                sysroot_tarball + '.new'))
+
                     sdk_details = self.runtime_details.get('sdk', {})
                     sdk_packages = list(sdk_details.get('add_packages', []))
                     argv.append('-t')
@@ -822,6 +845,10 @@ class Builder:
                 subprocess.check_call(argv)
 
                 if sdk:
+                    if sysroot_tarball is not None:
+                        output = os.path.join(self.build_area, sysroot_tarball)
+                        os.rename(output + '.new', output)
+
                     logger.info('Committing %s to OSTree', sources_tarball)
                     output = os.path.join(self.build_area, sources_tarball)
                     os.rename(output + '.new', output)
@@ -1046,7 +1073,7 @@ class Builder:
 
             os.makedirs(
                 os.path.join(
-                    overlay, 'files',
+                    overlay, 'usr',
                     detail['directory'],
                 ),
                 0o755,

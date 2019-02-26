@@ -13,6 +13,8 @@
 {{- $ospack := or .ospack (printf "base_%s_%s_%s.tar.gz" $suite $version $architecture) -}}
 {{- $runtime := .runtime -}}
 {{- $runtime_branch := or .runtime_branch "master" -}}
+{{- $sysroot_prefix := or .sysroot_prefix (printf "sysroot_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $sysroot_tarball := or .sysroot_tarball "" -}}
 {{- $ostree_prefix := or .ostree_prefix (printf "ostree_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
 {{- $ostree_tarball := or .ostree_tarball (printf "%s.tar.gz" $ostree_prefix) -}}
 {{- $sources_prefix := or .sources_prefix (printf "sources_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
@@ -158,19 +160,43 @@ actions:
   {{ end }}
 
   - action: run
-    label: hard-link-alternatives
-    chroot: true
-    script: hard-link-alternatives
-
-  - action: run
     label: usrmerge
     chroot: false
     command: '"$RECIPEDIR/usrmerge" "$ROOTDIR"'
+
+  - action: overlay
+    source: runtimes/{{ $runtime }}/overlay
 
   - action: run
     label: put-ldconfig-in-path
     chroot: true
     script: put-ldconfig-in-path
+
+  - action: run
+    label: clean-up-before-pack
+    chroot: false
+    command: '"$RECIPEDIR/clean-up-before-pack" "$ROOTDIR"'
+
+  {{ if $sysroot_tarball }}
+  - action: run
+    label: pack sysroot tarball
+    chroot: false
+    command: >
+      echo;
+      tar -zcf "$ARTIFACTDIR/{{ $sysroot_tarball }}"
+      --numeric-owner
+      --sort=name
+      -C "$ROOTDIR"
+      --exclude="./script"
+      --exclude="./src"
+      --transform="s,^./,,"
+      .
+  {{ end }}
+
+  - action: run
+    label: hard-link-alternatives
+    chroot: true
+    script: hard-link-alternatives
 
   {{ if $sdk }}
   - action: run
@@ -191,9 +217,6 @@ actions:
   # TODO: VAAPI extension
   # TODO: SDK extension
   # TODO: ca-certificates extension to get newer certs?
-
-  - action: overlay
-    source: runtimes/{{ $runtime }}/overlay
 
   - action: run
     label: pack ostree tarball
