@@ -774,6 +774,9 @@ class Builder:
                         argv.append(
                             'sysroot_tarball:{}'.format(
                                 sysroot_tarball + '.new'))
+                    else:
+                        sysroot_prefix = None
+                        sysroot_tarball = None
 
                     sdk_details = self.runtime_details.get('sdk', {})
                     sdk_packages = list(sdk_details.get('add_packages', []))
