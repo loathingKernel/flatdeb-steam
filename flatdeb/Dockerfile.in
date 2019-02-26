@@ -1,0 +1,12 @@
+FROM scratch
+ADD @sysroot_tarball@ /
+RUN \
+set -e; \
+rm -rf /var/lib/apt/lists/*; \
+mkdir -p /run/systemd; \
+echo 'docker' > /run/systemd/container; \
+:
+
+CMD ["/bin/bash"]
+
+# vim:set sw=4 sts=4 et:
