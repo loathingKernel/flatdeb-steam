@@ -660,12 +660,12 @@ class Builder:
                 'clean-up-before-pack',
                 'collect-source-code',
                 'disable-services',
-                'hard-link-alternatives',
                 'make-flatpak-friendly',
                 'platformize',
                 'prepare-runtime',
                 'purge-conffiles',
                 'put-ldconfig-in-path',
+                'symlink-alternatives',
                 'usrmerge',
                 'write-manifest',
             ):
