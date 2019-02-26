@@ -9,5 +9,3 @@ sources:
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt-spy'
     keyring: 'valve-archive-keyring.gpg'
-    apt_components:
-      - main
