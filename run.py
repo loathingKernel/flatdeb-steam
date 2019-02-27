@@ -101,6 +101,25 @@ class AptSource:
         self.trusted = trusted
 
     @classmethod
+    def multiple_from_string(
+        cls,
+        line,
+    ):
+        line = line.strip()
+        tokens = line.split()
+
+        if tokens[0] in ('deb', 'deb-src'):
+            return (cls.from_string(line),)
+        elif tokens[0] == 'both':
+            return (
+                cls.from_string('deb' + line[4:]),
+                cls.from_string('deb-src' + line[4:]),
+            )
+        else:
+            raise ValueError(
+                'apt sources must start with "deb ", "deb-src " or "both "')
+
+    @classmethod
     def from_string(
         cls,
         line,
@@ -437,17 +456,8 @@ class Builder:
                     key, value = replacement.split('=', 1)
 
                     if key == source['label']:
-                        tokens = value.split()
-
-                        if tokens[0] == 'both':
-                            self.apt_sources.append(
-                                AptSource.from_string('deb' + value[4:]))
-                            self.apt_sources.append(
-                                AptSource.from_string('deb-src' + value[4:]))
-                        else:
-                            self.apt_sources.append(
-                                AptSource.from_string(value))
-
+                        self.apt_sources.extend(
+                            AptSource.multiple_from_string(value))
                         replaced = True
                         break
 
@@ -468,11 +478,11 @@ class Builder:
                     trusted=trusted,
                 ))
 
-            for addition in args.add_apt_source:
-                self.apt_sources.append(AptSource.from_string(addition))
+        for addition in args.add_apt_source:
+            self.apt_sources.extend(AptSource.multiple_from_string(addition))
 
-            for addition in args.add_apt_keyring:
-                self.apt_keyrings.append(addition)
+        for addition in args.add_apt_keyring:
+            self.apt_keyrings.append(addition)
 
         if self.apt_sources[0].kind != 'deb':
             parser.error('First apt source must provide .deb packages')
