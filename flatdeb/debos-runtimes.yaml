@@ -19,6 +19,8 @@
 {{- $ostree_tarball := or .ostree_tarball (printf "%s.tar.gz" $ostree_prefix) -}}
 {{- $sources_prefix := or .sources_prefix (printf "sources_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
 {{- $sources_tarball := or .sources_tarball (printf "%s.tar.gz" $sources_prefix) -}}
+{{- $debug_prefix := or .debug_prefix (printf "debug_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $debug_tarball := or .debug_tarball (printf "%s.tar.gz" $debug_prefix) -}}
 
 architecture: {{ $architecture }}
 
@@ -189,6 +191,7 @@ actions:
       -C "$ROOTDIR"
       --exclude="./script"
       --exclude="./src"
+      --exclude="./usr/lib/debug"
       --transform="s,^./,,"
       .
   {{ end }}
@@ -210,7 +213,7 @@ actions:
     command: '"$RECIPEDIR/make-flatpak-friendly" "$ROOTDIR"'
   {{ end }}
 
-  # TODO: Move lib/debug, zoneinfo, locales into extensions
+  # TODO: Move zoneinfo, locales into extensions
   # TODO: Hook point for GL, instead of just Mesa
   # TODO: GStreamer extension
   # TODO: Icon theme, Gtk theme extension
@@ -240,6 +243,18 @@ actions:
       --sort=name
       --transform="s,^./,,"
       -C "$ROOTDIR/src"
+      .
+
+  - action: run
+    label: pack debug symbols
+    chroot: false
+    command: >
+      echo;
+      tar -zcf "$ARTIFACTDIR/{{ $debug_tarball }}"
+      --numeric-owner
+      --sort=name
+      --transform="s,^./,,"
+      -C "$ROOTDIR/debug"
       .
 
   - action: run

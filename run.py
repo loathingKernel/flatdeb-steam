@@ -761,6 +761,13 @@ class Builder:
                     )
                     sources_tarball = sources_prefix + '.tar.gz'
 
+                    debug_prefix = '{}-debug-{}-{}'.format(
+                        runtime,
+                        ','.join(self.dpkg_archs),
+                        self.runtime_branch,
+                    )
+                    debug_tarball = debug_prefix + '.tar.gz'
+
                     if generate_sysroot_tarball:
                         sysroot_prefix = '{}-sysroot-{}-{}'.format(
                             runtime,
@@ -782,6 +789,10 @@ class Builder:
                     sdk_packages = list(sdk_details.get('add_packages', []))
                     argv.append('-t')
                     argv.append('sdk:yes')
+                    argv.append('-t')
+                    argv.append('debug_tarball:' + debug_tarball + '.new')
+                    argv.append('-t')
+                    argv.append('debug_prefix:' + debug_prefix)
                     argv.append('-t')
                     argv.append('sources_tarball:' + sources_tarball + '.new')
                     argv.append('-t')
@@ -874,6 +885,25 @@ class Builder:
                             writer.write(content)
 
                         os.rename(output + '.new', output)
+
+                    output = os.path.join(self.build_area, debug_tarball)
+                    logger.info('Committing %s to OSTree', debug_tarball)
+                    os.rename(output + '.new', output)
+                    subprocess.check_call([
+                        'time',
+                        'ostree',
+                        '--repo=' + self.ostree_repo,
+                        'commit',
+                        '--branch=runtime/{}.Debug/{}/{}'.format(
+                            runtime,
+                            self.flatpak_arch,
+                            self.runtime_branch,
+                        ),
+                        '--subject=Update',
+                        '--tree=tar={}'.format(output),
+                        '--fsync=false',
+                        '--tar-autocreate-parents',
+                    ])
 
                     logger.info('Committing %s to OSTree', sources_tarball)
                     output = os.path.join(self.build_area, sources_tarball)
@@ -1032,6 +1062,20 @@ class Builder:
             ]),
         )
 
+        if sdk:
+            keyfile.set_string(
+                'Extension {}.Sdk.Debug'.format(prefix),
+                'directory', 'lib/debug',
+            )
+            keyfile.set_boolean(
+                'Extension {}.Sdk.Debug'.format(prefix),
+                'autodelete', True,
+            )
+            keyfile.set_boolean(
+                'Extension {}.Sdk.Debug'.format(prefix),
+                'no-autodownload', True,
+            )
+
         search_path = []
 
         for arch in self.dpkg_archs:
@@ -1118,6 +1162,34 @@ class Builder:
         keyfile.save_to_file(metadata)
 
         if sdk:
+            metadata = os.path.join(overlay, 'debug', 'metadata')
+            os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
+
+            keyfile = GLib.KeyFile()
+            keyfile.set_string('Runtime', 'name', runtime + '.Debug')
+            keyfile.set_string(
+                'Runtime', 'runtime',
+                '{}.Platform/{}/{}'.format(
+                    prefix,
+                    self.flatpak_arch,
+                    self.runtime_branch,
+                )
+            )
+            keyfile.set_string(
+                'Runtime', 'sdk',
+                '{}.Sdk/{}/{}'.format(
+                    prefix,
+                    self.flatpak_arch,
+                    self.runtime_branch,
+                )
+            )
+
+            keyfile.set_string(
+                'Runtime', 'x-flatdeb-version', VERSION,
+            )
+
+            keyfile.save_to_file(metadata)
+
             metadata = os.path.join(overlay, 'src', 'metadata')
             os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
 
