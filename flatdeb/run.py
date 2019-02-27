@@ -101,6 +101,25 @@ class AptSource:
         self.trusted = trusted
 
     @classmethod
+    def multiple_from_string(
+        cls,
+        line,
+    ):
+        line = line.strip()
+        tokens = line.split()
+
+        if tokens[0] in ('deb', 'deb-src'):
+            return (cls.from_string(line),)
+        elif tokens[0] == 'both':
+            return (
+                cls.from_string('deb' + line[4:]),
+                cls.from_string('deb-src' + line[4:]),
+            )
+        else:
+            raise ValueError(
+                'apt sources must start with "deb ", "deb-src " or "both "')
+
+    @classmethod
     def from_string(
         cls,
         line,
@@ -437,17 +456,8 @@ class Builder:
                     key, value = replacement.split('=', 1)
 
                     if key == source['label']:
-                        tokens = value.split()
-
-                        if tokens[0] == 'both':
-                            self.apt_sources.append(
-                                AptSource.from_string('deb' + value[4:]))
-                            self.apt_sources.append(
-                                AptSource.from_string('deb-src' + value[4:]))
-                        else:
-                            self.apt_sources.append(
-                                AptSource.from_string(value))
-
+                        self.apt_sources.extend(
+                            AptSource.multiple_from_string(value))
                         replaced = True
                         break
 
@@ -468,11 +478,11 @@ class Builder:
                     trusted=trusted,
                 ))
 
-            for addition in args.add_apt_source:
-                self.apt_sources.append(AptSource.from_string(addition))
+        for addition in args.add_apt_source:
+            self.apt_sources.extend(AptSource.multiple_from_string(addition))
 
-            for addition in args.add_apt_keyring:
-                self.apt_keyrings.append(addition)
+        for addition in args.add_apt_keyring:
+            self.apt_keyrings.append(addition)
 
         if self.apt_sources[0].kind != 'deb':
             parser.error('First apt source must provide .deb packages')
@@ -761,6 +771,13 @@ class Builder:
                     )
                     sources_tarball = sources_prefix + '.tar.gz'
 
+                    debug_prefix = '{}-debug-{}-{}'.format(
+                        runtime,
+                        ','.join(self.dpkg_archs),
+                        self.runtime_branch,
+                    )
+                    debug_tarball = debug_prefix + '.tar.gz'
+
                     if generate_sysroot_tarball:
                         sysroot_prefix = '{}-sysroot-{}-{}'.format(
                             runtime,
@@ -782,6 +799,10 @@ class Builder:
                     sdk_packages = list(sdk_details.get('add_packages', []))
                     argv.append('-t')
                     argv.append('sdk:yes')
+                    argv.append('-t')
+                    argv.append('debug_tarball:' + debug_tarball + '.new')
+                    argv.append('-t')
+                    argv.append('debug_prefix:' + debug_prefix)
                     argv.append('-t')
                     argv.append('sources_tarball:' + sources_tarball + '.new')
                     argv.append('-t')
@@ -874,6 +895,25 @@ class Builder:
                             writer.write(content)
 
                         os.rename(output + '.new', output)
+
+                    output = os.path.join(self.build_area, debug_tarball)
+                    logger.info('Committing %s to OSTree', debug_tarball)
+                    os.rename(output + '.new', output)
+                    subprocess.check_call([
+                        'time',
+                        'ostree',
+                        '--repo=' + self.ostree_repo,
+                        'commit',
+                        '--branch=runtime/{}.Debug/{}/{}'.format(
+                            runtime,
+                            self.flatpak_arch,
+                            self.runtime_branch,
+                        ),
+                        '--subject=Update',
+                        '--tree=tar={}'.format(output),
+                        '--fsync=false',
+                        '--tar-autocreate-parents',
+                    ])
 
                     logger.info('Committing %s to OSTree', sources_tarball)
                     output = os.path.join(self.build_area, sources_tarball)
@@ -1032,6 +1072,20 @@ class Builder:
             ]),
         )
 
+        if sdk:
+            keyfile.set_string(
+                'Extension {}.Sdk.Debug'.format(prefix),
+                'directory', 'lib/debug',
+            )
+            keyfile.set_boolean(
+                'Extension {}.Sdk.Debug'.format(prefix),
+                'autodelete', True,
+            )
+            keyfile.set_boolean(
+                'Extension {}.Sdk.Debug'.format(prefix),
+                'no-autodownload', True,
+            )
+
         search_path = []
 
         for arch in self.dpkg_archs:
@@ -1118,6 +1172,34 @@ class Builder:
         keyfile.save_to_file(metadata)
 
         if sdk:
+            metadata = os.path.join(overlay, 'debug', 'metadata')
+            os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
+
+            keyfile = GLib.KeyFile()
+            keyfile.set_string('Runtime', 'name', runtime + '.Debug')
+            keyfile.set_string(
+                'Runtime', 'runtime',
+                '{}.Platform/{}/{}'.format(
+                    prefix,
+                    self.flatpak_arch,
+                    self.runtime_branch,
+                )
+            )
+            keyfile.set_string(
+                'Runtime', 'sdk',
+                '{}.Sdk/{}/{}'.format(
+                    prefix,
+                    self.flatpak_arch,
+                    self.runtime_branch,
+                )
+            )
+
+            keyfile.set_string(
+                'Runtime', 'x-flatdeb-version', VERSION,
+            )
+
+            keyfile.save_to_file(metadata)
+
             metadata = os.path.join(overlay, 'src', 'metadata')
             os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
 

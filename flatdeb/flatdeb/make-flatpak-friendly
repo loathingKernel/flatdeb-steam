@@ -170,6 +170,11 @@ done
 chmod -R --changes "a-s,o-t,u=rwX,og=rX" .
 chown -R --changes "root:root" .
 
+mkdir -p debug
+mkdir -p usr/lib/debug
+mv usr/lib/debug debug/files
+# mount point
+mkdir -p usr/lib/debug
 mv usr files
 
 if [ -n "$sdk" ]; then
