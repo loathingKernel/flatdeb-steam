@@ -13,13 +13,14 @@
 {{- $ospack := or .ospack (printf "base_%s_%s_%s.tar.gz" $suite $version $architecture) -}}
 {{- $runtime := .runtime -}}
 {{- $runtime_branch := or .runtime_branch "master" -}}
-{{- $sysroot_prefix := or .sysroot_prefix (printf "sysroot_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $artifact_prefix := or .artifact_prefix (printf "%s-%s-%s" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $sysroot_prefix := or .sysroot_prefix (printf "%s-sysroot" $artifact_prefix) -}}
 {{- $sysroot_tarball := or .sysroot_tarball "" -}}
-{{- $ostree_prefix := or .ostree_prefix (printf "ostree_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $ostree_prefix := or .ostree_prefix (printf "%s-runtime" $artifact_prefix) -}}
 {{- $ostree_tarball := or .ostree_tarball (printf "%s.tar.gz" $ostree_prefix) -}}
-{{- $sources_prefix := or .sources_prefix (printf "sources_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $sources_prefix := or .sources_prefix (printf "%s-sources" $artifact_prefix) -}}
 {{- $sources_tarball := or .sources_tarball (printf "%s.tar.gz" $sources_prefix) -}}
-{{- $debug_prefix := or .debug_prefix (printf "debug_%s_%s_%s" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $debug_prefix := or .debug_prefix (printf "%s-debug" $artifact_prefix) -}}
 {{- $debug_tarball := or .debug_tarball (printf "%s.tar.gz" $debug_prefix) -}}
 
 architecture: {{ $architecture }}
@@ -121,9 +122,9 @@ actions:
     chroot: false
     command: |
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
-      cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $ostree_prefix }}.manifest.dpkg"
-      cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $ostree_prefix }}.manifest.dpkg.built-using"
-      cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $ostree_prefix }}.manifest.deb822.gz"
+      cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
+      cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg.built-using"
+      cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.deb822.gz"
 
   {{ if $sdk }}
   - action: run
