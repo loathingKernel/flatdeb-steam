@@ -128,6 +128,7 @@ for package in \
     module-init-tools \
     plymouth \
     tcpd \
+    udev \
 ; do \
     if is_installed "$package"; then
         unwanted+=("$package")
@@ -174,7 +175,6 @@ for package in \
     sysv-rc \
     ubuntu-archive-keyring \
     ubuntu-keyring \
-    udev \
     upstart \
 ; do \
     if is_installed "$package"; then
