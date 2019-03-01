@@ -572,7 +572,7 @@ class Builder:
                     self.apt_sources[0].uri,
                 ),
                 '-t', 'ospack:{}'.format(tarball + '.new'),
-                '-t', 'manifest_prefix:base-{}-{}'.format(
+                '-t', 'artifact_prefix:base-{}-{}'.format(
                     self.apt_suite,
                     ','.join(self.dpkg_archs),
                 ),
@@ -708,11 +708,12 @@ class Builder:
                 else:
                     runtime = prefix + '.Platform'
 
-                ostree_prefix = '{}-ostree-{}-{}'.format(
+                artifact_prefix = '{}-{}-{}'.format(
                     runtime,
                     ','.join(self.dpkg_archs),
                     self.runtime_branch,
                 )
+                ostree_prefix = artifact_prefix + '-runtime'
                 out_tarball = ostree_prefix + '.tar.gz'
 
                 argv = [
@@ -723,6 +724,7 @@ class Builder:
                     '-t', 'flatpak_arch:{}'.format(self.flatpak_arch),
                     '-t', 'suite:{}'.format(self.apt_suite),
                     '-t', 'ospack:{}'.format(tarball),
+                    '-t', 'artifact_prefix:{}'.format(artifact_prefix),
                     '-t', 'ostree_prefix:{}'.format(ostree_prefix),
                     '-t', 'ostree_tarball:{}'.format(out_tarball + '.new'),
                     '-t', 'runtime:{}'.format(runtime),
@@ -764,26 +766,14 @@ class Builder:
                     argv.append('post_script:post_script')
 
                 if sdk:
-                    sources_prefix = '{}-sources-{}-{}'.format(
-                        runtime,
-                        ','.join(self.dpkg_archs),
-                        self.runtime_branch,
-                    )
+                    sources_prefix = artifact_prefix + '-sources'
                     sources_tarball = sources_prefix + '.tar.gz'
 
-                    debug_prefix = '{}-debug-{}-{}'.format(
-                        runtime,
-                        ','.join(self.dpkg_archs),
-                        self.runtime_branch,
-                    )
+                    debug_prefix = artifact_prefix + '-debug'
                     debug_tarball = debug_prefix + '.tar.gz'
 
                     if generate_sysroot_tarball:
-                        sysroot_prefix = '{}-sysroot-{}-{}'.format(
-                            runtime,
-                            ','.join(self.dpkg_archs),
-                            self.runtime_branch,
-                        )
+                        sysroot_prefix = artifact_prefix + '-sysroot'
                         sysroot_tarball = sysroot_prefix + '.tar.gz'
                         argv.append('-t')
                         argv.append('sysroot_prefix:{}'.format(sysroot_prefix))

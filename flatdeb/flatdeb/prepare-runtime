@@ -78,3 +78,6 @@ in_chroot aptitude -y markauto '?installed'
 
 # Ubuntu precise doesn't like apt being up for autoremoval.
 in_chroot aptitude -y unmarkauto apt
+
+# Required for openjdk-8-jre-headless
+install -d "$sysroot/usr/share/man/man1"

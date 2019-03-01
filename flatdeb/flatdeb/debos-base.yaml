@@ -8,8 +8,8 @@
 {{- $keyring := or .keyring "" -}}
 {{- $keyringpackage := or .keyringpackage "" -}}
 {{- $version := or .version "0" -}}
-{{- $ospack := or .ospack (printf "base_%s_%s_%s.tar.gz" $suite $version $architecture) -}}
-{{- $manifest_prefix := or .manifest_prefix (printf "base_%s_%s_%s" $suite $version $architecture) -}}
+{{- $artifact_prefix := or .artifact_prefix (printf "base-%s-%s-%s" $suite $version $architecture) -}}
+{{- $ospack := or .ospack (printf "%s.tar.gz" $artifact_prefix) -}}
 
 architecture: {{ $architecture }}
 
@@ -110,9 +110,9 @@ actions:
     chroot: false
     command: |
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
-      cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg"
-      cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.dpkg.built-using"
-      cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $manifest_prefix }}.manifest.deb822.gz"
+      cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
+      cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg.built-using"
+      cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.deb822.gz"
 
   # No point in archiving these
   - action: run
