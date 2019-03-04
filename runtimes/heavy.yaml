@@ -57,4 +57,7 @@ sdk:
     ln -s busybox /usr/bin/unix2dos
     ln -s busybox /usr/bin/vi
 
+    # We prefer Java 8
+    update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+
 ...
