@@ -26,7 +26,6 @@
 
 set -e
 set -u
-set -x
 set -o pipefail
 
 me="$(basename "$0")"
@@ -41,6 +40,8 @@ if [ "$#" != 1 ] || [ "$1" = '--help' ] || [ "x$(id -u)" != x0 ] ||
     exit 2
 fi
 
+set -x
+
 sysroot="$1"
 cd "$sysroot"
 
@@ -53,7 +54,7 @@ in_chroot () {
         fi
     done
 
-    systemd-nspawn --directory="$sysroot" --as-pid2 \
+    systemd-nspawn --directory="$sysroot" --as-pid2 --tmpfs=/run/lock \
     env DEBIAN_FRONTEND=noninteractive \
     "$@"
 }

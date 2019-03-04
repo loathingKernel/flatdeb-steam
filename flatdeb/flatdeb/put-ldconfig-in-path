@@ -26,7 +26,6 @@
 
 set -e
 set -u
-set -x
 set -o pipefail
 
 me="$(basename "$0")"
@@ -39,6 +38,8 @@ if [ "$#" != 0 ] || [ "x$(id -u)" != x0 ]; then
     echo "Run this script as root, in the container." >&2
     exit 2
 fi
+
+set -x
 
 if ! test -e /bin/ldconfig; then
     ln -s /sbin/ldconfig /bin/ldconfig

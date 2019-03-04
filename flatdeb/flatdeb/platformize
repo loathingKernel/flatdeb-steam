@@ -28,7 +28,6 @@
 
 set -e
 set -u
-set -x
 set -o pipefail
 
 me="$(basename "$0")"
@@ -54,7 +53,7 @@ in_chroot () {
         fi
     done
 
-    systemd-nspawn --directory="$sysroot" --as-pid2 \
+    systemd-nspawn --directory="$sysroot" --as-pid2 --tmpfs=/run/lock \
     env DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes \
     "$@"
 }
