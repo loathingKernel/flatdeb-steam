@@ -56,8 +56,17 @@ sdk:
     ln -sv busybox /usr/bin/traceroute6
     ln -sv busybox /usr/bin/unix2dos
     ln -sv busybox /usr/bin/vi
-
-    # We prefer Java 8
     update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+    update-alternatives --set jexec /usr/lib/jvm/java-8-openjdk-amd64/jre/lib/jexec
+    update-alternatives --set jjs /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/jjs
+    update-alternatives --set keytool /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/keytool
+    update-alternatives --set orbd /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/orbd
+    update-alternatives --set pack200 /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/pack200
+    update-alternatives --set policytool /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/policytool
+    update-alternatives --set rmid /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/rmid
+    update-alternatives --set rmiregistry /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/rmiregistry
+    update-alternatives --set servertool /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/servertool
+    update-alternatives --set tnameserv /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/tnameserv
+    update-alternatives --set unpack200 /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/unpack200
 
 ...
