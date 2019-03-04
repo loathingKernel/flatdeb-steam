@@ -43,4 +43,18 @@ sdk:
     - steamrt-libdebug
     - steamrt-libdevel-non-multiarch
 
+  post_script: |
+    ln -s busybox /usr/bin/dos2unix
+    ln -s busybox /usr/bin/ifconfig
+    ln -s busybox /usr/bin/ip
+    ln -s busybox /usr/bin/nc
+    ln -s busybox /usr/bin/ping
+    ln -s busybox /usr/bin/ping6
+    ln -s busybox /usr/bin/route
+    ln -s busybox /usr/bin/telnet
+    ln -s busybox /usr/bin/traceroute
+    ln -s busybox /usr/bin/traceroute6
+    ln -s busybox /usr/bin/unix2dos
+    ln -s busybox /usr/bin/vi
+
 ...
