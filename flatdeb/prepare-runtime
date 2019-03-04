@@ -53,7 +53,7 @@ in_chroot () {
         fi
     done
 
-    systemd-nspawn --directory="$sysroot" --as-pid2 \
+    systemd-nspawn --directory="$sysroot" --as-pid2 --tmpfs=/run/lock \
     env DEBIAN_FRONTEND=noninteractive \
     "$@"
 }
