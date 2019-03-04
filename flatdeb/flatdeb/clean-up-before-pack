@@ -75,8 +75,11 @@ var/lock \
 var/tmp \
 ${NULL}
 
-ln -s /run/lock var/lock
+install -d root
 install -d run
+install -d run/lock
 install -d -m1777 tmp
 install -d var/cache
 install -d -m1777 var/tmp
+ln -s /dev/shm run/shm
+ln -s /run/lock var/lock
