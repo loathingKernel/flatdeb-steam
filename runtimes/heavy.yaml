@@ -23,11 +23,9 @@
 
 id_prefix: com.valvesoftware.SteamRuntime
 
-add_packages_multiarch:
-  - steamrt-libs
-
 add_packages:
   - steamrt-container
+  - steamrt-libs
 
 post_script: |
   install -d -m755 /usr/lib/locale
@@ -37,9 +35,12 @@ platform:
   null: null
 
 sdk:
+  add_packages_multiarch:
+    - steamrt-libdevel
+
   add_packages:
     - steamrt-dev
     - steamrt-libdebug
-    - steamrt-libdevel
+    - steamrt-libdevel-non-multiarch
 
 ...
