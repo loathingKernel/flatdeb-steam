@@ -62,6 +62,7 @@ DEBIAN_FRONTEND=noninteractive
 export DEBIAN_FRONTEND
 
 install -d \
+"$sysroot/run/lock" \
 "$sysroot/var/cache/apt/archives/partial" \
 "$sysroot/var/lib/apt/lists" \
 "$sysroot/var/lock" \
