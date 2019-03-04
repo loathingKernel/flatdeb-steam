@@ -48,6 +48,9 @@ fi
 sysroot="$1"
 cd "$sysroot"
 
+ls -ld bin sbin lib*
+ls -ld usr/*
+
 in_chroot () {
     chroot "$sysroot" "$@"
 }
@@ -84,14 +87,20 @@ usrmerge () {
     fi
 }
 
-( cd "$sysroot"; find bin sbin lib* -not -xtype d -print0 ) |
+( find bin sbin lib* -not -xtype d -print0 ) |
 while read -r -d '' f; do
     if chroot "$sysroot" test -e "/usr/$f"; then
         usrmerge "/$f"
     fi
 done
 
-tar -cf- bin sbin lib* | tar -C usr -xf-
-cd "$sysroot"
+for f in bin sbin lib*; do
+    if [ -L "$f" ]; then
+        rm -v -f "$f" >&2
+    else
+        echo "$f"
+    fi
+done | tar -cf- -T- | tar -C usr -xf-
+
 rm -fr bin sbin lib*
 ln -vs usr/bin usr/sbin usr/lib* .
