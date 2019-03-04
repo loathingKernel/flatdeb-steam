@@ -202,6 +202,7 @@ class Builder:
         self.strip_source_version_suffix = None
         self.apt_keyrings = []
         self.apt_sources = []
+        self.build_id = None
 
         self.logger = logger.getChild('Builder')
 
@@ -362,6 +363,8 @@ class Builder:
             '--add-apt-keyring', action='append', default=[])
         parser.add_argument(
             '--generate-sysroot-tarball', action='store_true')
+        parser.add_argument(
+            '--build-id', default=None)
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         subparser = subparsers.add_parser(
@@ -403,6 +406,7 @@ class Builder:
             os.chdir(args.chdir)
 
         self.build_area = args.build_area
+        self.build_id = args.build_id
         self.apt_suite = args.suite
         self.runtime_branch = args.runtime_branch
         self.ostree_repo = args.ostree_repo
@@ -586,6 +590,10 @@ class Builder:
                 ),
             ]
 
+            if self.build_id is not None:
+                argv.append('-t')
+                argv.append('build_id:{}'.format(self.build_id))
+
             for keyring in self.apt_keyrings:
                 if os.path.exists(os.path.join('suites', keyring)):
                     keyring = os.path.join('suites', keyring)
@@ -732,6 +740,10 @@ class Builder:
                     '-t', 'strip_source_version_suffix:{}'.format(
                         self.strip_source_version_suffix),
                 ]
+
+                if self.build_id is not None:
+                    argv.append('-t')
+                    argv.append('build_id:{}'.format(self.build_id))
 
                 if packages:
                     logger.info('Installing packages:')
@@ -1136,6 +1148,11 @@ class Builder:
             'Runtime', 'x-flatdeb-version', VERSION,
         )
 
+        if self.build_id is not None:
+            keyfile.set_string(
+                'Runtime', 'x-flatdeb-build-id', self.build_id,
+            )
+
         for ext, detail in self.runtime_details.get(
                 'add-extensions', {}
                 ).items():
@@ -1188,6 +1205,11 @@ class Builder:
                 'Runtime', 'x-flatdeb-version', VERSION,
             )
 
+            if self.build_id is not None:
+                keyfile.set_string(
+                    'Runtime', 'x-flatdeb-build-id', self.build_id,
+                )
+
             keyfile.save_to_file(metadata)
 
             metadata = os.path.join(overlay, 'src', 'metadata')
@@ -1215,6 +1237,11 @@ class Builder:
             keyfile.set_string(
                 'Runtime', 'x-flatdeb-version', VERSION,
             )
+
+            if self.build_id is not None:
+                keyfile.set_string(
+                    'Runtime', 'x-flatdeb-build-id', self.build_id,
+                )
 
             keyfile.save_to_file(metadata)
 
