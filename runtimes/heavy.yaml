@@ -44,18 +44,18 @@ sdk:
     - steamrt-libdevel-non-multiarch
 
   post_script: |
-    ln -s busybox /usr/bin/dos2unix
-    ln -s busybox /usr/bin/ifconfig
-    ln -s busybox /usr/bin/ip
-    ln -s busybox /usr/bin/nc
-    ln -s busybox /usr/bin/ping
-    ln -s busybox /usr/bin/ping6
-    ln -s busybox /usr/bin/route
-    ln -s busybox /usr/bin/telnet
-    ln -s busybox /usr/bin/traceroute
-    ln -s busybox /usr/bin/traceroute6
-    ln -s busybox /usr/bin/unix2dos
-    ln -s busybox /usr/bin/vi
+    ln -sv busybox /usr/bin/dos2unix
+    ln -sv busybox /usr/bin/ifconfig
+    ln -sv busybox /usr/bin/ip
+    ln -sv busybox /usr/bin/nc
+    ln -sv busybox /usr/bin/ping
+    ln -sv busybox /usr/bin/ping6
+    ln -sv busybox /usr/bin/route
+    ln -sv busybox /usr/bin/telnet
+    ln -sv busybox /usr/bin/traceroute
+    ln -sv busybox /usr/bin/traceroute6
+    ln -sv busybox /usr/bin/unix2dos
+    ln -sv busybox /usr/bin/vi
 
     # We prefer Java 8
     update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
