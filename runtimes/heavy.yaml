@@ -68,5 +68,8 @@ sdk:
     update-alternatives --set servertool /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/servertool
     update-alternatives --set tnameserv /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/tnameserv
     update-alternatives --set unpack200 /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/unpack200
-
+    if [ -e /usr/lib/dbus-1.0/dbus-daemon-launch-helper ]; then
+      chmod --changes 0644 /usr/lib/dbus-1.0/dbus-daemon-launch-helper
+      chown --changes root:root /usr/lib/dbus-1.0/dbus-daemon-launch-helper
+    fi
 ...
