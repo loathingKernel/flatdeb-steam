@@ -302,6 +302,13 @@ sdk:
     update-alternatives --set g++ /usr/bin/g++-4.8
     update-alternatives --set cpp-bin /usr/bin/cpp-4.8
 
+  post_script: |
+    if test -n "$(find / -xdev '(' -uid +99 -o -gid +99 ')')"; then
+      echo "Warning: these files have a dynamically-allocated UID/GID"
+      echo "         which could cause problems for schroot:"
+      find / -xdev '(' -uid +99 -o -gid +99 ')' -ls
+    fi
+
 add-extensions:
   # FIXME: This is not properly multiarch-aware, but it's enough for a
   # proof of concept.
