@@ -29,7 +29,8 @@
 """
 Install the given packages.
 
-This is basically debos' apt action, but with more debugging.
+This is basically debos' apt action, but with more debugging, and without
+doing `apt-get update`.
 """
 
 import argparse
@@ -53,6 +54,8 @@ def main():
     parser.add_argument(
         '--without-recommends', action='store_false', dest='recommends',
         default=False)
+    parser.add_argument(
+        '--debug', action='store_true', default=False)
     parser.add_argument('sysroot')
     parser.add_argument('package_files', nargs='+')
 
@@ -70,18 +73,15 @@ def main():
         if var in os.environ:
             in_chroot.append('{}={}'.format(var, os.environ[var]))
 
-    subprocess.check_call(in_chroot + [
-        'apt-get', 'update',
-    ])
-
     options = []
     packages = []
 
-    options.append('-oDebug::pkgDepCache::AutoInstall=true')
-    options.append('-oDebug::pkgDepCache::Marker=true')
-    options.append('-oDebug::pkgPolicy=true')
-    options.append('-oDebug::pkgProblemResolver=true')
-    options.append('-oDebug::pkgProblemResolver::ShowScores=true')
+    if args.debug:
+        options.append('-oDebug::pkgDepCache::AutoInstall=true')
+        options.append('-oDebug::pkgDepCache::Marker=true')
+        options.append('-oDebug::pkgPolicy=true')
+        options.append('-oDebug::pkgProblemResolver=true')
+        options.append('-oDebug::pkgProblemResolver::ShowScores=true')
 
     if not args.recommends:
         options.append('--no-install-recommends')
