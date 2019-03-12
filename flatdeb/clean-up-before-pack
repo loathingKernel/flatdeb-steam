@@ -74,6 +74,21 @@ var/lock \
 var/tmp \
 ${NULL}
 
+# For portability between systems, especially if we're exporting a
+# sysroot tarball for schroot (which assumes it can use host uids and
+# gids for the chroot), we don't want to include /var/lib/apt/lists/*/
+# in the tarball if they are owned by _apt. We can just delete them -
+# apt will recreate them as needed.
+for dir in \
+    var/lib/apt/lists/auxfiles \
+    var/lib/apt/lists/partial \
+; do
+    if [ -e "$dir" ] \
+    && [ "x$(command stat -c '%u:%g' "$dir")" != "x0:0" ]; then
+        rm -fr "$dir"
+    fi
+done
+
 install -d root
 install -d run
 install -d run/lock
