@@ -60,10 +60,5 @@ sdk:
     ln -sv busybox /usr/bin/unix2dos
     ln -sv busybox /usr/bin/vi
     ln -sv busybox /usr/bin/xxd
-    if test -n "$(find / -xdev -path /script -prune -o '(' -uid +99 -o -gid +99 ')' -print)"; then
-      echo "Warning: these files have a dynamically-allocated UID/GID"
-      echo "         which could cause problems for schroot:"
-      find / -xdev -path /script -prune -o '(' -uid +99 -o -gid +99 ')' -ls
-    fi
 
 ...
