@@ -18,6 +18,7 @@ actions:
   - action: run
     label: create skeleton chroot
     command: |
+      echo
       install -d "$ROOTDIR"
       install -d "$ROOTDIR/run"
       install -d "$ROOTDIR/var"
@@ -56,7 +57,7 @@ actions:
   - action: run
     label: remove extra apt sources
     chroot: false
-    command: 'rm -fr "$ROOTDIR/etc/apt/sources.list.d"'
+    command: 'echo; rm -fr "$ROOTDIR/etc/apt/sources.list.d"'
 
   - action: run
     label: list apt configuration
@@ -74,25 +75,25 @@ actions:
   - action: run
     label: disable-services
     chroot: false
-    command: '"$RECIPEDIR/disable-services" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/disable-services" "$ROOTDIR"'
 
   - action: run
     label: clean-up-base
     chroot: false
-    command: '"$RECIPEDIR/clean-up-base" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/clean-up-base" "$ROOTDIR"'
 
   {{ if eq $mergedusr "after_debootstrap" }}
   - action: run
     label: usrmerge
     chroot: false
-    command: '"$RECIPEDIR/usrmerge" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/usrmerge" "$ROOTDIR"'
   {{ end }}
 
   {{ if $foreignarchs }}
   - action: run
     label: add-foreign-architectures
     chroot: false
-    command: '"$RECIPEDIR/add-foreign-architectures" "$ROOTDIR" {{ $foreignarchs }}'
+    command: 'echo; "$RECIPEDIR/add-foreign-architectures" "$ROOTDIR" {{ $foreignarchs }}'
   {{ end }}
 
   - action: run
@@ -103,12 +104,13 @@ actions:
   - action: run
     label: apt dist-upgrade
     chroot: true
-    command: 'DEBIAN_FRONTEND=noninteractive apt-get -y -q dist-upgrade'
+    command: 'echo; DEBIAN_FRONTEND=noninteractive apt-get -y -q dist-upgrade'
 
   - action: run
     label: write-manifest
     chroot: false
     command: |
+      echo
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
       cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg.built-using"
@@ -128,7 +130,7 @@ actions:
   - action: run
     label: clean-up-before-pack
     chroot: false
-    command: '"$RECIPEDIR/clean-up-before-pack" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/clean-up-before-pack" "$ROOTDIR"'
 
   - action: pack
     compression: gz
