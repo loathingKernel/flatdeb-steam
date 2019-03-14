@@ -1,10 +1,9 @@
 ---
-# Based on
-# https://github.com/ValveSoftware/steam-runtime/blob/master/packages.txt
+# Loosely based on:
 # https://github.com/ValveSoftware/steam-runtime/blob/master/setup_chroot.sh
 #
 # Copyright © 2013-2016 Valve Corporation
-# Copyright © 2017 Collabora Ltd.
+# Copyright © 2017-2019 Collabora Ltd.
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of these scripts and associated documentation files (the
@@ -46,226 +45,9 @@ sdk:
   add_packages_multiarch:
     - steamrt-libdevel
 
-  # Not adding these to the SDK for now to get a baseline for what's
-  # needed for a self-contained image
-  .add_packages:
-    - adduser
-    - apt
-    - apt-forktracer
-    - apt-utils
-    - build-essential
-    - bzip2
-    - clang-3.6
-    - cmake
-    - comerr-dev
-    - debconf
-    - debconf-i18n
-    - debhelper
-    - dpkg-dev
-    - fakeroot
-    - fcitx-libs-dev
-    - freeglut3-dev
-    - g++-4.8
-    - gcc-4.8
-    - gdb
-    - gnupg
-    - iproute
-    - iputils-ping
-    - krb5-multidev
-    - less
-    - libacl1-dev
-    - libappindicator-dev
-    - libasound2-dev
-    - libasyncns-dev
-    - libatk1.0-dev
-    - libattr1-dev
-    - libavahi-client-dev
-    - libavahi-common-dev
-    - libavcodec-dev
-    - libavfilter-dev
-    - libavformat-dev
-    - libavutil-dev
-    - libbz2-dev
-    - libc6-dbg
-    - libcairo2-dev
-    - libcanberra-dev
-    - libcanberra-gtk-dev
-    - libcap-dev
-    - libcups2-dev
-    - libcurl4-gnutls-dev
-    - libdbus-1-dev
-    - libdbus-glib-1-dev
-    - libexif-dev
-    - libexpat1-dev
-    - libffi-dev
-    - libflac-dev
-    - libfltk1.1-dev
-    - libfontconfig1-dev
-    - libfreetype6-dev
-    - libgconf2-dev
-    - libgcrypt11-dev
-    - libgdk-pixbuf2.0-dev
-    - libglew-dev
-    - libglib2.0-dev
-    - libglu1-mesa-dev
-    - libgmp-dev
-    - libgnutls-dev
-    - libgpg-error-dev
-    - libgstreamer-plugins-base0.10-dev
-    - libgstreamer0.10-dev
-    - libgtk2.0-dev
-    - libgudev-1.0-dev
-    - libice-dev
-    - libidn11-dev
-    - libindicator-dev
-    - libjack-jackd2-dev
-    - libjpeg-turbo8-dev
-    - libjson0-dev
-    - libkeyutils-dev
-    - libkrb5-dev
-    - liblcms2-dev
-    - libldap2-dev
-    - libltdl-dev
-    - libmikmod2-dev
-    - libmpg123-dev
-    - libncurses5-dev
-    - libncursesw5-dev
-    - libnm-glib-dev
-    - libnm-util-dev
-    - libnotify-dev
-    - libnspr4-dev
-    - libnss3-dev
-    - libogg-dev
-    - libopenal-dev
-    - liborc-0.4-dev
-    - libp11-kit-dev
-    - libpango1.0-dev
-    - libpci-dev
-    - libpcre3-dev
-    - libpixman-1-dev
-    - libpng12-dev
-    - libpulse-dev
-    - librtmp-dev
-    - libsamplerate0-dev
-    - libsasl2-dev
-    - libsdl-image1.2-dev
-    - libsdl-mixer1.2-dev
-    - libsdl-ttf2.0-dev
-    - libsdl1.2-dev
-    - libsdl2-dev
-    - libsdl2-image-dev
-    - libsdl2-mixer-dev
-    - libsdl2-net-dev
-    - libsdl2-ttf-dev
-    - libselinux1-dev
-    - libsm-dev
-    - libsndfile1-dev
-    - libspeex-dev
-    - libspeexdsp-dev
-    - libsqlite3-dev
-    - libssl-dev
-    - libstdc++6-4.6-dev
-    - libstdc++6-4.6-pic
-    - libswscale-dev
-    - libtasn1-6-dev
-    - libtbb-dev
-    - libtdb-dev
-    - libtheora-dev
-    - libtiff4-dev
-    - libtinfo-dev
-    - libudev-dev
-    - libusb-1.0-0-dev
-    - libva-dev
-    - libvdpau-dev
-    - libvorbis-dev
-    - libvpx-dev
-    - libvulkan-dev
-    - libwrap0-dev
-    - libx11-dev
-    - libx11-xcb-dev
-    - libxau-dev
-    - libxaw7-dev
-    - libxcb-composite0-dev
-    - libxcb-damage0-dev
-    - libxcb-dpms0-dev
-    - libxcb-dri2-0-dev
-    - libxcb-dri3-dev
-    - libxcb-glx0-dev
-    - libxcb-present-dev
-    - libxcb-randr0-dev
-    - libxcb-record0-dev
-    - libxcb-render0-dev
-    - libxcb-res0-dev
-    - libxcb-screensaver0-dev
-    - libxcb-shape0-dev
-    - libxcb-shm0-dev
-    - libxcb-sync-dev
-    - libxcb-xevie0-dev
-    - libxcb-xf86dri0-dev
-    - libxcb-xfixes0-dev
-    - libxcb-xinerama0-dev
-    - libxcb-xkb-dev
-    - libxcb-xprint0-dev
-    - libxcb-xtest0-dev
-    - libxcb-xv0-dev
-    - libxcb-xvmc0-dev
-    - libxcb1-dev
-    - libxcomposite-dev
-    - libxcursor-dev
-    - libxdamage-dev
-    - libxdmcp-dev
-    - libxext-dev
-    - libxfixes-dev
-    - libxft-dev
-    - libxi-dev
-    - libxinerama-dev
-    - libxml2-dev
-    - libxmu-dev
-    - libxpm-dev
-    - libxrandr-dev
-    - libxrender-dev
-    - libxss-dev
-    - libxt-dev
-    - libxtst-dev
-    - libxxf86vm-dev
-    - lldb-3.6
-    - locales
-    - lsb-release
-    - ltrace
-    - mawk
-    - net-tools
-    - netbase
-    - netcat-openbsd
-    - nettle-dev
-    - network-manager-dev
-    - nvidia-cg-toolkit
-    - passwd
-    - pkg-config
-    - procps
-    - python
+  add_packages:
     - steamrt-dev
-    - strace
-    - time
-    - tzdata
-    - ubuntu-keyring
-    - uuid-dev
-    - valgrind
-    - vim-tiny
-    - whiptail
-    - x11proto-composite-dev
-    - x11proto-core-dev
-    - x11proto-damage-dev
-    - x11proto-fixes-dev
-    - x11proto-input-dev
-    - x11proto-kb-dev
-    - x11proto-randr-dev
-    - x11proto-render-dev
-    - x11proto-scrnsaver-dev
-    - x11proto-xext-dev
-    - x11proto-xf86vidmode-dev
-    - x11proto-xinerama-dev
-    - xtrans-dev
-    - zlib1g-dev
+    - steamrt-libdevel-non-multiarch
 
   # TODO: also
   #  - lldb-3.4
@@ -278,9 +60,15 @@ sdk:
     # http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=714890
     #   /usr/include/c++/4.6/i686-linux-gnu/bits/c++config.h
     #   /usr/include/i386-linux-gnu/c++/4.8/bits/c++config.h
+    echo "Before fixing include paths:"
+    ls -ld /usr/include/c++/*/*-linux-gnu
+    ls -ld /usr/include/*-linux-gnu/c++/*
     if [ -d /usr/include/i386-linux-gnu/c++/4.8 ]; then
         ln -s /usr/include/i386-linux-gnu/c++/4.8 /usr/include/c++/4.8/i686-linux-gnu
     fi
+    echo "After fixing include paths:"
+    ls -ld /usr/include/c++/*/*-linux-gnu
+    ls -ld /usr/include/*-linux-gnu/c++/*
 
     # Setup compiler alternatives
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.6 50
@@ -291,8 +79,8 @@ sdk:
     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 100
     update-alternatives --install /usr/bin/cpp cpp-bin /usr/bin/cpp-4.8 100
 
-    #update-alternatives --install /usr/bin/gcc gcc /usr/bin/clang-3.4 50
-    #update-alternatives --install /usr/bin/g++ g++ /usr/bin/clang++-3.4 50
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/clang-3.4 50
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/clang++-3.4 50
 
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/clang-3.6 50
     update-alternatives --install /usr/bin/g++ g++ /usr/bin/clang++-3.6 50
