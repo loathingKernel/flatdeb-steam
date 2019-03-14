@@ -34,24 +34,24 @@ actions:
   - action: run
     label: disable-services
     chroot: false
-    command: '"$RECIPEDIR/disable-services" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/disable-services" "$ROOTDIR"'
 
   # TODO: This duplicates what we should have done in debos-base.yaml
   - action: run
     label: clean-up-base
     chroot: false
-    command: '"$RECIPEDIR/clean-up-base" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/clean-up-base" "$ROOTDIR"'
 
   - action: run
     label: prepare-runtime
     chroot: false
-    command: '"$RECIPEDIR/prepare-runtime" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/prepare-runtime" "$ROOTDIR"'
 
   {{ if $packages }}
   - action: run
     label: apt-install
     chroot: false
-    command: $RECIPEDIR/apt-install {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/packages.yaml"
+    command: echo; $RECIPEDIR/apt-install {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/packages.yaml"
   {{ end }}
 
   # TODO: Everything before this step is common to the Platform and SDK
@@ -62,20 +62,20 @@ actions:
   - action: run
     label: apt-install
     chroot: false
-    command: $RECIPEDIR/apt-install {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/sdk_packages.yaml"
+    command: echo; $RECIPEDIR/apt-install {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/sdk_packages.yaml"
   {{ end }}
 
   {{ if not $sdk }}
   - action: run
     label: platformize
     chroot: false
-    command: '"$RECIPEDIR/platformize" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/platformize" "$ROOTDIR"'
   {{ end }}
 
   - action: run
     label: purge-conffiles
     chroot: false
-    command: '"$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
 
   {{ if $post_script }}
   - action: run
@@ -103,12 +103,13 @@ actions:
   - action: run
     label: purge-conffiles again
     chroot: false
-    command: '"$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
 
   - action: run
     label: write-manifest
     chroot: false
     command: |
+      echo
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
       cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg.built-using"
@@ -123,42 +124,42 @@ actions:
   - action: run
     label: copy manifest from platform
     chroot: false
-    command: 'cp "$RECIPEDIR/manifest.dpkg.platform" "$ROOTDIR/usr"'
+    command: 'echo; cp "$RECIPEDIR/manifest.dpkg.platform" "$ROOTDIR/usr"'
   - action: run
     label: copy manifest from platform
     chroot: false
-    command: 'cp "$RECIPEDIR/manifest.dpkg.built-using.platform" "$ROOTDIR/usr"'
+    command: 'echo; cp "$RECIPEDIR/manifest.dpkg.built-using.platform" "$ROOTDIR/usr"'
   - action: run
     label: copy manifest from platform
     chroot: false
-    command: 'cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"'
+    command: 'echo; cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"'
   - action: run
     label: collect-source-code
     chroot: false
-    command: '"$RECIPEDIR/collect-source-code" --strip-source-version-suffix="{{ $strip_source_version_suffix }}" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/collect-source-code" --strip-source-version-suffix="{{ $strip_source_version_suffix }}" "$ROOTDIR"'
   {{ else }}
   - action: run
     label: copy manifest for SDK
     chroot: false
-    command: 'cp "$ROOTDIR/usr/manifest.dpkg" "$RECIPEDIR/manifest.dpkg.platform"'
+    command: 'echo; cp "$ROOTDIR/usr/manifest.dpkg" "$RECIPEDIR/manifest.dpkg.platform"'
   - action: run
     label: copy manifest for SDK
     chroot: false
-    command: 'cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$RECIPEDIR/manifest.dpkg.built-using.platform"'
+    command: 'echo; cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$RECIPEDIR/manifest.dpkg.built-using.platform"'
   - action: run
     label: copy manifest for SDK
     chroot: false
-    command: 'mv "$ROOTDIR/usr/manifest.deb822.gz" "$RECIPEDIR/manifest.platform.deb822.gz"'
+    command: 'echo; mv "$ROOTDIR/usr/manifest.deb822.gz" "$RECIPEDIR/manifest.platform.deb822.gz"'
   - action: run
     label: dpkg --purge dpkg
     chroot: true
-    command: 'dpkg --purge --force-remove-essential --force-depends dpkg'
+    command: 'echo; dpkg --purge --force-remove-essential --force-depends dpkg'
   {{ end }}
 
   - action: run
     label: usrmerge
     chroot: false
-    command: '"$RECIPEDIR/usrmerge" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/usrmerge" "$ROOTDIR"'
 
   - action: overlay
     source: runtimes/{{ $runtime }}/overlay
@@ -171,7 +172,7 @@ actions:
   - action: run
     label: clean-up-before-pack
     chroot: false
-    command: '"$RECIPEDIR/clean-up-before-pack" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/clean-up-before-pack" "$ROOTDIR"'
 
   {{ if $sysroot_tarball }}
   - action: run
@@ -179,6 +180,7 @@ actions:
     chroot: true
     command: |
       set -e
+      echo
       cd "$ROOTDIR"
       if test -n "$(find . -xdev -path ./script -prune -o '(' -uid +99 -o -gid +99 ')' -print)"; then
         echo "Warning: these files have a dynamically-allocated UID/GID"
@@ -211,12 +213,12 @@ actions:
   - action: run
     label: make-flatpak-friendly --sdk
     chroot: false
-    command: '"$RECIPEDIR/make-flatpak-friendly" --sdk "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/make-flatpak-friendly" --sdk "$ROOTDIR"'
   {{ else }}
   - action: run
     label: make-flatpak-friendly
     chroot: false
-    command: '"$RECIPEDIR/make-flatpak-friendly" "$ROOTDIR"'
+    command: 'echo; "$RECIPEDIR/make-flatpak-friendly" "$ROOTDIR"'
   {{ end }}
 
   # TODO: Move zoneinfo, locales into extensions
