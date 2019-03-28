@@ -8,6 +8,9 @@ sources:
     apt_uri: 'http://deb.debian.org/debian'
     apt_suite: 'jessie'
     keyring: 'debian-archive-keyring.gpg'
+  - label: backports
+    apt_uri: 'http://archive.debian.org/debian'
+    apt_suite: 'jessie-backports'
   - label: security
     apt_uri: 'http://security.debian.org'
     apt_suite: 'jessie/updates'
