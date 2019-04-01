@@ -45,6 +45,7 @@ sdk:
 
   add_packages:
     - steamrt-dev
+    - steamrt-libdebug-non-multiarch
 
   post_script: |
     ln -sv busybox /usr/bin/dos2unix
