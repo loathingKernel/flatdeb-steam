@@ -43,10 +43,12 @@ platform:
 
 sdk:
   add_packages_multiarch:
+    - steamrt-libdebug
     - steamrt-libdevel
 
   add_packages:
     - steamrt-dev
+    - steamrt-libdebug-non-multiarch
     - steamrt-libdevel-non-multiarch
 
   post_script: |

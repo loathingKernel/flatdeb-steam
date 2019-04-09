@@ -17,6 +17,13 @@ sources:
     keyring: 'valve-archive-keyring.gpg'
     apt_components:
       - main
+  - label: steamrt-debug
+    apt_uri: 'http://repo.steampowered.com/steamrt'
+    keyring: 'valve-archive-keyring.gpg'
+    apt_components:
+      - main/debug
+    deb: true
+    deb-src: false
   - label: steam
     apt_uri: 'http://repo.steampowered.com/steam'
     apt_suite: 'precise'
