@@ -44,7 +44,6 @@ platform:
 sdk:
   add_packages_multiarch:
     - steamrt-libdevel
-    - libcapsule-tools-relocatable
 
   add_packages:
     - steamrt-dev
