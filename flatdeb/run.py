@@ -203,6 +203,10 @@ class Builder:
         self.apt_keyrings = []
         self.apt_sources = []
         self.build_id = None
+        self.variant_name = None
+        self.variant_id = None
+        self.sdk_variant_name = None
+        self.sdk_variant_id = None
 
         self.logger = logger.getChild('Builder')
 
@@ -365,6 +369,14 @@ class Builder:
             '--generate-sysroot-tarball', action='store_true')
         parser.add_argument(
             '--build-id', default=None)
+        parser.add_argument(
+            '--variant-name', default=None)
+        parser.add_argument(
+            '--variant-id', default=None)
+        parser.add_argument(
+            '--sdk-variant-name', default=None)
+        parser.add_argument(
+            '--sdk-variant-id', default=None)
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         subparser = subparsers.add_parser(
@@ -407,6 +419,8 @@ class Builder:
 
         self.build_area = args.build_area
         self.build_id = args.build_id
+        self.variant_name = args.variant_name
+        self.variant_id = args.variant_id
         self.apt_suite = args.suite
         self.runtime_branch = args.runtime_branch
         self.ostree_repo = args.ostree_repo
@@ -594,6 +608,16 @@ class Builder:
                 argv.append('-t')
                 argv.append('build_id:{}'.format(self.build_id))
 
+            if self.variant_name is not None:
+                argv.append('-t')
+                argv.append('variant:{}'.format(self.variant_name))
+
+            if self.variant_id is not None:
+                argv.append('-t')
+                argv.append('variant_id:{}'.format(
+                    self.escape_variant_id(self.variant_id)
+                ))
+
             for keyring in self.apt_keyrings:
                 if os.path.exists(os.path.join('suites', keyring)):
                     keyring = os.path.join('suites', keyring)
@@ -642,6 +666,21 @@ class Builder:
             'init',
             '--mode={}'.format(self.ostree_mode),
         ])
+
+    def escape_variant_id(self, variant_id):
+        """
+        Return a version of the variant_id that fits in the restricted
+        character set documented in os-release(5).
+        """
+        buf = bytearray(variant_id.lower(), 'ascii', 'replace')
+
+        for i, b in enumerate(buf):
+            c = chr(b)
+
+            if not c.isalnum() and c not in '._-':
+                buf[i] = ord('_')
+
+        return buf.decode('ascii')
 
     def command_runtimes(
         self,
@@ -744,6 +783,29 @@ class Builder:
                 if self.build_id is not None:
                     argv.append('-t')
                     argv.append('build_id:{}'.format(self.build_id))
+
+                if sdk:
+                    variant_name = self.sdk_variant_name
+                    variant_id = self.sdk_variant_id
+
+                    if variant_name is None and self.variant_name is not None:
+                        variant_name = self.variant_name + ' (SDK)'
+                else:
+                    variant_name = self.variant_name
+                    variant_id = self.variant_id
+
+                if variant_name is None:
+                    variant_name = artifact_prefix
+
+                if variant_id is None:
+                    variant_id = artifact_prefix
+
+                argv.append('-t')
+                argv.append('variant:{}'.format(variant_name))
+                argv.append('-t')
+                argv.append('variant_id:{}'.format(
+                    self.escape_variant_id(variant_id)
+                ))
 
                 if packages:
                     logger.info('Installing packages:')

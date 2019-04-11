@@ -8,6 +8,8 @@
 {{- $keyring := or .keyring "" -}}
 {{- $keyringpackage := or .keyringpackage "" -}}
 {{- $build_id := or .build_id "" -}}
+{{- $variant := or .variant "Minimal base system" -}}
+{{- $variant_id := or .variant_id "base" -}}
 {{- $artifact_prefix := or .artifact_prefix (printf "base-%s-%s" $suite $architecture) -}}
 {{- $ospack := or .ospack (printf "%s.tar.gz" $artifact_prefix) -}}
 
@@ -115,14 +117,28 @@ actions:
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
       cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg.built-using"
       cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.deb822.gz"
+
       if test -e "$ROOTDIR/etc/os-release" && ! test -e "$ROOTDIR/usr/lib/os-release"; then
         rm -f "$ROOTDIR/usr/lib/os-release"
         mv "$ROOTDIR/etc/os-release" "$ROOTDIR/usr/lib/os-release"
         ln -fns ../usr/lib/os-release "$ROOTDIR/etc/os-release"
       fi
-      if test -e "$ROOTDIR/usr/lib/os-release" && test -n "{{ $build_id }}"; then
-        sed -n -i -e '/^BUILD_ID=/!p' "$ROOTDIR/usr/lib/os-release"
-        echo 'BUILD_ID="{{ $build_id }}"' >> "$ROOTDIR/usr/lib/os-release"
+
+      if test -e "$ROOTDIR/usr/lib/os-release"; then
+        sed -i -e '/^BUILD_ID=/d' -e '/^VARIANT=/d' -e '/^VARIANT_ID=/d' "$ROOTDIR/usr/lib/os-release"
+
+        if test -n "{{ $build_id }}"; then
+          echo 'BUILD_ID="{{ $build_id }}"' >> "$ROOTDIR/usr/lib/os-release"
+        fi
+
+        if test -n "{{ $variant }}"; then
+          echo 'VARIANT="{{ $variant }}"' >> "$ROOTDIR/usr/lib/os-release"
+        fi
+
+        if test -n "{{ $variant_id }}"; then
+          echo 'VARIANT_ID="{{ $variant_id }}"' >> "$ROOTDIR/usr/lib/os-release"
+        fi
+
         cp "$ROOTDIR/usr/lib/os-release" "$ARTIFACTDIR/{{ $artifact_prefix }}.os-release.txt"
       fi
 
