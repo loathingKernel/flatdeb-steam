@@ -421,6 +421,8 @@ class Builder:
         self.build_id = args.build_id
         self.variant_name = args.variant_name
         self.variant_id = args.variant_id
+        self.sdk_variant_name = args.sdk_variant_name
+        self.sdk_variant_id = args.sdk_variant_id
         self.apt_suite = args.suite
         self.runtime_branch = args.runtime_branch
         self.ostree_repo = args.ostree_repo
