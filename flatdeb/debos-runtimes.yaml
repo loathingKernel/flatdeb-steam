@@ -295,3 +295,27 @@ actions:
       cp -v "$ROOTDIR/src/MISSING.txt"
       "$ARTIFACTDIR/{{ $sources_prefix }}.MISSING.txt"
   {{ end }}
+
+  - action: run
+    label: manifests
+    chroot: false
+    command: >
+      cd "$ROOTDIR";
+      head -n10000
+      files/manifest.dpkg
+      files/manifest.dpkg.built-using
+
+  - action: run
+    label: metadata
+    chroot: false
+    command: >
+      cd "$ROOTDIR";
+      head -n10000
+      files/etc/apt/apt.conf
+      files/etc/apt/apt.conf.d/*
+      files/etc/apt/sources.list
+      files/etc/apt/sources.list.d/*
+      files/src/MISSING.txt
+      files/lib/os-release
+      metadata
+      || true
