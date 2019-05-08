@@ -59,7 +59,10 @@ actions:
   - action: run
     label: remove extra apt sources
     chroot: false
-    command: 'echo; rm -fr "$ROOTDIR/etc/apt/sources.list.d"'
+    command: |
+      echo
+      rm -fr "$ROOTDIR/etc/apt/sources.list.d"
+      mkdir "$ROOTDIR/etc/apt/sources.list.d"
 
   - action: run
     label: list apt configuration
@@ -117,6 +120,7 @@ actions:
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
       cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg.built-using"
       cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.deb822.gz"
+      cp "$ROOTDIR/etc/apt/sources.list" "$ARTIFACTDIR/{{ $artifact_prefix }}.sources.list"
 
       if test -e "$ROOTDIR/etc/os-release" && ! test -e "$ROOTDIR/usr/lib/os-release"; then
         rm -f "$ROOTDIR/usr/lib/os-release"
@@ -151,3 +155,25 @@ actions:
   - action: pack
     compression: gz
     file: {{ $ospack }}
+
+  - action: run
+    label: manifests
+    chroot: false
+    command: >
+      cd "$ROOTDIR";
+      head -n10000
+      usr/manifest.dpkg
+      usr/manifest.dpkg.built-using
+
+  - action: run
+    label: metadata
+    chroot: false
+    command: >
+      cd "$ROOTDIR";
+      head -n10000
+      etc/apt/apt.conf
+      etc/apt/apt.conf.d/*
+      etc/apt/sources.list
+      etc/apt/sources.list.d/*
+      usr/lib/os-release
+      || true

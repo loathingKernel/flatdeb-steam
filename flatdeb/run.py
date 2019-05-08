@@ -100,6 +100,27 @@ class AptSource:
         self.components = components
         self.trusted = trusted
 
+    def __eq__(self, other):
+        if not isinstance(other, AptSource):
+            return False
+
+        if self.kind != other.kind:
+            return False
+
+        if self.uri != other.uri:
+            return False
+
+        if self.suite != other.suite:
+            return False
+
+        if set(self.components) != set(other.components):
+            return False
+
+        if self.trusted != other.trusted:
+            return False
+
+        return True
+
     @classmethod
     def multiple_from_string(
         cls,
@@ -201,7 +222,10 @@ class Builder:
         self.sources_required = set()
         self.strip_source_version_suffix = None
         self.apt_keyrings = []
-        self.apt_sources = []
+        #: apt sources to use when building the runtime
+        self.build_apt_sources = []     # type: typing.List[AptSource]
+        #: apt sources to leave in /etc/apt/sources.list afterwards
+        self.final_apt_sources = []     # type: typing.List[AptSource]
         self.build_id = None
         self.variant_name = None
         self.variant_id = None
@@ -364,6 +388,18 @@ class Builder:
         parser.add_argument(
             '--add-apt-source', action='append', default=[])
         parser.add_argument(
+            '--replace-build-apt-source', action='append', default=[])
+        parser.add_argument(
+            '--remove-build-apt-source', action='append', default=[])
+        parser.add_argument(
+            '--add-build-apt-source', action='append', default=[])
+        parser.add_argument(
+            '--replace-final-apt-source', action='append', default=[])
+        parser.add_argument(
+            '--remove-final-apt-source', action='append', default=[])
+        parser.add_argument(
+            '--add-final-apt-source', action='append', default=[])
+        parser.add_argument(
             '--add-apt-keyring', action='append', default=[])
         parser.add_argument(
             '--generate-sysroot-tarball', action='store_true')
@@ -454,6 +490,39 @@ class Builder:
         self.strip_source_version_suffix = self.suite_details.get(
             'strip_source_version_suffix', '')
 
+        self.build_apt_sources = self.generate_apt_sources(
+            add=args.add_apt_source + args.add_build_apt_source,
+            replace=args.replace_apt_source + args.replace_build_apt_source,
+            remove=args.remove_apt_source + args.remove_build_apt_source,
+            for_build=True,
+        )
+        self.final_apt_sources = self.generate_apt_sources(
+            add=args.add_apt_source + args.add_final_apt_source,
+            replace=args.replace_apt_source + args.replace_final_apt_source,
+            remove=args.remove_apt_source + args.remove_final_apt_source,
+            for_build=False,
+        )
+
+        for addition in args.add_apt_keyring:
+            self.apt_keyrings.append(addition)
+
+        if self.build_apt_sources[0].kind != 'deb':
+            parser.error('First apt source must provide .deb packages')
+
+        getattr(
+            self, 'command_' + args.command.replace('-', '_'))(**vars(args))
+
+    def generate_apt_sources(
+        self,
+        add=(),         # type: typing.Sequence[str]
+        replace=(),     # type: typing.Sequence[str]
+        remove=(),      # type: typing.Sequence[str]
+        for_build=False
+    ):
+        # type: (...) -> typing.List[AptSource]
+
+        apt_sources = []        # type: typing.List[AptSource]
+
         for source in self.suite_details['sources']:
             keyring = source.get('keyring')
 
@@ -472,51 +541,46 @@ class Builder:
             if 'label' in source:
                 replaced = False
 
-                for replacement in reversed(args.replace_apt_source):
+                for replacement in reversed(replace):
                     key, value = replacement.split('=', 1)
 
                     if key == source['label']:
-                        self.apt_sources.extend(
+                        apt_sources.extend(
                             AptSource.multiple_from_string(value))
                         replaced = True
                         break
 
-                if replaced or source['label'] in args.remove_apt_source:
+                if replaced or source['label'] in remove:
+                    continue
+
+            if for_build:
+                if not source.get('for_build', True):
+                    continue
+            else:
+                if not source.get('for_final', True):
                     continue
 
             if source.get('deb', True):
-                self.apt_sources.append(AptSource(
+                apt_sources.append(AptSource(
                     'deb', uri, suite,
                     components=components,
                     trusted=trusted,
                 ))
 
             if source.get('deb-src', True):
-                self.apt_sources.append(AptSource(
+                apt_sources.append(AptSource(
                     'deb-src', uri, suite,
                     components=components,
                     trusted=trusted,
                 ))
 
-        for addition in args.add_apt_source:
-            self.apt_sources.extend(AptSource.multiple_from_string(addition))
+        for addition in add:
+            apt_sources.extend(AptSource.multiple_from_string(addition))
 
-        for addition in args.add_apt_keyring:
-            self.apt_keyrings.append(addition)
-
-        if self.apt_sources[0].kind != 'deb':
-            parser.error('First apt source must provide .deb packages')
-
-        getattr(
-            self, 'command_' + args.command.replace('-', '_'))(**vars(args))
+        return apt_sources
 
     def command_print_flatpak_architecture(self, **kwargs):
         print(self.flatpak_arch)
-
-    @property
-    def apt_uris(self):
-        for source in self.apt_sources:
-            yield source.uri
 
     def ensure_build_area(self):
         os.makedirs(self.xdg_cache_dir, 0o700, exist_ok=True)
@@ -531,7 +595,7 @@ class Builder:
             self.ensure_build_area()
 
             # debootstrap only supports one suite, so we use the first
-            apt_suite = self.apt_sources[0].suite
+            apt_suite = self.build_apt_sources[0].suite
             dest_recipe = os.path.join(scratch, 'flatdeb.yaml')
             shutil.copyfile(_DEBOS_BASE_RECIPE, dest_recipe)
 
@@ -581,7 +645,9 @@ class Builder:
                     'Ignoring /usr/share/debootstrap/scripts/%s', script)
 
             self.configure_apt(
-                os.path.join(scratch, 'suites', apt_suite, 'overlay'))
+                os.path.join(scratch, 'suites', apt_suite, 'overlay'),
+                self.build_apt_sources,
+            )
 
             argv = [
                 'debos',
@@ -589,7 +655,7 @@ class Builder:
                 '-t', 'architecture:{}'.format(self.primary_dpkg_arch),
                 '-t', 'suite:{}'.format(apt_suite),
                 '-t', 'mirror:{}'.format(
-                    self.apt_sources[0].uri,
+                    self.build_apt_sources[0].uri,
                 ),
                 '-t', 'ospack:{}'.format(tarball + '.new'),
                 '-t', 'artifact_prefix:base-{}-{}'.format(
@@ -648,7 +714,7 @@ class Builder:
                 # so we take the first one
                 break
 
-            components = self.apt_sources[0].components
+            components = self.build_apt_sources[0].components
 
             if components:
                 argv.append('-t')
@@ -930,6 +996,10 @@ class Builder:
                 overlay = os.path.join(scratch, 'runtimes', runtime, 'overlay')
                 self.create_flatpak_manifest_overlay(
                     overlay, prefix, runtime, sdk=sdk)
+                self.configure_apt(
+                    os.path.join(scratch, 'runtimes', runtime, 'overlay'),
+                    self.final_apt_sources,
+                )
 
                 argv.append(dest_recipe)
                 subprocess.check_call(argv)
@@ -1060,20 +1130,24 @@ class Builder:
 
                     os.rename(output + '.new', output)
 
-    def configure_apt(self, overlay):
+    def configure_apt(self, overlay, apt_sources):
         """
         Configure apt. We only do this once, so that all chroots
         created from the same base have their version numbers
         aligned.
         """
-        os.makedirs(os.path.join(overlay, 'etc', 'apt'), 0o755, exist_ok=True)
+        os.makedirs(
+            os.path.join(overlay, 'etc', 'apt', 'trusted.gpg.d'),
+            0o755,
+            exist_ok=True,
+        )
 
         with open(
             os.path.join(overlay, 'etc', 'apt', 'sources.list'),
             'w',
             encoding='utf-8'
         ) as writer:
-            for source in self.apt_sources:
+            for source in apt_sources:
                 writer.write('{}\n'.format(source))
 
             for keyring in self.apt_keyrings:

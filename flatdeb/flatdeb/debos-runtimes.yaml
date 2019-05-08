@@ -176,8 +176,22 @@ actions:
     chroot: false
     command: 'echo; "$RECIPEDIR/usrmerge" "$ROOTDIR"'
 
+  # This adds the Flatpak metadata and the final apt configuration
   - action: overlay
     source: runtimes/{{ $runtime }}/overlay
+
+  - action: run
+    label: save final sources.list
+    chroot: false
+    command: |
+      echo
+      cp "$ROOTDIR/etc/apt/sources.list" "$ARTIFACTDIR/{{ $artifact_prefix }}.sources.list"
+
+  - action: run
+    label: try-apt-get-update
+    chroot: true
+    command: |
+      apt-get update || true
 
   - action: run
     label: put-ldconfig-in-path
@@ -288,3 +302,27 @@ actions:
       cp -v "$ROOTDIR/src/MISSING.txt"
       "$ARTIFACTDIR/{{ $sources_prefix }}.MISSING.txt"
   {{ end }}
+
+  - action: run
+    label: manifests
+    chroot: false
+    command: >
+      cd "$ROOTDIR";
+      head -n10000
+      files/manifest.dpkg
+      files/manifest.dpkg.built-using
+
+  - action: run
+    label: metadata
+    chroot: false
+    command: >
+      cd "$ROOTDIR";
+      head -n10000
+      files/etc/apt/apt.conf
+      files/etc/apt/apt.conf.d/*
+      files/etc/apt/sources.list
+      files/etc/apt/sources.list.d/*
+      files/src/MISSING.txt
+      files/lib/os-release
+      metadata
+      || true
