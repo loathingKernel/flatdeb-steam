@@ -155,3 +155,25 @@ actions:
   - action: pack
     compression: gz
     file: {{ $ospack }}
+
+  - action: run
+    label: manifests
+    chroot: false
+    command: >
+      cd "$ROOTDIR";
+      head -n10000
+      usr/manifest.dpkg
+      usr/manifest.dpkg.built-using
+
+  - action: run
+    label: metadata
+    chroot: false
+    command: >
+      cd "$ROOTDIR";
+      head -n10000
+      etc/apt/apt.conf
+      etc/apt/apt.conf.d/*
+      etc/apt/sources.list
+      etc/apt/sources.list.d/*
+      usr/lib/os-release
+      || true
