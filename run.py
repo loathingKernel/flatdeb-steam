@@ -494,11 +494,13 @@ class Builder:
             add=args.add_apt_source + args.add_build_apt_source,
             replace=args.replace_apt_source + args.replace_build_apt_source,
             remove=args.remove_apt_source + args.remove_build_apt_source,
+            for_build=True,
         )
         self.final_apt_sources = self.generate_apt_sources(
             add=args.add_apt_source + args.add_final_apt_source,
             replace=args.replace_apt_source + args.replace_final_apt_source,
             remove=args.remove_apt_source + args.remove_final_apt_source,
+            for_build=False,
         )
 
         for addition in args.add_apt_keyring:
@@ -515,6 +517,7 @@ class Builder:
         add=(),         # type: typing.Sequence[str]
         replace=(),     # type: typing.Sequence[str]
         remove=(),      # type: typing.Sequence[str]
+        for_build=False
     ):
         # type: (...) -> typing.List[AptSource]
 
@@ -548,6 +551,13 @@ class Builder:
                         break
 
                 if replaced or source['label'] in remove:
+                    continue
+
+            if for_build:
+                if not source.get('for_build', True):
+                    continue
+            else:
+                if not source.get('for_final', True):
                     continue
 
             if source.get('deb', True):
