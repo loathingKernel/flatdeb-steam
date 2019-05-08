@@ -181,6 +181,13 @@ actions:
     source: runtimes/{{ $runtime }}/overlay
 
   - action: run
+    label: save final sources.list
+    chroot: false
+    command: |
+      echo
+      cp "$ROOTDIR/etc/apt/sources.list" "$ARTIFACTDIR/{{ $artifact_prefix }}.sources.list"
+
+  - action: run
     label: try-apt-get-update
     chroot: true
     command: |

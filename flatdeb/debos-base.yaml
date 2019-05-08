@@ -120,6 +120,7 @@ actions:
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
       cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg.built-using"
       cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.deb822.gz"
+      cp "$ROOTDIR/etc/apt/sources.list" "$ARTIFACTDIR/{{ $artifact_prefix }}.sources.list"
 
       if test -e "$ROOTDIR/etc/os-release" && ! test -e "$ROOTDIR/usr/lib/os-release"; then
         rm -f "$ROOTDIR/usr/lib/os-release"
