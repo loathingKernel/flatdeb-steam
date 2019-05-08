@@ -59,7 +59,10 @@ actions:
   - action: run
     label: remove extra apt sources
     chroot: false
-    command: 'echo; rm -fr "$ROOTDIR/etc/apt/sources.list.d"'
+    command: |
+      echo
+      rm -fr "$ROOTDIR/etc/apt/sources.list.d"
+      mkdir "$ROOTDIR/etc/apt/sources.list.d"
 
   - action: run
     label: list apt configuration
