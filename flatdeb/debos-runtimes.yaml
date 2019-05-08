@@ -176,8 +176,15 @@ actions:
     chroot: false
     command: 'echo; "$RECIPEDIR/usrmerge" "$ROOTDIR"'
 
+  # This adds the Flatpak metadata and the final apt configuration
   - action: overlay
     source: runtimes/{{ $runtime }}/overlay
+
+  - action: run
+    label: try-apt-get-update
+    chroot: true
+    command: |
+      apt-get update || true
 
   - action: run
     label: put-ldconfig-in-path
