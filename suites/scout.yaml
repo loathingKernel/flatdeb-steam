@@ -25,8 +25,21 @@ sources:
     deb: true
     deb-src: false
   - label: steam
+    for_build: false
+    for_final: true
     apt_uri: 'http://repo.steampowered.com/steam'
     apt_suite: 'precise'
     keyring: 'valve-steam-keyring.gpg'
     apt_components:
       - steam
+  - label: ubuntu
+    for_build: false
+    for_final: true
+    apt_uri: 'http://archive.ubuntu.com/ubuntu'
+    apt_suite: 'precise'
+    keyring: 'ubuntu-archive-keyring.gpg'
+    apt_components:
+      - main
+      - restricted
+      - universe
+      - multiverse

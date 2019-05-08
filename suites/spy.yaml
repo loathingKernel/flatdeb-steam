@@ -9,3 +9,14 @@ sources:
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt-spy'
     keyring: 'valve-archive-keyring.gpg'
+  - label: ubuntu
+    for_build: false
+    for_final: true
+    apt_uri: 'http://archive.ubuntu.com/ubuntu'
+    apt_suite: 'bionic'
+    keyring: 'ubuntu-archive-keyring.gpg'
+    apt_components:
+      - main
+      - restricted
+      - universe
+      - multiverse
