@@ -41,6 +41,7 @@ sdk:
   add_packages:
     - steamrt-dev
     - steamrt-libdebug
+    - steamrt-libdebug-non-multiarch
     - steamrt-libdevel-non-multiarch
 
   post_script: |
