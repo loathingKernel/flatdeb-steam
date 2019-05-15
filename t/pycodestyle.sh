@@ -12,6 +12,9 @@ if [ "x${PYCODESTYLE:=pycodestyle}" = xfalse ] || \
     echo "1..0 # SKIP pycodestyle not found"
 elif "${PYCODESTYLE}" \
     ./*.py \
+    flatdeb/apt-install \
+    flatdeb/collect-source-code \
+    flatdeb/purge-conffiles \
     >&2; then
     echo "1..1"
     echo "ok 1 - $PYCODESTYLE reported no issues"

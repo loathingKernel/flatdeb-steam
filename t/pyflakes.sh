@@ -12,6 +12,9 @@ if [ "x${PYFLAKES:=pyflakes3}" = xfalse ] || \
     echo "1..0 # SKIP pyflakes3 not found"
 elif "${PYFLAKES}" \
     ./*.py \
+    flatdeb/apt-install \
+    flatdeb/collect-source-code \
+    flatdeb/purge-conffiles \
     >&2; then
     echo "1..1"
     echo "ok 1 - $PYFLAKES reported no issues"

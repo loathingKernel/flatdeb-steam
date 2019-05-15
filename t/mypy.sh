@@ -12,6 +12,9 @@ export MYPYPATH="${PYTHONPATH:=$(pwd)}"
 i=0
 for script in \
     ./*.py \
+    flatdeb/apt-install \
+    flatdeb/collect-source-code \
+    flatdeb/purge-conffiles \
 ; do
     i=$((i + 1))
     if [ "x${MYPY:="$(command -v mypy || echo false)"}" = xfalse ]; then
