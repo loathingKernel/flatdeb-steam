@@ -29,7 +29,6 @@ set -u
 set -o pipefail
 
 me="$(basename "$0")"
-NULL=
 
 if [ "$#" != 0 ] || [ "x$(id -u)" != x0 ]; then
     echo "$me: Usage:" >&2

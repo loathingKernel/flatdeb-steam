@@ -59,11 +59,15 @@ in_chroot () {
 }
 
 list_packages_ignore_arch () {
+    # ${} here is interpreted by dpkg-query
+    # shellcheck disable=SC2016
     in_chroot dpkg-query --show -f '${Package}\n' | LC_ALL=C sort -u
 }
 
 is_installed () {
     local status
+    # ${} here is interpreted by dpkg-query
+    # shellcheck disable=SC2016
     if ! status="$(in_chroot dpkg-query --show -f '${Status}\n' "$@")"; then
         return 1
     fi
