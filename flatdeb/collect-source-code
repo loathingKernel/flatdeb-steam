@@ -301,12 +301,22 @@ def main():
     else:
         included = set(sources)
 
+    with open(
+        os.path.join(args.sysroot, 'src', 'sources.txt'), 'w'
+    ) as writer:
+        writer.write('#Source\t#Version\n')
+
+        for s in sorted(included):
+            writer.write('{}\t{}\n'.format(s.source, s.source_version))
+
     if missing_sources:
         logger.warning('Missing source packages:')
 
         with open(
             os.path.join(args.sysroot, 'src', 'MISSING.txt'), 'w'
         ) as writer:
+            writer.write('#Source\t#Version\n')
+
             for s in sorted(missing_sources):
                 logger.warning('- %s', p)
                 writer.write('{}\t{}\n'.format(s.source, s.source_version))

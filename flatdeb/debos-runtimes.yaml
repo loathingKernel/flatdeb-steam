@@ -295,6 +295,13 @@ actions:
       .
 
   - action: run
+    label: list of included source code
+    chroot: false
+    command: >
+      cp -v "$ROOTDIR/src/sources.txt"
+      "$ARTIFACTDIR/{{ $sources_prefix }}.sources.txt"
+
+  - action: run
     label: list of missing source code
     chroot: false
     command: >
@@ -311,6 +318,8 @@ actions:
       head -n10000
       files/manifest.dpkg
       files/manifest.dpkg.built-using
+      files/src/sources.txt
+      || true
 
   - action: run
     label: metadata
