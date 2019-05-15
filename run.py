@@ -1226,6 +1226,19 @@ class Builder:
                 'no-autodownload', True,
             )
 
+            keyfile.set_string(
+                'Extension {}.Sdk.Sources'.format(prefix),
+                'directory', 'runtime/src',
+            )
+            keyfile.set_boolean(
+                'Extension {}.Sdk.Sources'.format(prefix),
+                'autodelete', True,
+            )
+            keyfile.set_boolean(
+                'Extension {}.Sdk.Sources'.format(prefix),
+                'no-autodownload', True,
+            )
+
         search_path = []
 
         for arch in self.dpkg_archs:
