@@ -318,7 +318,7 @@ actions:
       head -n10000
       files/manifest.dpkg
       files/manifest.dpkg.built-using
-      files/src/sources.txt
+      src/files/sources.txt
       || true
 
   - action: run
@@ -331,7 +331,7 @@ actions:
       files/etc/apt/apt.conf.d/*
       files/etc/apt/sources.list
       files/etc/apt/sources.list.d/*
-      files/src/MISSING.txt
       files/lib/os-release
+      src/files/MISSING.txt
       metadata
       || true
