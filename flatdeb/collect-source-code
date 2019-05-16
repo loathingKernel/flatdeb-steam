@@ -302,7 +302,7 @@ def main():
         included = set(sources)
 
     with open(
-        os.path.join(args.sysroot, 'src', 'sources.txt'), 'w'
+        os.path.join(args.sysroot, 'src', 'files', 'sources.txt'), 'w'
     ) as writer:
         writer.write('#Source\t#Version\n')
 
@@ -313,7 +313,7 @@ def main():
         logger.warning('Missing source packages:')
 
         with open(
-            os.path.join(args.sysroot, 'src', 'MISSING.txt'), 'w'
+            os.path.join(args.sysroot, 'src', 'files', 'MISSING.txt'), 'w'
         ) as writer:
             writer.write('#Source\t#Version\n')
 

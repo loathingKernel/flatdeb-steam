@@ -298,15 +298,15 @@ actions:
     label: list of included source code
     chroot: false
     command: >
-      cp -v "$ROOTDIR/src/sources.txt"
+      cp -v "$ROOTDIR/src/files/sources.txt"
       "$ARTIFACTDIR/{{ $sources_prefix }}.sources.txt"
 
   - action: run
     label: list of missing source code
     chroot: false
     command: >
-      test ! -e "$ROOTDIR/src/MISSING.txt" ||
-      cp -v "$ROOTDIR/src/MISSING.txt"
+      test ! -e "$ROOTDIR/src/files/MISSING.txt" ||
+      cp -v "$ROOTDIR/src/files/MISSING.txt"
       "$ARTIFACTDIR/{{ $sources_prefix }}.MISSING.txt"
   {{ end }}
 
