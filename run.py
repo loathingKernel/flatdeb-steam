@@ -224,6 +224,7 @@ class Builder:
         }       # type: typing.Dict[str, bool]
         self.suite_details = {}         # type: typing.Dict[str, typing.Any]
         self.runtime_details = {}       # type: typing.Dict[str, typing.Any]
+        self.ostree_commit = True
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
         self.sources_required = set()   # type: typing.Set[str]
@@ -397,6 +398,12 @@ class Builder:
         )
         parser.add_argument('--build-area', default=self.build_area)
         parser.add_argument('--ostree-repo', default=self.ostree_repo)
+        parser.add_argument(
+            '--ostree-commit', action='store_true', default=self.ostree_commit,
+        )
+        parser.add_argument(
+            '--no-ostree-commit', dest='ostree_commit', action='store_false',
+        )
         parser.add_argument('--suite', '-d', default=self.apt_suite)
         parser.add_argument('--architecture', '--arch', '-a')
         parser.add_argument('--runtime-branch', default=self.runtime_branch)
@@ -481,9 +488,15 @@ class Builder:
         self.sdk_variant_id = args.sdk_variant_id
         self.apt_suite = args.suite
         self.runtime_branch = args.runtime_branch
+        self.ostree_commit = args.ostree_commit
         self.ostree_repo = args.ostree_repo
         self.export_bundles = args.export_bundles
         self.ostree_mode = args.ostree_mode
+
+        if self.export_bundles and not self.ostree_commit:
+            parser.error(
+                '--export-bundles and --no-ostree-commit cannot '
+                'work together')
 
         if args.architecture is None:
             self.dpkg_archs = [
@@ -497,7 +510,9 @@ class Builder:
         self.flatpak_arch = self.dpkg_to_flatpak_arch(self.primary_dpkg_arch)
 
         self.ensure_build_area()
-        os.makedirs(os.path.dirname(self.ostree_repo), exist_ok=True)
+
+        if self.ostree_repo:
+            os.makedirs(os.path.dirname(self.ostree_repo), exist_ok=True)
 
         if args.command is None:
             parser.error('A command is required')
@@ -783,7 +798,8 @@ class Builder:
         **kwargs
     ):
         # type: (...) -> None
-        self.ensure_local_repo()
+        if self.ostree_commit:
+            self.ensure_local_repo()
 
         if self.runtime_branch is None:
             self.runtime_branch = self.apt_suite
@@ -1058,15 +1074,55 @@ class Builder:
 
                         os.rename(output + '.new', output)
 
-                    output = os.path.join(self.build_area, debug_tarball)
-                    logger.info('Committing %s to OSTree', debug_tarball)
+                    if self.ostree_commit:
+                        output = os.path.join(self.build_area, debug_tarball)
+                        logger.info('Committing %s to OSTree', debug_tarball)
+                        os.rename(output + '.new', output)
+                        subprocess.check_call([
+                            'time',
+                            'ostree',
+                            '--repo=' + self.ostree_repo,
+                            'commit',
+                            '--branch=runtime/{}.Debug/{}/{}'.format(
+                                runtime,
+                                self.flatpak_arch,
+                                self.runtime_branch,
+                            ),
+                            '--subject=Update',
+                            '--tree=tar={}'.format(output),
+                            '--fsync=false',
+                            '--tar-autocreate-parents',
+                        ])
+
+                        logger.info('Committing %s to OSTree', sources_tarball)
+                        output = os.path.join(self.build_area, sources_tarball)
+                        os.rename(output + '.new', output)
+                        subprocess.check_call([
+                            'time',
+                            'ostree',
+                            '--repo=' + self.ostree_repo,
+                            'commit',
+                            '--branch=runtime/{}.Sources/{}/{}'.format(
+                                runtime,
+                                self.flatpak_arch,
+                                self.runtime_branch,
+                            ),
+                            '--subject=Update',
+                            '--tree=tar={}'.format(output),
+                            '--fsync=false',
+                            '--tar-autocreate-parents',
+                        ])
+
+                if self.ostree_commit:
+                    output = os.path.join(self.build_area, out_tarball)
+                    logger.info('Committing %s to OSTree', out_tarball)
                     os.rename(output + '.new', output)
                     subprocess.check_call([
                         'time',
                         'ostree',
                         '--repo=' + self.ostree_repo,
                         'commit',
-                        '--branch=runtime/{}.Debug/{}/{}'.format(
+                        '--branch=runtime/{}/{}/{}'.format(
                             runtime,
                             self.flatpak_arch,
                             self.runtime_branch,
@@ -1077,84 +1133,47 @@ class Builder:
                         '--tar-autocreate-parents',
                     ])
 
-                    logger.info('Committing %s to OSTree', sources_tarball)
-                    output = os.path.join(self.build_area, sources_tarball)
-                    os.rename(output + '.new', output)
-                    subprocess.check_call([
-                        'time',
-                        'ostree',
-                        '--repo=' + self.ostree_repo,
-                        'commit',
-                        '--branch=runtime/{}.Sources/{}/{}'.format(
-                            runtime,
-                            self.flatpak_arch,
-                            self.runtime_branch,
-                        ),
-                        '--subject=Update',
-                        '--tree=tar={}'.format(output),
-                        '--fsync=false',
-                        '--tar-autocreate-parents',
-                    ])
-
-                output = os.path.join(self.build_area, out_tarball)
-                logger.info('Committing %s to OSTree', out_tarball)
-                os.rename(output + '.new', output)
+            if self.ostree_commit:
+                # Don't keep the history in this working repository:
+                # if history is desired, mirror the commits into a public
+                # repository and maintain history there.
                 subprocess.check_call([
                     'time',
                     'ostree',
                     '--repo=' + self.ostree_repo,
-                    'commit',
-                    '--branch=runtime/{}/{}/{}'.format(
-                        runtime,
-                        self.flatpak_arch,
-                        self.runtime_branch,
-                    ),
-                    '--subject=Update',
-                    '--tree=tar={}'.format(output),
-                    '--fsync=false',
-                    '--tar-autocreate-parents',
+                    'prune',
+                    '--refs-only',
+                    '--depth=1',
                 ])
 
-            # Don't keep the history in this working repository:
-            # if history is desired, mirror the commits into a public
-            # repository and maintain history there.
-            subprocess.check_call([
-                'time',
-                'ostree',
-                '--repo=' + self.ostree_repo,
-                'prune',
-                '--refs-only',
-                '--depth=1',
-            ])
+                subprocess.check_call([
+                    'time',
+                    'flatpak',
+                    'build-update-repo',
+                    self.ostree_repo,
+                ])
 
-            subprocess.check_call([
-                'time',
-                'flatpak',
-                'build-update-repo',
-                self.ostree_repo,
-            ])
+                if self.export_bundles:
+                    for suffix in ('.Platform', '.Sdk'):
+                        bundle = '{}-{}-{}.bundle'.format(
+                            prefix + suffix,
+                            ','.join(self.dpkg_archs),
+                            self.runtime_branch,
+                        )
+                        output = os.path.join(self.build_area, bundle)
 
-            if self.export_bundles:
-                for suffix in ('.Platform', '.Sdk'):
-                    bundle = '{}-{}-{}.bundle'.format(
-                        prefix + suffix,
-                        ','.join(self.dpkg_archs),
-                        self.runtime_branch,
-                    )
-                    output = os.path.join(self.build_area, bundle)
+                        subprocess.check_call([
+                            'time',
+                            'flatpak',
+                            'build-bundle',
+                            '--runtime',
+                            self.ostree_repo,
+                            output + '.new',
+                            prefix + suffix,
+                            self.runtime_branch,
+                        ])
 
-                    subprocess.check_call([
-                        'time',
-                        'flatpak',
-                        'build-bundle',
-                        '--runtime',
-                        self.ostree_repo,
-                        output + '.new',
-                        prefix + suffix,
-                        self.runtime_branch,
-                    ])
-
-                    os.rename(output + '.new', output)
+                        os.rename(output + '.new', output)
 
     def configure_apt(self, overlay, apt_sources):
         # type: (str, typing.Iterable[AptSource]) -> None
@@ -1432,6 +1451,12 @@ class Builder:
         **kwargs
     ):
         # type: (...) -> None
+
+        if not self.ostree_commit:
+            logger.error(
+                'flatdeb app --no-ostree-commit cannot work')
+            raise SystemExit(1)
+
         self.ensure_local_repo()
 
         with open(yaml_manifest, encoding='utf-8') as reader:
