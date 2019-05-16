@@ -57,6 +57,17 @@ sdk:
     ln -sv busybox /usr/bin/traceroute6
     ln -sv busybox /usr/bin/unix2dos
     ln -sv busybox /usr/bin/vi
+    for bin in \
+      clang \
+      clang++ \
+    ; do
+      ln -fnsv "/usr/lib/llvm-4.0/bin/$bin" /usr/bin
+    done
+    for bin in \
+      asan_symbolize \
+    ; do
+      ln -fnsv "${bin}-4.0" "/usr/bin/${bin}"
+    done
     arch="$(dpkg --print-architecture)"
     update-alternatives --set java "/usr/lib/jvm/java-8-openjdk-$arch/jre/bin/java"
     update-alternatives --set jexec "/usr/lib/jvm/java-8-openjdk-$arch/jre/lib/jexec"
