@@ -88,10 +88,10 @@ _DEBOS_RUNTIMES_RECIPE = os.path.join(
 class AptSource:
     def __init__(
         self,
-        kind,
-        uri,
-        suite,
-        components=('main',),
+        kind,                       # type: str
+        uri,                        # type: str
+        suite,                      # type: str
+        components=('main',),       # type: typing.Sequence[str]
         trusted=False
     ):
         self.kind = kind
@@ -101,6 +101,7 @@ class AptSource:
         self.trusted = trusted
 
     def __eq__(self, other):
+        # type: (typing.Any) -> bool
         if not isinstance(other, AptSource):
             return False
 
@@ -123,9 +124,10 @@ class AptSource:
 
     @classmethod
     def multiple_from_string(
-        cls,
-        line,
+        cls,        # type: typing.Type[AptSource]
+        line,       # type: str
     ):
+        # type: (...) -> typing.Iterable[AptSource]
         line = line.strip()
         tokens = line.split()
 
@@ -142,9 +144,10 @@ class AptSource:
 
     @classmethod
     def from_string(
-        cls,
-        line,
+        cls,        # type: typing.Type[AptSource]
+        line,       # type: str
     ):
+        # type: (...) -> AptSource
         tokens = line.split()
         trusted = False
 
@@ -173,6 +176,7 @@ class AptSource:
         )
 
     def __str__(self):
+        # type: () -> str
         if self.trusted:
             maybe_options = ' [trusted=yes]'
         else:
@@ -196,12 +200,14 @@ class Builder:
     __multiarch_tuple_cache = {}    # type: typing.Dict[str, str]
 
     def __init__(self):
+        # type: () -> None
+
         #: The Debian suite to use
         self.apt_suite = 'stretch'
         #: The Flatpak branch to use for the runtime, or None for apt_suite
-        self.runtime_branch = None
+        self.runtime_branch = None      # type: typing.Optional[str]
         #: The Flatpak branch to use for the app
-        self.app_branch = None
+        self.app_branch = None          # type: typing.Optional[str]
         #: The freedesktop.org cache directory
         self.xdg_cache_dir = os.getenv(
             'XDG_CACHE_HOME', os.path.expanduser('~/.cache'))
@@ -211,17 +217,19 @@ class Builder:
         )
         self.ostree_repo = os.path.join(self.build_area, 'ostree-repo')
 
-        self.__dpkg_archs = []
-        self.flatpak_arch = None
+        self.__dpkg_archs = []      # type: typing.Sequence[str]
+        self.flatpak_arch = None    # type: typing.Optional[str]
 
-        self.__primary_dpkg_arch_matches_cache = {}
-        self.suite_details = {}
-        self.runtime_details = {}
+        self.__primary_dpkg_arch_matches_cache = {
+        }       # type: typing.Dict[str, bool]
+        self.suite_details = {}         # type: typing.Dict[str, typing.Any]
+        self.runtime_details = {}       # type: typing.Dict[str, typing.Any]
+        self.ostree_commit = True
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
-        self.sources_required = set()
+        self.sources_required = set()   # type: typing.Set[str]
         self.strip_source_version_suffix = None
-        self.apt_keyrings = []
+        self.apt_keyrings = []          # type: typing.List[str]
         #: apt sources to use when building the runtime
         self.build_apt_sources = []     # type: typing.List[AptSource]
         #: apt sources to leave in /etc/apt/sources.list afterwards
@@ -235,7 +243,11 @@ class Builder:
         self.logger = logger.getChild('Builder')
 
     @staticmethod
-    def yaml_dump_one_line(data, stream=None):
+    def yaml_dump_one_line(
+        data,               # type: typing.Any
+        stream=None,        # type: ignore
+    ):
+        # type: (...) -> typing.Optional[str]
         return yaml.safe_dump(
             data,
             stream=stream,
@@ -245,6 +257,7 @@ class Builder:
 
     @staticmethod
     def get_flatpak_arch(arch=None):
+        # type: (typing.Optional[str]) -> str
         """
         Return the Flatpak architecture name corresponding to uname
         result arch.
@@ -272,6 +285,7 @@ class Builder:
 
     @staticmethod
     def other_multiarch(arch):
+        # type: (str) -> typing.Optional[str]
         """
         Return the other architecture that accompanies the given Debian
         architecture in a multiarch setup, or None.
@@ -286,6 +300,7 @@ class Builder:
 
     @staticmethod
     def multiarch_tuple(arch):
+        # type: (str) -> str
         """
         Return the multiarch tuple for the given dpkg architecture name.
         """
@@ -301,6 +316,7 @@ class Builder:
 
     @staticmethod
     def dpkg_to_flatpak_arch(arch):
+        # type: (str) -> str
         """
         Return the Flatpak architecture name corresponding to the given
         dpkg architecture name.
@@ -325,6 +341,7 @@ class Builder:
 
     @property
     def primary_dpkg_arch(self):
+        # type: () -> str
         """
         The Debian architecture we are building a runtime for, such as
         i386 or amd64.
@@ -333,6 +350,7 @@ class Builder:
 
     @property
     def dpkg_archs(self):
+        # type: () -> typing.Sequence[str]
         """
         The Debian architectures we support via multiarch, such as
         ['amd64', 'i386'].
@@ -341,10 +359,12 @@ class Builder:
 
     @dpkg_archs.setter
     def dpkg_archs(self, value):
+        # type: (typing.Sequence[str]) -> None
         self.__primary_dpkg_arch_matches_cache = {}
         self.__dpkg_archs = value
 
     def primary_dpkg_arch_matches(self, arch_spec):
+        # type: (str) -> bool
         """
         Return True if arch_spec matches primary_dpkg_arch (or
         equivalently, if primary_dpkg_arch is one of the architectures
@@ -362,6 +382,7 @@ class Builder:
         return self.__primary_dpkg_arch_matches_cache[arch_spec]
 
     def run_command_line(self):
+        # type: () -> None
         """
         Run appropriate commands for the command-line arguments
         """
@@ -377,6 +398,12 @@ class Builder:
         )
         parser.add_argument('--build-area', default=self.build_area)
         parser.add_argument('--ostree-repo', default=self.ostree_repo)
+        parser.add_argument(
+            '--ostree-commit', action='store_true', default=self.ostree_commit,
+        )
+        parser.add_argument(
+            '--no-ostree-commit', dest='ostree_commit', action='store_false',
+        )
         parser.add_argument('--suite', '-d', default=self.apt_suite)
         parser.add_argument('--architecture', '--arch', '-a')
         parser.add_argument('--runtime-branch', default=self.runtime_branch)
@@ -461,9 +488,15 @@ class Builder:
         self.sdk_variant_id = args.sdk_variant_id
         self.apt_suite = args.suite
         self.runtime_branch = args.runtime_branch
+        self.ostree_commit = args.ostree_commit
         self.ostree_repo = args.ostree_repo
         self.export_bundles = args.export_bundles
         self.ostree_mode = args.ostree_mode
+
+        if self.export_bundles and not self.ostree_commit:
+            parser.error(
+                '--export-bundles and --no-ostree-commit cannot '
+                'work together')
 
         if args.architecture is None:
             self.dpkg_archs = [
@@ -477,7 +510,9 @@ class Builder:
         self.flatpak_arch = self.dpkg_to_flatpak_arch(self.primary_dpkg_arch)
 
         self.ensure_build_area()
-        os.makedirs(os.path.dirname(self.ostree_repo), exist_ok=True)
+
+        if self.ostree_repo:
+            os.makedirs(os.path.dirname(self.ostree_repo), exist_ok=True)
 
         if args.command is None:
             parser.error('A command is required')
@@ -580,14 +615,17 @@ class Builder:
         return apt_sources
 
     def command_print_flatpak_architecture(self, **kwargs):
+        # type: (...) -> None
         print(self.flatpak_arch)
 
     def ensure_build_area(self):
+        # type: () -> None
         os.makedirs(self.xdg_cache_dir, 0o700, exist_ok=True)
         os.makedirs(self.build_area, 0o755, exist_ok=True)
         os.makedirs(os.path.join(self.build_area, 'tmp'), exist_ok=True)
 
     def command_base(self, **kwargs):
+        # type: (...) -> None
         with ExitStack() as stack:
             scratch = stack.enter_context(
                 TemporaryDirectory(prefix='flatdeb.')
@@ -727,6 +765,7 @@ class Builder:
             os.rename(output + '.new', output)
 
     def ensure_local_repo(self):
+        # type: () -> None
         os.makedirs(os.path.dirname(self.ostree_repo), 0o755, exist_ok=True)
         subprocess.check_call([
             'ostree',
@@ -736,6 +775,7 @@ class Builder:
         ])
 
     def escape_variant_id(self, variant_id):
+        # type: (str) -> str
         """
         Return a version of the variant_id that fits in the restricted
         character set documented in os-release(5).
@@ -753,11 +793,13 @@ class Builder:
     def command_runtimes(
         self,
         *,
-        yaml_file,
+        yaml_file,                          # type: str
         generate_sysroot_tarball=False,
         **kwargs
     ):
-        self.ensure_local_repo()
+        # type: (...) -> None
+        if self.ostree_commit:
+            self.ensure_local_repo()
 
         if self.runtime_branch is None:
             self.runtime_branch = self.apt_suite
@@ -914,6 +956,9 @@ class Builder:
                     debug_prefix = artifact_prefix + '-debug'
                     debug_tarball = debug_prefix + '.tar.gz'
 
+                    sysroot_prefix = None       # type: typing.Optional[str]
+                    sysroot_tarball = None      # type: typing.Optional[str]
+
                     if generate_sysroot_tarball:
                         sysroot_prefix = artifact_prefix + '-sysroot'
                         sysroot_tarball = sysroot_prefix + '.tar.gz'
@@ -923,9 +968,6 @@ class Builder:
                         argv.append(
                             'sysroot_tarball:{}'.format(
                                 sysroot_tarball + '.new'))
-                    else:
-                        sysroot_prefix = None
-                        sysroot_tarball = None
 
                     sdk_details = self.runtime_details.get('sdk', {})
                     sdk_packages = list(sdk_details.get('add_packages', []))
@@ -1033,33 +1075,58 @@ class Builder:
                         os.rename(output + '.new', output)
 
                     output = os.path.join(self.build_area, debug_tarball)
-                    logger.info('Committing %s to OSTree', debug_tarball)
                     os.rename(output + '.new', output)
-                    subprocess.check_call([
-                        'time',
-                        'ostree',
-                        '--repo=' + self.ostree_repo,
-                        'commit',
-                        '--branch=runtime/{}.Debug/{}/{}'.format(
-                            runtime,
-                            self.flatpak_arch,
-                            self.runtime_branch,
-                        ),
-                        '--subject=Update',
-                        '--tree=tar={}'.format(output),
-                        '--fsync=false',
-                        '--tar-autocreate-parents',
-                    ])
 
-                    logger.info('Committing %s to OSTree', sources_tarball)
+                    if self.ostree_commit:
+                        logger.info('Committing %s to OSTree', debug_tarball)
+                        subprocess.check_call([
+                            'time',
+                            'ostree',
+                            '--repo=' + self.ostree_repo,
+                            'commit',
+                            '--branch=runtime/{}.Debug/{}/{}'.format(
+                                runtime,
+                                self.flatpak_arch,
+                                self.runtime_branch,
+                            ),
+                            '--subject=Update',
+                            '--tree=tar={}'.format(output),
+                            '--fsync=false',
+                            '--tar-autocreate-parents',
+                        ])
+
                     output = os.path.join(self.build_area, sources_tarball)
                     os.rename(output + '.new', output)
+
+                    if self.ostree_commit:
+                        logger.info('Committing %s to OSTree', sources_tarball)
+                        subprocess.check_call([
+                            'time',
+                            'ostree',
+                            '--repo=' + self.ostree_repo,
+                            'commit',
+                            '--branch=runtime/{}.Sources/{}/{}'.format(
+                                runtime,
+                                self.flatpak_arch,
+                                self.runtime_branch,
+                            ),
+                            '--subject=Update',
+                            '--tree=tar={}'.format(output),
+                            '--fsync=false',
+                            '--tar-autocreate-parents',
+                        ])
+
+                output = os.path.join(self.build_area, out_tarball)
+                os.rename(output + '.new', output)
+
+                if self.ostree_commit:
+                    logger.info('Committing %s to OSTree', out_tarball)
                     subprocess.check_call([
                         'time',
                         'ostree',
                         '--repo=' + self.ostree_repo,
                         'commit',
-                        '--branch=runtime/{}.Sources/{}/{}'.format(
+                        '--branch=runtime/{}/{}/{}'.format(
                             runtime,
                             self.flatpak_arch,
                             self.runtime_branch,
@@ -1070,67 +1137,50 @@ class Builder:
                         '--tar-autocreate-parents',
                     ])
 
-                output = os.path.join(self.build_area, out_tarball)
-                logger.info('Committing %s to OSTree', out_tarball)
-                os.rename(output + '.new', output)
+            if self.ostree_commit:
+                # Don't keep the history in this working repository:
+                # if history is desired, mirror the commits into a public
+                # repository and maintain history there.
                 subprocess.check_call([
                     'time',
                     'ostree',
                     '--repo=' + self.ostree_repo,
-                    'commit',
-                    '--branch=runtime/{}/{}/{}'.format(
-                        runtime,
-                        self.flatpak_arch,
-                        self.runtime_branch,
-                    ),
-                    '--subject=Update',
-                    '--tree=tar={}'.format(output),
-                    '--fsync=false',
-                    '--tar-autocreate-parents',
+                    'prune',
+                    '--refs-only',
+                    '--depth=1',
                 ])
 
-            # Don't keep the history in this working repository:
-            # if history is desired, mirror the commits into a public
-            # repository and maintain history there.
-            subprocess.check_call([
-                'time',
-                'ostree',
-                '--repo=' + self.ostree_repo,
-                'prune',
-                '--refs-only',
-                '--depth=1',
-            ])
+                subprocess.check_call([
+                    'time',
+                    'flatpak',
+                    'build-update-repo',
+                    self.ostree_repo,
+                ])
 
-            subprocess.check_call([
-                'time',
-                'flatpak',
-                'build-update-repo',
-                self.ostree_repo,
-            ])
+                if self.export_bundles:
+                    for suffix in ('.Platform', '.Sdk'):
+                        bundle = '{}-{}-{}.bundle'.format(
+                            prefix + suffix,
+                            ','.join(self.dpkg_archs),
+                            self.runtime_branch,
+                        )
+                        output = os.path.join(self.build_area, bundle)
 
-            if self.export_bundles:
-                for suffix in ('.Platform', '.Sdk'):
-                    bundle = '{}-{}-{}.bundle'.format(
-                        prefix + suffix,
-                        ','.join(self.dpkg_archs),
-                        self.runtime_branch,
-                    )
-                    output = os.path.join(self.build_area, bundle)
+                        subprocess.check_call([
+                            'time',
+                            'flatpak',
+                            'build-bundle',
+                            '--runtime',
+                            self.ostree_repo,
+                            output + '.new',
+                            prefix + suffix,
+                            self.runtime_branch,
+                        ])
 
-                    subprocess.check_call([
-                        'time',
-                        'flatpak',
-                        'build-bundle',
-                        '--runtime',
-                        self.ostree_repo,
-                        output + '.new',
-                        prefix + suffix,
-                        self.runtime_branch,
-                    ])
-
-                    os.rename(output + '.new', output)
+                        os.rename(output + '.new', output)
 
     def configure_apt(self, overlay, apt_sources):
+        # type: (str, typing.Iterable[AptSource]) -> None
         """
         Configure apt. We only do this once, so that all chroots
         created from the same base have their version numbers
@@ -1169,11 +1219,12 @@ class Builder:
 
     def create_flatpak_manifest_overlay(
         self,
-        overlay,
-        prefix,
-        runtime,
+        overlay,        # type: str
+        prefix,         # type: str
+        runtime,        # type: str
         sdk=False,
     ):
+        # type: (...) -> None
         metadata = os.path.join(overlay, 'metadata')
         os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
 
@@ -1223,6 +1274,19 @@ class Builder:
             )
             keyfile.set_boolean(
                 'Extension {}.Sdk.Debug'.format(prefix),
+                'no-autodownload', True,
+            )
+
+            keyfile.set_string(
+                'Extension {}.Sdk.Sources'.format(prefix),
+                'directory', 'runtime/src',
+            )
+            keyfile.set_boolean(
+                'Extension {}.Sdk.Sources'.format(prefix),
+                'autodelete', True,
+            )
+            keyfile.set_boolean(
+                'Extension {}.Sdk.Sources'.format(prefix),
                 'no-autodownload', True,
             )
 
@@ -1383,7 +1447,20 @@ class Builder:
 
             keyfile.save_to_file(metadata)
 
-    def command_app(self, *, app_branch, yaml_manifest, **kwargs):
+    def command_app(
+        self,
+        *,
+        app_branch,         # type: str
+        yaml_manifest,      # type: str
+        **kwargs
+    ):
+        # type: (...) -> None
+
+        if not self.ostree_commit:
+            logger.error(
+                'flatdeb app --no-ostree-commit cannot work')
+            raise SystemExit(1)
+
         self.ensure_local_repo()
 
         with open(yaml_manifest, encoding='utf-8') as reader:

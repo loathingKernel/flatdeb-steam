@@ -1,5 +1,7 @@
-#!/bin/bash
+#!/usr/bin/python3
 
+# flatdeb — build Flatpak runtimes from Debian packages
+#
 # Copyright © 2016-2017 Simon McVittie
 # Copyright © 2017-2019 Collabora Ltd.
 #
@@ -24,51 +26,105 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-set -e
-set -u
-set -o pipefail
+import argparse
+import logging
+import os
+import subprocess
+import sys
 
-me="$(basename "$0")"
+try:
+    import typing
+except ImportError:
+    pass
+else:
+    typing  # silence "unused" warnings
 
-if [ "$#" != 1 ] || [ "$1" = '--help' ] || [ "x$(id -u)" != x0 ] ||
-        ! [ -d "$1" ]; then
-    echo "$me: Usage:" >&2
-    echo "    $me SYSROOT" >&2
-    echo "" >&2
-    echo "Run this script as root." >&2
-    exit 2
-fi
 
-sysroot="$1"
-cd "$sysroot"
+logger = logging.getLogger('flatdeb.purge-conffiles')
 
-in_chroot () {
-    local var
 
-    for var in ftp_proxy http_proxy https_proxy no_proxy; do
-        if [ -n "${!var-}" ]; then
-            set -- "${var}=${!var}" "$@"
-        fi
-    done
+def main():
+    # type: (...) -> None
 
-    systemd-nspawn --directory="$sysroot" --as-pid2 --tmpfs=/run/lock \
-    env DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes \
-    "$@"
-}
+    parser = argparse.ArgumentParser(
+        description='Purge leftover configuration files'
+    )
+    parser.add_argument('sysroot')
 
-echo "Purging leftover configuration files:"
-in_chroot dpkg-query --show -f '${Status}:${Package}\n' \
-| while read -r line; do
-    case "$line" in
-        (*\ config-files:*)
-            p="${line##*:}"
-            echo "- $p"
-            unwanted+=("$p")
-            ;;
-    esac
-done
+    args = parser.parse_args()
 
-if [ -n "${unwanted[*]}" ]; then
-    in_chroot dpkg --purge --force-remove-essential --force-depends \
-        "${unwanted[@]}"
-fi
+    in_chroot = [
+        'systemd-nspawn',
+        '--directory={}'.format(args.sysroot),
+        '--as-pid2',
+        '--tmpfs=/run/lock',
+        'env',
+        'DEBIAN_FRONTEND=noninteractive',
+        'SUDO_FORCE_REMOVE=yes',
+    ]
+
+    for var in ('ftp_proxy', 'http_proxy', 'https_proxy', 'no_proxy'):
+        if var in os.environ:
+            in_chroot.append('{}={}'.format(var, os.environ[var]))
+
+    logger.info('Purging leftover configuration files:')
+
+    unwanted = set()        # type: typing.Set[str]
+
+    with subprocess.Popen(in_chroot + [
+        'dpkg-query',
+        '--show',
+        '-f', r'${Status}:${Package}\n',
+    ], stdout=subprocess.PIPE, universal_newlines=True) as dpkg_query:
+        for line in dpkg_query.stdout:
+            if line == '\n':
+                continue
+
+            if ':' not in line:
+                raise AssertionError('dpkg-query produced {!r}'.format(line))
+
+            status, package = line.rsplit(':')
+
+            if status.endswith(' config-files'):
+                logger.info('- %s', package)
+                unwanted.add(package)
+
+        if dpkg_query.wait() != 0:
+            raise subprocess.CalledProcessError(
+                returncode=dpkg_query.returncode,
+                cmd=dpkg_query.args,
+            )
+
+    if unwanted:
+        subprocess.check_call(in_chroot + [
+            'dpkg',
+            '--purge',
+            '--force-depends',
+            '--force-remove-essential',
+        ] + list(unwanted))
+
+
+if __name__ == '__main__':
+    if sys.stderr.isatty():
+        try:
+            import colorlog
+        except ImportError:
+            pass
+        else:
+            formatter = colorlog.ColoredFormatter(
+                '%(log_color)s%(levelname)s:%(name)s:%(reset)s %(message)s')
+            handler = logging.StreamHandler()
+            handler.setFormatter(formatter)
+            logging.getLogger().addHandler(handler)
+    else:
+        logging.basicConfig()
+
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        raise SystemExit(130)
+    except subprocess.CalledProcessError as e:
+        logger.error('%s', e)
+        raise SystemExit(1)

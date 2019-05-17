@@ -40,11 +40,19 @@ import subprocess
 import sys
 import yaml
 
+try:
+    import typing
+except ImportError:
+    pass
+else:
+    typing  # silence "unused" warnings
+
 
 logger = logging.getLogger('flatdeb.apt-install')
 
 
 def main():
+    # type: (...) -> None
     parser = argparse.ArgumentParser(
         description='Install the given packages'
     )
@@ -73,8 +81,8 @@ def main():
         if var in os.environ:
             in_chroot.append('{}={}'.format(var, os.environ[var]))
 
-    options = []
-    packages = []
+    options = []        # type: typing.List[str]
+    packages = []       # type: typing.List[str]
 
     if args.debug:
         options.append('-oDebug::pkgDepCache::AutoInstall=true')
@@ -97,6 +105,7 @@ def main():
     subprocess.check_call(in_chroot + [
         'apt-get', 'clean',
     ])
+
 
 if __name__ == '__main__':
     if sys.stderr.isatty():

@@ -37,18 +37,29 @@ import re
 import subprocess
 import sys
 
+from debian.debian_support import Version
+
+try:
+    import typing
+except ImportError:
+    pass
+else:
+    typing  # silence "unused" warnings
+
 
 logger = logging.getLogger('flatdeb.collect-source-code')
 
 
 class InstalledPackage:
     def __init__(self, fields):
+        # type: (typing.Sequence[str]) -> None
         self.binary = fields[0]
         self.binary_version = fields[1]
         self.source = fields[2]
 
         if self.source.endswith(')'):
-            self.source, self.source_version = self.source.rstrip(')').split(' (')
+            self.source, self.source_version = (
+                self.source.rstrip(')').split(' ('))
         else:
             self.source_version = self.binary_version
 
@@ -58,12 +69,15 @@ class InstalledPackage:
         self.installed_size = fields[3]
 
     def __str__(self):
+        # type: () -> str
         return '{}_{}'.format(self.binary, self.binary_version)
 
     def __hash__(self):
+        # type: () -> int
         return hash(self.binary) ^ hash(self.binary_version)
 
     def __eq__(self, other):
+        # type: (typing.Any) -> bool
         if isinstance(other, InstalledPackage):
             return (
                 self.binary,
@@ -78,16 +92,20 @@ class InstalledPackage:
 
 class SourceRequired:
     def __init__(self, source, source_version):
+        # type: (str, Version) -> None
         self.source = source
         self.source_version = source_version
 
     def __str__(self):
+        # type: () -> str
         return 'src:{}_{}'.format(self.source, self.source_version)
 
     def __hash__(self):
+        # type: () -> int
         return hash(self.source) ^ hash(self.source_version)
 
     def __eq__(self, other):
+        # type: (typing.Any) -> bool
         if isinstance(other, SourceRequired):
             return (
                 self.source,
@@ -99,8 +117,28 @@ class SourceRequired:
         else:
             return NotImplemented
 
+    def __lt__(self, other):
+        # type: (typing.Any) -> bool
+        if isinstance(other, SourceRequired):
+            return (
+                self.source,
+                Version(self.source_version),
+            ) < (
+                other.source,
+                Version(other.source_version),
+            )
+        else:
+            return NotImplemented
+
+    @property
+    def get_source(self):
+        # type: () -> str
+        return '{}={}'.format(self.source, self.source_version)
+
 
 def read_manifest(path):
+    # type: (str) -> typing.List[InstalledPackage]
+
     ret = []
 
     with open(path, encoding='utf-8') as reader:
@@ -120,6 +158,8 @@ def read_manifest(path):
 
 
 def read_built_using(path):
+    # type: (str) -> typing.Set[SourceRequired]
+
     ret = set()
 
     with open(path, encoding='utf-8') as reader:
@@ -140,6 +180,7 @@ def read_built_using(path):
 
 
 def main():
+    # type: (...) -> None
     parser = argparse.ArgumentParser(
         description='Collect source code',
     )
@@ -202,8 +243,10 @@ def main():
     if os.path.exists(platform_built_using):
         sources_required |= read_built_using(platform_built_using)
 
-    sources = []
-    missing_sources = set()
+    sources = set()             # type: typing.Set[SourceRequired]
+    get_source = []             # type: typing.List[str]
+    included = set()            # type: typing.Set[SourceRequired]
+    missing_sources = set()     # type: typing.Set[SourceRequired]
 
     for s in sources_required:
         source = s.source
@@ -216,7 +259,9 @@ def main():
             source_version = strip_source_version_suffix.sub(
                 '', source_version)
 
-        sources.append('{}={}'.format(source, source_version))
+        s = SourceRequired(source, source_version)
+        sources.add(s)
+        get_source.append(s.get_source)
 
     try:
         subprocess.check_call(in_chroot + [
@@ -226,13 +271,13 @@ def main():
             '/src/files',               # working directory
             'apt-get', '-y', '--download-only', '-q', '-q',
             '-oAPT::Get::Only-Source=true', 'source',
-        ] + sources)
+        ] + get_source)
     except subprocess.CalledProcessError:
         logger.warning(
             'Unable to download some sources as a batch, trying '
             'to download sources individually')
 
-        for source in sources:
+        for s in sources:
             try:
                 subprocess.check_call(in_chroot + [
                     'sh', '-euc',
@@ -241,29 +286,43 @@ def main():
                     '/src/files',               # working directory
                     'apt-get', '-y', '--download-only', '-q', '-q',
                     '-oAPT::Get::Only-Source=true', 'source',
-                    source,
+                    s.get_source,
                 ])
             except subprocess.CalledProcessError:
                 # Non-fatal for now
                 logger.warning(
                     'Unable to get source code for %s', source)
-                missing_sources.add(source)
-                source_package = source.split('=', 1)[0]
+                missing_sources.add(s)
                 subprocess.call(in_chroot + [
-                    'apt-cache', 'showsrc', source_package,
+                    'apt-cache', 'showsrc', s.source,
                 ])
+            else:
+                included.add(s)
+    else:
+        included = set(sources)
+
+    with open(
+        os.path.join(args.sysroot, 'src', 'files', 'sources.txt'), 'w'
+    ) as writer:
+        writer.write('#Source\t#Version\n')
+
+        for s in sorted(included):
+            writer.write('{}\t{}\n'.format(s.source, s.source_version))
 
     if missing_sources:
         logger.warning('Missing source packages:')
 
         with open(
-            os.path.join(args.sysroot, 'src', 'MISSING.txt'), 'w'
+            os.path.join(args.sysroot, 'src', 'files', 'MISSING.txt'), 'w'
         ) as writer:
-            for p in sorted(missing_sources):
+            writer.write('#Source\t#Version\n')
+
+            for s in sorted(missing_sources):
                 logger.warning('- %s', p)
-                writer.write('{}\n'.format(p))
+                writer.write('{}\t{}\n'.format(s.source, s.source_version))
 
         logger.warning('Check that this runtime is GPL-compliant!')
+
 
 if __name__ == '__main__':
     if sys.stderr.isatty():
