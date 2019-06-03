@@ -15,6 +15,7 @@ elif "${PYFLAKES}" \
     flatdeb/apt-install \
     flatdeb/collect-source-code \
     flatdeb/purge-conffiles \
+    flatdeb/set-build-id \
     >&2; then
     echo "1..1"
     echo "ok 1 - $PYFLAKES reported no issues"

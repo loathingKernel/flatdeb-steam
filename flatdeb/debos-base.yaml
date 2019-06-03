@@ -129,19 +129,11 @@ actions:
       fi
 
       if test -e "$ROOTDIR/usr/lib/os-release"; then
-        sed -i -e '/^BUILD_ID=/d' -e '/^VARIANT=/d' -e '/^VARIANT_ID=/d' "$ROOTDIR/usr/lib/os-release"
-
-        if test -n "{{ $build_id }}"; then
-          echo 'BUILD_ID="{{ $build_id }}"' >> "$ROOTDIR/usr/lib/os-release"
-        fi
-
-        if test -n "{{ $variant }}"; then
-          echo 'VARIANT="{{ $variant }}"' >> "$ROOTDIR/usr/lib/os-release"
-        fi
-
-        if test -n "{{ $variant_id }}"; then
-          echo 'VARIANT_ID="{{ $variant_id }}"' >> "$ROOTDIR/usr/lib/os-release"
-        fi
+        "$RECIPEDIR/set-build-id" \
+          --build-id="{{ $build_id }}" \
+          --variant="{{ $variant }}" \
+          --variant-id="{{ $variant_id }}" \
+          "$ROOTDIR"
 
         cp "$ROOTDIR/usr/lib/os-release" "$ARTIFACTDIR/{{ $artifact_prefix }}.os-release.txt"
       fi

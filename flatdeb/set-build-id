@@ -1,0 +1,167 @@
+#!/usr/bin/python3
+
+# flatdeb — build Flatpak runtimes from Debian packages
+#
+# Copyright © 2016-2017 Simon McVittie
+# Copyright © 2017-2019 Collabora Ltd.
+#
+# SPDX-License-Identifier: MIT
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+import argparse
+import logging
+import os
+import subprocess
+import sys
+
+try:
+    import typing
+except ImportError:
+    pass
+else:
+    typing  # silence "unused" warnings
+
+
+logger = logging.getLogger('flatdeb.set-build-id')
+
+
+def quote(s):
+    # We can't use shlex.quote() because it relies on concatenated
+    # strings, which are valid for sh but not for /etc/os-release
+    quoted = s.replace(
+        '\\', '\\\\',
+    ).replace(
+        '$', '\\$',
+    ).replace(
+        '`', '\\`',
+    ).replace(
+        '"', '\\"',
+    )
+
+    for c in quoted:
+        if c >= '\x7f' or not c.isalnum():
+            quoted = '"{}"'.format(quoted)
+            break
+
+    return quoted
+
+
+def main():
+    # type: (...) -> None
+
+    parser = argparse.ArgumentParser(
+        description='Set build ID in chroot'
+    )
+    parser.add_argument('--build-id', default='')
+    parser.add_argument('--variant', default='')
+    parser.add_argument('--variant-id', default='')
+    parser.add_argument('--test-quoting', action='store_true')
+    parser.add_argument('sysroot')
+
+    args = parser.parse_args()
+    lines = []
+
+    if args.test_quoting:
+        for x in (
+            'debian',
+            '10',
+        ):
+            assert quote(x) == x, x
+
+        for x in (
+            'Debian GNU/Linux 10 (buster)',
+            '3.141592654',
+        ):
+            assert quote(x) == '"' + x + '"', x
+
+        for orig, quoted in (
+            ("My 'great' distro", '"My \'great\' distro"'),
+            ('My "great" distro', '"My \\"great\\" distro"'),
+            ('$PATH', '"\\$PATH"'),
+            ('C:\\Windows', '"C:\\\\Windows"'),
+            ('Shell `injection`', '"Shell \\`injection\\`"'),
+        ):
+            assert quote(orig) == quoted
+            unquoted = subprocess.check_output(
+                'printf "%s" ' + quoted,
+                universal_newlines=True,
+                shell=True,
+            )
+            assert unquoted == orig, (unquoted, orig)
+
+        return
+
+    with open(
+        os.path.join(args.sysroot, 'usr', 'lib', 'os-release'),
+        'r',
+    ) as reader:
+        for line in reader:
+            if line.startswith(('VARIANT=', 'VARIANT_ID=', 'BUILD_ID=')):
+                logger.info('# Ignoring: %s', line.strip())
+            else:
+                logger.info('%s', line.strip())
+                lines.append(line)
+
+    if args.build_id:
+        logger.info('Adding BUILD_ID=%s', quote(args.build_id))
+        lines.append('BUILD_ID={}\n'.format(quote(args.build_id)))
+
+    if args.variant:
+        logger.info('Adding VARIANT=%s', quote(args.variant))
+        lines.append('VARIANT={}\n'.format(quote(args.variant)))
+
+    if args.variant_id:
+        logger.info('Adding VARIANT_ID=%s', quote(args.variant_id))
+        lines.append('VARIANT_ID={}\n'.format(quote(args.variant_id)))
+
+    with open(
+        os.path.join(args.sysroot, 'usr', 'lib', 'os-release.new'),
+        'w',
+    ) as writer:
+        writer.writelines(lines)
+
+    os.rename(
+        os.path.join(args.sysroot, 'usr', 'lib', 'os-release.new'),
+        os.path.join(args.sysroot, 'usr', 'lib', 'os-release'),
+    )
+
+
+if __name__ == '__main__':
+    if sys.stderr.isatty():
+        try:
+            import colorlog
+        except ImportError:
+            pass
+        else:
+            formatter = colorlog.ColoredFormatter(
+                '%(log_color)s%(levelname)s:%(name)s:%(reset)s %(message)s')
+            handler = logging.StreamHandler()
+            handler.setFormatter(formatter)
+            logging.getLogger().addHandler(handler)
+    else:
+        logging.basicConfig()
+
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        raise SystemExit(130)
