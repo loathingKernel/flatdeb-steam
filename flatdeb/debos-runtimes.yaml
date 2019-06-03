@@ -333,6 +333,7 @@ actions:
       files/etc/apt/apt.conf.d/*
       files/etc/apt/sources.list
       files/etc/apt/sources.list.d/*
+      files/etc/debian_chroot
       files/lib/os-release
       src/files/MISSING.txt
       metadata

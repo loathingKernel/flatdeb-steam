@@ -172,5 +172,6 @@ actions:
       etc/apt/apt.conf.d/*
       etc/apt/sources.list
       etc/apt/sources.list.d/*
+      etc/debian_chroot
       usr/lib/os-release
       || true
