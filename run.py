@@ -642,6 +642,7 @@ class Builder:
                 'clean-up-base',
                 'clean-up-before-pack',
                 'disable-services',
+                'set-build-id',
                 'usrmerge',
                 'write-manifest',
             ):
