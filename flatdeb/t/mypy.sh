@@ -15,6 +15,7 @@ for script in \
     flatdeb/apt-install \
     flatdeb/collect-source-code \
     flatdeb/purge-conffiles \
+    flatdeb/set-build-id \
 ; do
     i=$((i + 1))
     if [ "x${MYPY:="$(command -v mypy || echo false)"}" = xfalse ]; then

@@ -832,6 +832,7 @@ class Builder:
                 'prepare-runtime',
                 'purge-conffiles',
                 'put-ldconfig-in-path',
+                'set-build-id',
                 'symlink-alternatives',
                 'usrmerge',
                 'write-manifest',

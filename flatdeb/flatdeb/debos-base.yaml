@@ -20,6 +20,7 @@ actions:
   - action: run
     label: create skeleton chroot
     command: |
+      set -e
       echo
       install -d "$ROOTDIR"
       install -d "$ROOTDIR/run"
@@ -60,6 +61,7 @@ actions:
     label: remove extra apt sources
     chroot: false
     command: |
+      set -e
       echo
       rm -fr "$ROOTDIR/etc/apt/sources.list.d"
       mkdir "$ROOTDIR/etc/apt/sources.list.d"
@@ -115,6 +117,7 @@ actions:
     label: write-manifest
     chroot: false
     command: |
+      set -e
       echo
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
@@ -129,19 +132,11 @@ actions:
       fi
 
       if test -e "$ROOTDIR/usr/lib/os-release"; then
-        sed -i -e '/^BUILD_ID=/d' -e '/^VARIANT=/d' -e '/^VARIANT_ID=/d' "$ROOTDIR/usr/lib/os-release"
-
-        if test -n "{{ $build_id }}"; then
-          echo 'BUILD_ID="{{ $build_id }}"' >> "$ROOTDIR/usr/lib/os-release"
-        fi
-
-        if test -n "{{ $variant }}"; then
-          echo 'VARIANT="{{ $variant }}"' >> "$ROOTDIR/usr/lib/os-release"
-        fi
-
-        if test -n "{{ $variant_id }}"; then
-          echo 'VARIANT_ID="{{ $variant_id }}"' >> "$ROOTDIR/usr/lib/os-release"
-        fi
+        "$RECIPEDIR/set-build-id" \
+          --build-id="{{ $build_id }}" \
+          --variant="{{ $variant }}" \
+          --variant-id="{{ $variant_id }}" \
+          "$ROOTDIR"
 
         cp "$ROOTDIR/usr/lib/os-release" "$ARTIFACTDIR/{{ $artifact_prefix }}.os-release.txt"
       fi
@@ -160,6 +155,7 @@ actions:
     label: manifests
     chroot: false
     command: >
+      set -e;
       cd "$ROOTDIR";
       head -n10000
       usr/manifest.dpkg
@@ -169,11 +165,13 @@ actions:
     label: metadata
     chroot: false
     command: >
+      set -e;
       cd "$ROOTDIR";
       head -n10000
       etc/apt/apt.conf
       etc/apt/apt.conf.d/*
       etc/apt/sources.list
       etc/apt/sources.list.d/*
+      etc/debian_chroot
       usr/lib/os-release
       || true

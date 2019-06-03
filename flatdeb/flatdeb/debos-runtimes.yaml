@@ -111,6 +111,7 @@ actions:
     label: write-manifest
     chroot: false
     command: |
+      set -e
       echo
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
@@ -118,19 +119,11 @@ actions:
       cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.deb822.gz"
 
       if test -e "$ROOTDIR/usr/lib/os-release"; then
-        sed -i -e '/^BUILD_ID=/d' -e '/^VARIANT=/d' -e '/^VARIANT_ID=/d' "$ROOTDIR/usr/lib/os-release"
-
-        if test -n "{{ $build_id }}"; then
-          echo 'BUILD_ID="{{ $build_id }}"' >> "$ROOTDIR/usr/lib/os-release"
-        fi
-
-        if test -n "{{ $variant }}"; then
-          echo 'VARIANT="{{ $variant }}"' >> "$ROOTDIR/usr/lib/os-release"
-        fi
-
-        if test -n "{{ $variant_id }}"; then
-          echo 'VARIANT_ID="{{ $variant_id }}"' >> "$ROOTDIR/usr/lib/os-release"
-        fi
+        "$RECIPEDIR/set-build-id" \
+          --build-id="{{ $build_id }}" \
+          --variant="{{ $variant }}" \
+          --variant-id="{{ $variant_id }}" \
+          "$ROOTDIR"
 
         cp "$ROOTDIR/usr/lib/os-release" "$ARTIFACTDIR/{{ $artifact_prefix }}.os-release.txt"
       fi
@@ -184,6 +177,7 @@ actions:
     label: save final sources.list
     chroot: false
     command: |
+      set -e
       echo
       cp "$ROOTDIR/etc/apt/sources.list" "$ARTIFACTDIR/{{ $artifact_prefix }}.sources.list"
 
@@ -191,6 +185,7 @@ actions:
     label: try-apt-get-update
     chroot: true
     command: |
+      set -e
       apt-get update || true
 
   - action: run
@@ -221,6 +216,7 @@ actions:
     label: pack sysroot tarball
     chroot: false
     command: >
+      set -e;
       echo;
       tar -zcf "$ARTIFACTDIR/{{ $sysroot_tarball }}"
       --numeric-owner
@@ -262,6 +258,7 @@ actions:
     label: pack ostree tarball
     chroot: false
     command: >
+      set -e;
       echo;
       tar -zcf "$ARTIFACTDIR/{{ $ostree_tarball }}"
       --numeric-owner
@@ -274,6 +271,7 @@ actions:
     label: pack source code
     chroot: false
     command: >
+      set -e;
       echo;
       tar -zcf "$ARTIFACTDIR/{{ $sources_tarball }}"
       --numeric-owner
@@ -286,6 +284,7 @@ actions:
     label: pack debug symbols
     chroot: false
     command: >
+      set -e;
       echo;
       tar -zcf "$ARTIFACTDIR/{{ $debug_tarball }}"
       --numeric-owner
@@ -305,6 +304,7 @@ actions:
     label: list of missing source code
     chroot: false
     command: >
+      set -e;
       test ! -e "$ROOTDIR/src/files/MISSING.txt" ||
       cp -v "$ROOTDIR/src/files/MISSING.txt"
       "$ARTIFACTDIR/{{ $sources_prefix }}.MISSING.txt"
@@ -314,6 +314,7 @@ actions:
     label: manifests
     chroot: false
     command: >
+      set -e;
       cd "$ROOTDIR";
       head -n10000
       files/manifest.dpkg
@@ -325,12 +326,14 @@ actions:
     label: metadata
     chroot: false
     command: >
+      set -e;
       cd "$ROOTDIR";
       head -n10000
       files/etc/apt/apt.conf
       files/etc/apt/apt.conf.d/*
       files/etc/apt/sources.list
       files/etc/apt/sources.list.d/*
+      files/etc/debian_chroot
       files/lib/os-release
       src/files/MISSING.txt
       metadata
