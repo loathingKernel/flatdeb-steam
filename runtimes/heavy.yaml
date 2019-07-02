@@ -30,6 +30,7 @@ add_packages:
 post_script: |
   install -d -m755 /usr/lib/locale
   install -d -m755 /usr/share/i18n
+  find /usr -type d -empty -print0 | xargs -0 -t -I '{}' -- touch '{}/.exists'
 
 platform:
   null: null
