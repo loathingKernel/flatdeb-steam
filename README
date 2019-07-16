@@ -7,18 +7,27 @@ from Debian packages.
 Walkthrough
 -----------
 
-On a Debian 9 VM:
+On a Debian 10 'buster' machine:
 
-    sensible-editor /etc/apt/sources.list    # and enable backports
-    apt install debootstrap systemd-container time
-    apt install python3 python3-debian python3-gi python3-yaml
-    apt install -t stretch-backports flatpak flatpak-builder ostree
+    apt install \
+    binutils \
+    debootstrap \
+    debos \
+    flatpak \
+    flatpak-builder \
+    ostree \
+    python3 \
+    python3-debian \
+    python3-gi \
+    python3-yaml \
+    systemd-container \
+    time \
+    ${NULL}
 
-(Or install on Debian testing/unstable.)
-
-Also install the latest versions of
+(Or use Debian 9 'stretch' and get flatpak, flatpak-builder and ostree
+from stretch-backports, and install
 [fakemachine](https://github.com/go-debos/fakemachine)
-and [debos](https://github.com/go-debos/debos).
+and [debos](https://github.com/go-debos/debos) from upstream source code.)
 
 Also edit org.debian.packages.openarena.yaml to specify where you have
 put local clones of ioquake3 and openarena if you can't (or don't
