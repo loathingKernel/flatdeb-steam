@@ -14,6 +14,7 @@ elif "${PYCODESTYLE}" \
     ./*.py \
     flatdeb/apt-install \
     flatdeb/collect-source-code \
+    flatdeb/dbgsym-use-build-id \
     flatdeb/purge-conffiles \
     flatdeb/set-build-id \
     >&2; then

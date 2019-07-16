@@ -827,6 +827,7 @@ class Builder:
                 'clean-up-base',
                 'clean-up-before-pack',
                 'collect-source-code',
+                'dbgsym-use-build-id',
                 'disable-services',
                 'make-flatpak-friendly',
                 'platformize',
