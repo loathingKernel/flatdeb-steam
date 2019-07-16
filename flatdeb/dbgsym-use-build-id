@@ -47,7 +47,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description=(
-            'Provide build-ID-based hard links for legacy debug symbols',
+            'Provide build-ID-based hard links for legacy debug symbols'
         ),
     )
     parser.add_argument(
