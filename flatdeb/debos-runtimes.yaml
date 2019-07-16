@@ -234,6 +234,15 @@ actions:
     chroot: true
     script: symlink-alternatives
 
+  - action: run
+    label: dbgsym-use-build-id
+    chroot: false
+    command: |
+      set -eux
+      if [ -d "$ROOTDIR/usr/lib/debug" ]; then
+        "$RECIPEDIR/dbgsym-use-build-id" --debug-dir "$ROOTDIR/usr/lib/debug"
+      fi
+
   {{ if $sdk }}
   - action: run
     label: make-flatpak-friendly --sdk
