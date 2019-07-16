@@ -61,8 +61,3 @@ On the same machine, or a test machine onto which you have copied
     flatpak run org.debian.packages.hello
     flatpak --user install flatdeb org.debian.packages.openarena
     flatpak run org.debian.packages.openarena
-
-Bonus content: Steam as a Flatpak, with multiarch
--------------------------------------------------
-
-https://github.com/smcv/flatdeb-steam
