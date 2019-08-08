@@ -16,6 +16,7 @@ On a Debian 10 'buster' machine:
     flatpak \
     flatpak-builder \
     ostree \
+    pigz \
     python3 \
     python3-debian \
     python3-gi \

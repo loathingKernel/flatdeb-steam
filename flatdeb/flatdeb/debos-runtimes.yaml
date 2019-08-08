@@ -269,9 +269,10 @@ actions:
     command: >
       set -e;
       echo;
-      tar -zcf "$ARTIFACTDIR/{{ $ostree_tarball }}"
+      tar -cf "$ARTIFACTDIR/{{ $ostree_tarball }}"
       --numeric-owner
       --sort=name
+      --use-compress-program="pigz -n --rsyncable"
       -C "$ROOTDIR"
       files metadata
 
@@ -282,10 +283,11 @@ actions:
     command: >
       set -e;
       echo;
-      tar -zcf "$ARTIFACTDIR/{{ $sources_tarball }}"
+      tar -cf "$ARTIFACTDIR/{{ $sources_tarball }}"
       --numeric-owner
       --sort=name
       --transform="s,^./,,"
+      --use-compress-program="pigz -n --rsyncable"
       -C "$ROOTDIR/src"
       .
 
@@ -295,10 +297,11 @@ actions:
     command: >
       set -e;
       echo;
-      tar -zcf "$ARTIFACTDIR/{{ $debug_tarball }}"
+      tar -cf "$ARTIFACTDIR/{{ $debug_tarball }}"
       --numeric-owner
       --sort=name
       --transform="s,^./,,"
+      --use-compress-program="pigz -n --rsyncable"
       -C "$ROOTDIR/debug"
       .
 
