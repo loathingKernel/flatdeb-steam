@@ -431,6 +431,31 @@ class Builder:
         parser.add_argument(
             '--generate-sysroot-tarball', action='store_true')
         parser.add_argument(
+            '--no-generate-sysroot-tarball',
+            dest='generate_sysroot_tarball',
+            action='store_false',
+        )
+        parser.add_argument(
+            '--generate-source-tarball',
+            action='store_true',
+            default=None,
+        )
+        parser.add_argument(
+            '--no-generate-source-tarball',
+            dest='generate_source_tarball',
+            action='store_false',
+        )
+        parser.add_argument(
+            '--generate-source-directory',
+            default='',
+        )
+        parser.add_argument(
+            '--no-generate-source-directory',
+            dest='generate_source_directory',
+            action='store_const',
+            const='',
+        )
+        parser.add_argument(
             '--build-id', default=None)
         parser.add_argument(
             '--variant-name', default=None)
@@ -472,6 +497,15 @@ class Builder:
                 parser.error(
                     '--replace-apt-source argument must be in the form '
                     '"LABEL=deb http://ARCHIVE SUITE COMPONENT[...]"')
+
+        if (
+            '/' in args.generate_source_directory
+            or args.generate_source_directory == '..'
+        ):
+            parser.error(
+                '--generate-source-directory must be a single '
+                'directory name'
+            )
 
         if args.version:
             print('flatdeb {}'.format(VERSION))
@@ -795,6 +829,8 @@ class Builder:
         self,
         *,
         yaml_file,                          # type: str
+        generate_source_directory='',
+        generate_source_tarball=True,
         generate_sysroot_tarball=False,
         **kwargs
     ):
@@ -972,6 +1008,30 @@ class Builder:
                             'sysroot_tarball:{}'.format(
                                 sysroot_tarball + '.new'))
 
+                    if generate_source_directory:
+                        os.makedirs(
+                            os.path.join(
+                                self.build_area,
+                                generate_source_directory,
+                            ),
+                            0o755,
+                            exist_ok=True,
+                        )
+                        argv.append('-t')
+                        argv.append(
+                            'sources_directory:{}'.format(
+                                generate_source_directory))
+
+                    if generate_source_tarball is None:
+                        generate_source_tarball = not generate_source_directory
+
+                    if generate_source_tarball:
+                        sources_tarball = sources_prefix + '.tar.gz'
+                        argv.append('-t')
+                        argv.append(
+                            'sources_tarball:{}'.format(
+                                sources_tarball + '.new'))
+
                     sdk_details = self.runtime_details.get('sdk', {})
                     sdk_packages = list(sdk_details.get('add_packages', []))
                     argv.append('-t')
@@ -980,8 +1040,6 @@ class Builder:
                     argv.append('debug_tarball:' + debug_tarball + '.new')
                     argv.append('-t')
                     argv.append('debug_prefix:' + debug_prefix)
-                    argv.append('-t')
-                    argv.append('sources_tarball:' + sources_tarball + '.new')
                     argv.append('-t')
                     argv.append('sources_prefix:' + sources_prefix)
 
@@ -1098,26 +1156,27 @@ class Builder:
                             '--tar-autocreate-parents',
                         ])
 
-                    output = os.path.join(self.build_area, sources_tarball)
-                    os.rename(output + '.new', output)
+                    if generate_source_tarball:
+                        output = os.path.join(self.build_area, sources_tarball)
+                        os.rename(output + '.new', output)
 
-                    if self.ostree_commit:
-                        logger.info('Committing %s to OSTree', sources_tarball)
-                        subprocess.check_call([
-                            'time',
-                            'ostree',
-                            '--repo=' + self.ostree_repo,
-                            'commit',
-                            '--branch=runtime/{}.Sources/{}/{}'.format(
-                                runtime,
-                                self.flatpak_arch,
-                                self.runtime_branch,
-                            ),
-                            '--subject=Update',
-                            '--tree=tar={}'.format(output),
-                            '--fsync=false',
-                            '--tar-autocreate-parents',
-                        ])
+                        if self.ostree_commit:
+                            logger.info('Committing %s to OSTree', sources_tarball)
+                            subprocess.check_call([
+                                'time',
+                                'ostree',
+                                '--repo=' + self.ostree_repo,
+                                'commit',
+                                '--branch=runtime/{}.Sources/{}/{}'.format(
+                                    runtime,
+                                    self.flatpak_arch,
+                                    self.runtime_branch,
+                                ),
+                                '--subject=Update',
+                                '--tree=tar={}'.format(output),
+                                '--fsync=false',
+                                '--tar-autocreate-parents',
+                            ])
 
                 output = os.path.join(self.build_area, out_tarball)
                 os.rename(output + '.new', output)
