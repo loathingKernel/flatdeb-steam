@@ -1,0 +1,20 @@
+---
+apt_components:
+  - main
+  - contrib
+  - non-free
+can_merge_usr: true
+strip_source_version_suffix: '\+bsrt2\..*'
+sources:
+  - label: debian
+    apt_uri: 'http://deb.debian.org/debian'
+    apt_suite: 'buster'
+    keyring: 'debian-archive-keyring.gpg'
+  - label: security
+    apt_uri: 'http://security.debian.org/debian-security'
+    apt_suite: 'buster/updates'
+  # Not available to the public yet, so this URL is just a guess.
+  - label: steamrt
+    apt_uri: 'http://repo.steampowered.com/steamrt-soldier'
+    keyring: 'valve-archive-keyring.gpg'
+...
