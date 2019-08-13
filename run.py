@@ -202,6 +202,7 @@ class Builder:
     def __init__(self):
         # type: () -> None
 
+        self.apt_debug = False
         #: The Debian suite to use
         self.apt_suite = 'stretch'
         #: The Flatpak branch to use for the runtime, or None for apt_suite
@@ -466,6 +467,10 @@ class Builder:
         parser.add_argument(
             '--sdk-variant-id', default=None)
         subparsers = parser.add_subparsers(dest='command', metavar='command')
+        parser.add_argument('--apt-debug', action='store_true')
+        parser.add_argument(
+            '--no-apt-debug', dest='apt_debug',
+            action='store_false')
 
         subparser = subparsers.add_parser(
             'base',
@@ -514,6 +519,7 @@ class Builder:
         if args.chdir is not None:
             os.chdir(args.chdir)
 
+        self.apt_debug = args.apt_debug
         self.build_area = args.build_area
         self.build_id = args.build_id
         self.variant_name = args.variant_name
@@ -745,6 +751,10 @@ class Builder:
                 ),
             ]
 
+            if self.apt_debug:
+                argv.append('-t')
+                argv.append('apt_debug:true')
+
             if self.build_id is not None:
                 argv.append('-t')
                 argv.append('build_id:{}'.format(self.build_id))
@@ -928,6 +938,10 @@ class Builder:
                     '-t', 'strip_source_version_suffix:{}'.format(
                         self.strip_source_version_suffix),
                 ]
+
+                if self.apt_debug:
+                    argv.append('-t')
+                    argv.append('apt_debug:true')
 
                 if self.build_id is not None:
                     argv.append('-t')
