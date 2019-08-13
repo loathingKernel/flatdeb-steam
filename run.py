@@ -1220,7 +1220,8 @@ class Builder:
                         os.rename(output + '.new', output)
 
                         if self.ostree_commit:
-                            logger.info('Committing %s to OSTree', sources_tarball)
+                            logger.info(
+                                'Committing %s to OSTree', sources_tarball)
                             subprocess.check_call([
                                 'time',
                                 'ostree',
