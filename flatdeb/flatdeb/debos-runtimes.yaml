@@ -20,8 +20,10 @@
 {{- $sysroot_tarball := or .sysroot_tarball "" -}}
 {{- $ostree_prefix := or .ostree_prefix (printf "%s-runtime" $artifact_prefix) -}}
 {{- $ostree_tarball := or .ostree_tarball (printf "%s.tar.gz" $ostree_prefix) -}}
+{{- $sources_directory := or .sources_directory "" -}}
 {{- $sources_prefix := or .sources_prefix (printf "%s-sources" $artifact_prefix) -}}
-{{- $sources_tarball := or .sources_tarball (printf "%s.tar.gz" $sources_prefix) -}}
+{{- $sources_tarball := or .sources_tarball "" -}}
+{{- $debug_symbols := or .debug_symbols "" -}}
 {{- $debug_prefix := or .debug_prefix (printf "%s-debug" $artifact_prefix) -}}
 {{- $debug_tarball := or .debug_tarball (printf "%s.tar.gz" $debug_prefix) -}}
 
@@ -144,7 +146,13 @@ actions:
   - action: run
     label: collect-source-code
     chroot: false
-    command: 'echo; "$RECIPEDIR/collect-source-code" --strip-source-version-suffix="{{ $strip_source_version_suffix }}" "$ROOTDIR"'
+    command: |
+      set -e
+      echo
+      "$RECIPEDIR/collect-source-code" \
+        {{ if $sources_directory }}--output="$ARTIFACTDIR/{{ $sources_directory }}"{{ end }} \
+        --strip-source-version-suffix="{{ $strip_source_version_suffix }}" \
+        "$ROOTDIR"
   {{ else }}
   - action: run
     label: copy manifest for SDK
@@ -234,6 +242,7 @@ actions:
     chroot: true
     script: symlink-alternatives
 
+  {{ if $debug_symbols }}
   - action: run
     label: dbgsym-use-build-id
     chroot: false
@@ -242,6 +251,7 @@ actions:
       if [ -d "$ROOTDIR/usr/lib/debug" ]; then
         "$RECIPEDIR/dbgsym-use-build-id" --debug-dir "$ROOTDIR/usr/lib/debug"
       fi
+  {{ end }}
 
   {{ if $sdk }}
   - action: run
@@ -277,6 +287,7 @@ actions:
       files metadata
 
   {{ if $sdk }}
+  {{ if $sources_tarball }}
   - action: run
     label: pack source code
     chroot: false
@@ -290,7 +301,9 @@ actions:
       --use-compress-program="pigz -n --rsyncable"
       -C "$ROOTDIR/src"
       .
+  {{ end }}
 
+  {{ if $debug_symbols }}
   - action: run
     label: pack debug symbols
     chroot: false
@@ -304,22 +317,28 @@ actions:
       --use-compress-program="pigz -n --rsyncable"
       -C "$ROOTDIR/debug"
       .
+  {{ end }}
 
   - action: run
     label: list of included source code
     chroot: false
     command: >
-      cp -v "$ROOTDIR/src/files/sources.txt"
-      "$ARTIFACTDIR/{{ $sources_prefix }}.sources.txt"
+      set -e;
+      cd "$ARTIFACTDIR";
+      dir="{{ or $sources_directory "$ROOTDIR/src/files" }}";
+      cp -v "$dir/sources.txt"
+      "{{ $sources_prefix }}.sources.txt"
 
   - action: run
     label: list of missing source code
     chroot: false
     command: >
       set -e;
-      test ! -e "$ROOTDIR/src/files/MISSING.txt" ||
-      cp -v "$ROOTDIR/src/files/MISSING.txt"
-      "$ARTIFACTDIR/{{ $sources_prefix }}.MISSING.txt"
+      cd "$ARTIFACTDIR";
+      dir="{{ or $sources_directory "$ROOTDIR/src/files" }}";
+      test ! -e "$dir/MISSING.txt" ||
+      cp -v "$dir/MISSING.txt"
+      "{{ $sources_prefix }}.MISSING.txt"
   {{ end }}
 
   - action: run
@@ -327,11 +346,11 @@ actions:
     chroot: false
     command: >
       set -e;
-      cd "$ROOTDIR";
+      cd "$ARTIFACTDIR";
       head -n10000
-      files/manifest.dpkg
-      files/manifest.dpkg.built-using
-      src/files/sources.txt
+      "$ROOTDIR/files/manifest.dpkg"
+      "$ROOTDIR/files/manifest.dpkg.built-using"
+      {{ or $sources_directory "$ROOTDIR/src/files" }}/sources.txt
       || true
 
   - action: run
@@ -339,14 +358,14 @@ actions:
     chroot: false
     command: >
       set -e;
-      cd "$ROOTDIR";
+      cd "$ARTIFACTDIR";
       head -n10000
-      files/etc/apt/apt.conf
-      files/etc/apt/apt.conf.d/*
-      files/etc/apt/sources.list
-      files/etc/apt/sources.list.d/*
-      files/etc/debian_chroot
-      files/lib/os-release
-      src/files/MISSING.txt
-      metadata
+      "$ROOTDIR/files/etc/apt/apt.conf"
+      "$ROOTDIR/files/etc/apt/apt.conf.d"/*
+      "$ROOTDIR/files/etc/apt/sources.list"
+      "$ROOTDIR/files/etc/apt/sources.list.d"/*
+      "$ROOTDIR/files/etc/debian_chroot"
+      "$ROOTDIR/files/lib/os-release"
+      {{ or $sources_directory "ROOTDIR/src/files" }}/MISSING.txt
+      "$ROOTDIR/metadata"
       || true

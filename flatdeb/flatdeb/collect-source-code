@@ -184,6 +184,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='Collect source code',
     )
+    parser.add_argument('--output', '-o', default='')
     parser.add_argument('--strip-source-version-suffix', default='')
     parser.add_argument('sysroot')
 
@@ -200,8 +201,14 @@ def main():
         '--directory={}'.format(args.sysroot),
         '--as-pid2',
         '--tmpfs=/run/lock',
-        'env',
     ]
+
+    if args.output:
+        in_chroot.append(
+            '--bind={}:/src/files'.format(os.path.abspath(args.output))
+        )
+
+    in_chroot.append('env')
 
     for var in ('ftp_proxy', 'http_proxy', 'https_proxy', 'no_proxy'):
         if var in os.environ:
@@ -291,7 +298,7 @@ def main():
             except subprocess.CalledProcessError:
                 # Non-fatal for now
                 logger.warning(
-                    'Unable to get source code for %s', source)
+                    'Unable to get source code for %s', s.source)
                 missing_sources.add(s)
                 subprocess.call(in_chroot + [
                     'apt-cache', 'showsrc', s.source,
@@ -301,8 +308,23 @@ def main():
     else:
         included = set(sources)
 
+    parent = args.output or os.path.join(args.sysroot, 'src', 'files')
+
+    try:
+        with open(
+            os.path.join(parent, 'sources.txt'), 'r'
+        ) as reader:
+            for line in reader:
+                if line.startswith('#'):
+                    continue
+
+                source, source_version = line.rstrip('\n').split('\t')[:2]
+                included.add(SourceRequired(source, source_version))
+    except OSError:
+        pass
+
     with open(
-        os.path.join(args.sysroot, 'src', 'files', 'sources.txt'), 'w'
+        os.path.join(parent, 'sources.txt'), 'w'
     ) as writer:
         writer.write('#Source\t#Version\n')
 
@@ -312,8 +334,21 @@ def main():
     if missing_sources:
         logger.warning('Missing source packages:')
 
+        try:
+            with open(
+                os.path.join(parent, 'MISSING.txt'), 'r'
+            ) as reader:
+                for line in reader:
+                    if line.startswith('#'):
+                        continue
+
+                    source, source_version = line.rstrip('\n').split('\t')[:2]
+                    missing_sources.add(SourceRequired(source, source_version))
+        except OSError:
+            pass
+
         with open(
-            os.path.join(args.sysroot, 'src', 'files', 'MISSING.txt'), 'w'
+            os.path.join(parent, 'MISSING.txt'), 'w'
         ) as writer:
             writer.write('#Source\t#Version\n')
 

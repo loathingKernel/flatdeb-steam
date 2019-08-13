@@ -202,6 +202,7 @@ class Builder:
     def __init__(self):
         # type: () -> None
 
+        self.apt_debug = False
         #: The Debian suite to use
         self.apt_suite = 'stretch'
         #: The Flatpak branch to use for the runtime, or None for apt_suite
@@ -239,6 +240,7 @@ class Builder:
         self.variant_id = None
         self.sdk_variant_name = None
         self.sdk_variant_id = None
+        self.debug_symbols = True
 
         self.logger = logger.getChild('Builder')
 
@@ -431,6 +433,31 @@ class Builder:
         parser.add_argument(
             '--generate-sysroot-tarball', action='store_true')
         parser.add_argument(
+            '--no-generate-sysroot-tarball',
+            dest='generate_sysroot_tarball',
+            action='store_false',
+        )
+        parser.add_argument(
+            '--generate-source-tarball',
+            action='store_true',
+            default=None,
+        )
+        parser.add_argument(
+            '--no-generate-source-tarball',
+            dest='generate_source_tarball',
+            action='store_false',
+        )
+        parser.add_argument(
+            '--generate-source-directory',
+            default='',
+        )
+        parser.add_argument(
+            '--no-generate-source-directory',
+            dest='generate_source_directory',
+            action='store_const',
+            const='',
+        )
+        parser.add_argument(
             '--build-id', default=None)
         parser.add_argument(
             '--variant-name', default=None)
@@ -441,6 +468,13 @@ class Builder:
         parser.add_argument(
             '--sdk-variant-id', default=None)
         subparsers = parser.add_subparsers(dest='command', metavar='command')
+        parser.add_argument('--apt-debug', action='store_true')
+        parser.add_argument(
+            '--no-apt-debug', dest='apt_debug',
+            action='store_false')
+        parser.add_argument('--debug-symbols', action='store_true')
+        parser.add_argument(
+            '--no-debug-symbols', dest='debug_symbols', action='store_false')
 
         subparser = subparsers.add_parser(
             'base',
@@ -473,6 +507,15 @@ class Builder:
                     '--replace-apt-source argument must be in the form '
                     '"LABEL=deb http://ARCHIVE SUITE COMPONENT[...]"')
 
+        if (
+            '/' in args.generate_source_directory
+            or args.generate_source_directory == '..'
+        ):
+            parser.error(
+                '--generate-source-directory must be a single '
+                'directory name'
+            )
+
         if args.version:
             print('flatdeb {}'.format(VERSION))
             return
@@ -480,8 +523,10 @@ class Builder:
         if args.chdir is not None:
             os.chdir(args.chdir)
 
+        self.apt_debug = args.apt_debug
         self.build_area = args.build_area
         self.build_id = args.build_id
+        self.debug_symbols = args.debug_symbols
         self.variant_name = args.variant_name
         self.variant_id = args.variant_id
         self.sdk_variant_name = args.sdk_variant_name
@@ -711,9 +756,20 @@ class Builder:
                 ),
             ]
 
+            if self.apt_debug:
+                argv.append('-t')
+                argv.append('apt_debug:true')
+
             if self.build_id is not None:
                 argv.append('-t')
                 argv.append('build_id:{}'.format(self.build_id))
+
+            if self.debug_symbols:
+                argv.append('-t')
+                argv.append('debug_symbols:true')
+            else:
+                argv.append('-t')
+                argv.append('debug_symbols:')
 
             if self.variant_name is not None:
                 argv.append('-t')
@@ -791,10 +847,41 @@ class Builder:
 
         return buf.decode('ascii')
 
+    def get_runtime_packages(
+        self,
+        descriptors,        # type: typing.Iterable[typing.Any]
+        multiarch=False
+    ):
+        # type: (...) -> typing.Iterable[str]
+
+        for d in descriptors:
+            if isinstance(d, dict):
+                assert len(d) == 1
+                p = next(iter(d))
+                details = d[p]
+            else:
+                assert isinstance(d, str)
+                p = d
+                details = {}
+
+            if (
+                details.get('debug_symbols', False)
+                and not self.debug_symbols
+            ):
+                continue
+
+            if details.get('multiarch', multiarch):
+                for a in self.dpkg_archs:
+                    yield p + ':' + a
+            else:
+                yield p
+
     def command_runtimes(
         self,
         *,
         yaml_file,                          # type: str
+        generate_source_directory='',
+        generate_source_tarball=True,
         generate_sysroot_tarball=False,
         **kwargs
     ):
@@ -855,13 +942,13 @@ class Builder:
             # Do the Platform first, because we download its source
             # packages as part of preparing the Sdk
             for sdk in (False, True):
-                packages = list(self.runtime_details.get('add_packages', []))
-
-                for p in self.runtime_details.get(
-                    'add_packages_multiarch', []
-                ):
-                    for a in self.dpkg_archs:
-                        packages.append(p + ':' + a)
+                packages = list(self.get_runtime_packages(
+                    self.runtime_details.get('add_packages', [])
+                ))
+                packages.extend(self.get_runtime_packages(
+                    self.runtime_details.get('add_packages_multiarch', []),
+                    multiarch=True,
+                ))
 
                 if sdk:
                     runtime = prefix + '.Sdk'
@@ -892,6 +979,10 @@ class Builder:
                     '-t', 'strip_source_version_suffix:{}'.format(
                         self.strip_source_version_suffix),
                 ]
+
+                if self.apt_debug:
+                    argv.append('-t')
+                    argv.append('apt_debug:true')
 
                 if self.build_id is not None:
                     argv.append('-t')
@@ -972,8 +1063,31 @@ class Builder:
                             'sysroot_tarball:{}'.format(
                                 sysroot_tarball + '.new'))
 
+                    if generate_source_directory:
+                        os.makedirs(
+                            os.path.join(
+                                self.build_area,
+                                generate_source_directory,
+                            ),
+                            0o755,
+                            exist_ok=True,
+                        )
+                        argv.append('-t')
+                        argv.append(
+                            'sources_directory:{}'.format(
+                                generate_source_directory))
+
+                    if generate_source_tarball is None:
+                        generate_source_tarball = not generate_source_directory
+
+                    if generate_source_tarball:
+                        sources_tarball = sources_prefix + '.tar.gz'
+                        argv.append('-t')
+                        argv.append(
+                            'sources_tarball:{}'.format(
+                                sources_tarball + '.new'))
+
                     sdk_details = self.runtime_details.get('sdk', {})
-                    sdk_packages = list(sdk_details.get('add_packages', []))
                     argv.append('-t')
                     argv.append('sdk:yes')
                     argv.append('-t')
@@ -981,13 +1095,15 @@ class Builder:
                     argv.append('-t')
                     argv.append('debug_prefix:' + debug_prefix)
                     argv.append('-t')
-                    argv.append('sources_tarball:' + sources_tarball + '.new')
-                    argv.append('-t')
                     argv.append('sources_prefix:' + sources_prefix)
 
-                    for p in sdk_details.get('add_packages_multiarch', []):
-                        for a in self.dpkg_archs:
-                            sdk_packages.append(p + ':' + a)
+                    sdk_packages = list(self.get_runtime_packages(
+                        sdk_details.get('add_packages', [])
+                    ))
+                    sdk_packages.extend(self.get_runtime_packages(
+                        sdk_details.get('add_packages_multiarch', []),
+                        multiarch=True,
+                    ))
 
                     if sdk_packages:
                         logger.info('Installing extra packages for SDK:')
@@ -1077,10 +1193,11 @@ class Builder:
 
                         os.rename(output + '.new', output)
 
-                    output = os.path.join(self.build_area, debug_tarball)
-                    os.rename(output + '.new', output)
+                    if self.debug_symbols:
+                        output = os.path.join(self.build_area, debug_tarball)
+                        os.rename(output + '.new', output)
 
-                    if self.ostree_commit:
+                    if self.ostree_commit and self.debug_symbols:
                         logger.info('Committing %s to OSTree', debug_tarball)
                         subprocess.check_call([
                             'time',
@@ -1098,26 +1215,28 @@ class Builder:
                             '--tar-autocreate-parents',
                         ])
 
-                    output = os.path.join(self.build_area, sources_tarball)
-                    os.rename(output + '.new', output)
+                    if generate_source_tarball:
+                        output = os.path.join(self.build_area, sources_tarball)
+                        os.rename(output + '.new', output)
 
-                    if self.ostree_commit:
-                        logger.info('Committing %s to OSTree', sources_tarball)
-                        subprocess.check_call([
-                            'time',
-                            'ostree',
-                            '--repo=' + self.ostree_repo,
-                            'commit',
-                            '--branch=runtime/{}.Sources/{}/{}'.format(
-                                runtime,
-                                self.flatpak_arch,
-                                self.runtime_branch,
-                            ),
-                            '--subject=Update',
-                            '--tree=tar={}'.format(output),
-                            '--fsync=false',
-                            '--tar-autocreate-parents',
-                        ])
+                        if self.ostree_commit:
+                            logger.info(
+                                'Committing %s to OSTree', sources_tarball)
+                            subprocess.check_call([
+                                'time',
+                                'ostree',
+                                '--repo=' + self.ostree_repo,
+                                'commit',
+                                '--branch=runtime/{}.Sources/{}/{}'.format(
+                                    runtime,
+                                    self.flatpak_arch,
+                                    self.runtime_branch,
+                                ),
+                                '--subject=Update',
+                                '--tree=tar={}'.format(output),
+                                '--fsync=false',
+                                '--tar-autocreate-parents',
+                            ])
 
                 output = os.path.join(self.build_area, out_tarball)
                 os.rename(output + '.new', output)
