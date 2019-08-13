@@ -23,6 +23,7 @@
 {{- $sources_directory := or .sources_directory "" -}}
 {{- $sources_prefix := or .sources_prefix (printf "%s-sources" $artifact_prefix) -}}
 {{- $sources_tarball := or .sources_tarball "" -}}
+{{- $debug_symbols := or .debug_symbols "" -}}
 {{- $debug_prefix := or .debug_prefix (printf "%s-debug" $artifact_prefix) -}}
 {{- $debug_tarball := or .debug_tarball (printf "%s.tar.gz" $debug_prefix) -}}
 
@@ -241,6 +242,7 @@ actions:
     chroot: true
     script: symlink-alternatives
 
+  {{ if $debug_symbols }}
   - action: run
     label: dbgsym-use-build-id
     chroot: false
@@ -249,6 +251,7 @@ actions:
       if [ -d "$ROOTDIR/usr/lib/debug" ]; then
         "$RECIPEDIR/dbgsym-use-build-id" --debug-dir "$ROOTDIR/usr/lib/debug"
       fi
+  {{ end }}
 
   {{ if $sdk }}
   - action: run
@@ -300,6 +303,7 @@ actions:
       .
   {{ end }}
 
+  {{ if $debug_symbols }}
   - action: run
     label: pack debug symbols
     chroot: false
@@ -313,6 +317,7 @@ actions:
       --use-compress-program="pigz -n --rsyncable"
       -C "$ROOTDIR/debug"
       .
+  {{ end }}
 
   - action: run
     label: list of included source code

@@ -240,6 +240,7 @@ class Builder:
         self.variant_id = None
         self.sdk_variant_name = None
         self.sdk_variant_id = None
+        self.debug_symbols = True
 
         self.logger = logger.getChild('Builder')
 
@@ -471,6 +472,9 @@ class Builder:
         parser.add_argument(
             '--no-apt-debug', dest='apt_debug',
             action='store_false')
+        parser.add_argument('--debug-symbols', action='store_true')
+        parser.add_argument(
+            '--no-debug-symbols', dest='debug_symbols', action='store_false')
 
         subparser = subparsers.add_parser(
             'base',
@@ -522,6 +526,7 @@ class Builder:
         self.apt_debug = args.apt_debug
         self.build_area = args.build_area
         self.build_id = args.build_id
+        self.debug_symbols = args.debug_symbols
         self.variant_name = args.variant_name
         self.variant_id = args.variant_id
         self.sdk_variant_name = args.sdk_variant_name
@@ -759,6 +764,13 @@ class Builder:
                 argv.append('-t')
                 argv.append('build_id:{}'.format(self.build_id))
 
+            if self.debug_symbols:
+                argv.append('-t')
+                argv.append('debug_symbols:true')
+            else:
+                argv.append('-t')
+                argv.append('debug_symbols:')
+
             if self.variant_name is not None:
                 argv.append('-t')
                 argv.append('variant:{}'.format(self.variant_name))
@@ -835,6 +847,35 @@ class Builder:
 
         return buf.decode('ascii')
 
+    def get_runtime_packages(
+        self,
+        descriptors,        # type: typing.Iterable[typing.Any]
+        multiarch=False
+    ):
+        # type: (...) -> typing.Iterable[str]
+
+        for d in descriptors:
+            if isinstance(d, dict):
+                assert len(d) == 1
+                p = next(iter(d))
+                details = d[p]
+            else:
+                assert isinstance(d, str)
+                p = d
+                details = {}
+
+            if (
+                details.get('debug_symbols', False)
+                and not self.debug_symbols
+            ):
+                continue
+
+            if details.get('multiarch', multiarch):
+                for a in self.dpkg_archs:
+                    yield p + ':' + a
+            else:
+                yield p
+
     def command_runtimes(
         self,
         *,
@@ -901,13 +942,13 @@ class Builder:
             # Do the Platform first, because we download its source
             # packages as part of preparing the Sdk
             for sdk in (False, True):
-                packages = list(self.runtime_details.get('add_packages', []))
-
-                for p in self.runtime_details.get(
-                    'add_packages_multiarch', []
-                ):
-                    for a in self.dpkg_archs:
-                        packages.append(p + ':' + a)
+                packages = list(self.get_runtime_packages(
+                    self.runtime_details.get('add_packages', [])
+                ))
+                packages.extend(self.get_runtime_packages(
+                    self.runtime_details.get('add_packages_multiarch', []),
+                    multiarch=True,
+                ))
 
                 if sdk:
                     runtime = prefix + '.Sdk'
@@ -1047,7 +1088,6 @@ class Builder:
                                 sources_tarball + '.new'))
 
                     sdk_details = self.runtime_details.get('sdk', {})
-                    sdk_packages = list(sdk_details.get('add_packages', []))
                     argv.append('-t')
                     argv.append('sdk:yes')
                     argv.append('-t')
@@ -1057,9 +1097,13 @@ class Builder:
                     argv.append('-t')
                     argv.append('sources_prefix:' + sources_prefix)
 
-                    for p in sdk_details.get('add_packages_multiarch', []):
-                        for a in self.dpkg_archs:
-                            sdk_packages.append(p + ':' + a)
+                    sdk_packages = list(self.get_runtime_packages(
+                        sdk_details.get('add_packages', [])
+                    ))
+                    sdk_packages.extend(self.get_runtime_packages(
+                        sdk_details.get('add_packages_multiarch', []),
+                        multiarch=True,
+                    ))
 
                     if sdk_packages:
                         logger.info('Installing extra packages for SDK:')
@@ -1149,10 +1193,11 @@ class Builder:
 
                         os.rename(output + '.new', output)
 
-                    output = os.path.join(self.build_area, debug_tarball)
-                    os.rename(output + '.new', output)
+                    if self.debug_symbols:
+                        output = os.path.join(self.build_area, debug_tarball)
+                        os.rename(output + '.new', output)
 
-                    if self.ostree_commit:
+                    if self.ostree_commit and self.debug_symbols:
                         logger.info('Committing %s to OSTree', debug_tarball)
                         subprocess.check_call([
                             'time',
