@@ -765,11 +765,6 @@ class Builder:
                 argv.append('-t')
                 argv.append('build_id:{}'.format(self.build_id))
 
-            argv.append('-t')
-            argv.append(
-                'debug_symbols:{}'.format(str(self.debug_symbols).lower())
-            )
-
             if self.variant_name is not None:
                 argv.append('-t')
                 argv.append('variant:{}'.format(self.variant_name))
@@ -1089,6 +1084,12 @@ class Builder:
                     sdk_details = self.runtime_details.get('sdk', {})
                     argv.append('-t')
                     argv.append('sdk:yes')
+                    argv.append('-t')
+                    argv.append(
+                        'debug_symbols:{}'.format(
+                            str(self.debug_symbols).lower()
+                        )
+                    )
                     argv.append('-t')
                     argv.append('debug_tarball:' + debug_tarball + '.new')
                     argv.append('-t')
