@@ -472,7 +472,8 @@ class Builder:
         parser.add_argument(
             '--no-apt-debug', dest='apt_debug',
             action='store_false')
-        parser.add_argument('--debug-symbols', action='store_true')
+        parser.add_argument(
+            '--debug-symbols', action='store_true', default=True)
         parser.add_argument(
             '--no-debug-symbols', dest='debug_symbols', action='store_false')
 
