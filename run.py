@@ -765,12 +765,10 @@ class Builder:
                 argv.append('-t')
                 argv.append('build_id:{}'.format(self.build_id))
 
-            if self.debug_symbols:
-                argv.append('-t')
-                argv.append('debug_symbols:true')
-            else:
-                argv.append('-t')
-                argv.append('debug_symbols:')
+            argv.append('-t')
+            argv.append(
+                'debug_symbols:{}'.format(str(self.debug_symbols).lower())
+            )
 
             if self.variant_name is not None:
                 argv.append('-t')
