@@ -1,10 +1,10 @@
-{{- $apt_debug := or .apt_debug "" -}}
+{{- $apt_debug := or .apt_debug false -}}
 {{- $architecture := or .architecture "amd64" -}}
 {{- $suite := or .suite "stretch" -}}
 {{- $flatpak_arch := or .flatpak_arch $architecture -}}
 {{- $packages := or .packages "" -}}
 {{- $post_script := or .post_script "" -}}
-{{- $sdk := or .sdk "" -}}
+{{- $sdk := or .sdk false -}}
 {{- $sdk_packages := or .sdk_packages "" -}}
 {{- $sdk_post_script := or .sdk_post_script "" -}}
 {{- $platform_post_script := or .platform_post_script "" -}}
@@ -23,7 +23,7 @@
 {{- $sources_directory := or .sources_directory "" -}}
 {{- $sources_prefix := or .sources_prefix (printf "%s-sources" $artifact_prefix) -}}
 {{- $sources_tarball := or .sources_tarball "" -}}
-{{- $debug_symbols := or .debug_symbols "" -}}
+{{- $debug_symbols := or .debug_symbols false -}}
 {{- $debug_prefix := or .debug_prefix (printf "%s-debug" $artifact_prefix) -}}
 {{- $debug_tarball := or .debug_tarball (printf "%s.tar.gz" $debug_prefix) -}}
 

@@ -472,7 +472,8 @@ class Builder:
         parser.add_argument(
             '--no-apt-debug', dest='apt_debug',
             action='store_false')
-        parser.add_argument('--debug-symbols', action='store_true')
+        parser.add_argument(
+            '--debug-symbols', action='store_true', default=True)
         parser.add_argument(
             '--no-debug-symbols', dest='debug_symbols', action='store_false')
 
@@ -764,12 +765,10 @@ class Builder:
                 argv.append('-t')
                 argv.append('build_id:{}'.format(self.build_id))
 
-            if self.debug_symbols:
-                argv.append('-t')
-                argv.append('debug_symbols:true')
-            else:
-                argv.append('-t')
-                argv.append('debug_symbols:')
+            argv.append('-t')
+            argv.append(
+                'debug_symbols:{}'.format(str(self.debug_symbols).lower())
+            )
 
             if self.variant_name is not None:
                 argv.append('-t')
