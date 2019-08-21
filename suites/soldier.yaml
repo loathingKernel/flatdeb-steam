@@ -10,9 +10,21 @@ sources:
     apt_uri: 'http://deb.debian.org/debian'
     apt_suite: 'buster'
     keyring: 'debian-archive-keyring.gpg'
-  - label: security
+  - label: debian-debug
+    apt_uri: 'http://deb.debian.org/debian-debug'
+    apt_suite: 'buster-debug'
+    keyring: 'debian-archive-keyring.gpg'
+    deb-src: false
+  - label: debian-security
     apt_uri: 'http://security.debian.org/debian-security'
     apt_suite: 'buster/updates'
+    keyring: 'debian-archive-keyring.gpg'
+  # This contains the corresponding detached debug symbols for debian-security
+  - label: debian-debug-proposed-updates
+    apt_uri: 'http://deb.debian.org/debian-debug'
+    apt_suite: 'buster-proposed-updates-debug'
+    keyring: 'debian-archive-keyring.gpg'
+    deb-src: false
   # Not available to the public yet, so this URL is just a guess.
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt-soldier'
