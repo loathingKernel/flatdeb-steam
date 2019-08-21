@@ -366,6 +366,6 @@ actions:
       "$ROOTDIR/files/etc/apt/sources.list.d"/*
       "$ROOTDIR/files/etc/debian_chroot"
       "$ROOTDIR/files/lib/os-release"
-      {{ or $sources_directory "ROOTDIR/src/files" }}/MISSING.txt
+      {{ or $sources_directory "$ROOTDIR/src/files" }}/MISSING.txt
       "$ROOTDIR/metadata"
       || true
