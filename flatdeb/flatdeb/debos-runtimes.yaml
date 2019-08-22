@@ -226,9 +226,10 @@ actions:
     command: >
       set -e;
       echo;
-      tar -zcf "$ARTIFACTDIR/{{ $sysroot_tarball }}"
+      tar -cf "$ARTIFACTDIR/{{ $sysroot_tarball }}"
       --numeric-owner
       --sort=name
+      --use-compress-program="pigz -n --rsyncable"
       -C "$ROOTDIR"
       --exclude="./script"
       --exclude="./src"
