@@ -152,6 +152,20 @@ actions:
     file: {{ $ospack }}
 
   - action: run
+    label: pack base tarball
+    chroot: false
+    command: >
+      set -e;
+      echo;
+      tar -cf "$ARTIFACTDIR/{{ $ospack }}"
+      --numeric-owner
+      --sort=name
+      --use-compress-program="pigz -n --rsyncable"
+      -C "$ROOTDIR"
+      --transform="s,^./,,"
+      .
+
+  - action: run
     label: manifests
     chroot: false
     command: >
