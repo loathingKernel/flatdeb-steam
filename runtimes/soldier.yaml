@@ -30,11 +30,17 @@ add_packages:
   - steamrt-container
 
 post_script: |
+  set -x
   ln -s /usr/libexec/flatpak-xdg-utils/xdg-email /usr/bin/
   ln -s /usr/libexec/flatpak-xdg-utils/xdg-open /usr/bin/
   install -d -m755 /usr/lib/locale
   install -d -m755 /usr/share/i18n
   find /usr -type d -empty -print0 | xargs -0 -t -I '{}' -- touch '{}/.exists'
+  if [ -e /usr/share/i18n/locales/en_US ]; then
+    echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+    localedef -v -i en_US -c -f UTF-8 en_US.UTF-8 || :
+    test -e /usr/lib/locale/locale-archive
+  fi
 
 platform:
   null: null
@@ -51,6 +57,7 @@ sdk:
         debug_symbols: true
 
   post_script: |
+    set -x
     ln -sv busybox /usr/bin/dos2unix
     ln -sv busybox /usr/bin/ifconfig
     ln -sv busybox /usr/bin/ip
