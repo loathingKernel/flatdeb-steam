@@ -42,10 +42,10 @@ actions:
     {{ if $keyringpackage }}
     keyring-package: {{ $keyringpackage }}
     {{ end }}
-    {{ if eq $mergedusr "after_debootstrap" }}
-    merged-usr: false
+    {{ if eq $mergedusr "true" }}
+    merged-usr: true
     {{ else }}
-    merged-usr: {{ $mergedusr }}
+    merged-usr: false
     {{ end }}
     variant: minbase
     # TODO: flatdeb has historically used a configurable
