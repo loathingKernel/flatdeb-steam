@@ -717,17 +717,6 @@ class Builder:
             )
             output = os.path.join(self.build_area, tarball)
 
-            script = self.suite_details.get('debootstrap_script')
-
-            if script is not None:
-                # TODO: flatdeb has historically used a configurable
-                # debootstrap_script, but debos doesn't support scripts other
-                # than 'unstable'. Does the Debian script work for precise and
-                # produce the same results as the 'precise' script?
-                # https://github.com/go-debos/debos/issues/16
-                logger.debug(
-                    'Ignoring /usr/share/debootstrap/scripts/%s', script)
-
             self.configure_apt(
                 os.path.join(scratch, 'suites', apt_suite, 'overlay'),
                 self.build_apt_sources,
