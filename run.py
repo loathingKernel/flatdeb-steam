@@ -1142,13 +1142,13 @@ class Builder:
                         argv.append(
                             'platform_post_script:platform_post_script')
 
-                overlay = os.path.join(scratch, 'runtimes', runtime, 'overlay')
+                overlay = os.path.join(
+                    scratch, 'runtimes', runtime, 'flatpak-overlay')
                 self.create_flatpak_manifest_overlay(
                     overlay, prefix, runtime, sdk=sdk)
-                self.configure_apt(
-                    os.path.join(scratch, 'runtimes', runtime, 'overlay'),
-                    self.final_apt_sources,
-                )
+                overlay = os.path.join(
+                    scratch, 'runtimes', runtime, 'apt-overlay')
+                self.configure_apt(overlay, self.final_apt_sources)
 
                 argv.append(dest_recipe)
                 subprocess.check_call(argv)

@@ -177,9 +177,8 @@ actions:
     command: 'echo; dpkg --purge --force-remove-essential --force-depends dpkg'
   {{ end }}
 
-  # This adds the Flatpak metadata and the final apt configuration
   - action: overlay
-    source: runtimes/{{ $runtime }}/overlay
+    source: runtimes/{{ $runtime }}/apt-overlay
 
   - action: run
     label: save final sources.list
@@ -242,6 +241,9 @@ actions:
     label: usrmerge
     chroot: false
     command: 'echo; "$RECIPEDIR/usrmerge" "$ROOTDIR"'
+
+  - action: overlay
+    source: runtimes/{{ $runtime }}/flatpak-overlay
 
   - action: run
     label: symlink-alternatives
