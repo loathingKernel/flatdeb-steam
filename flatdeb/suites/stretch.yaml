@@ -2,7 +2,6 @@
 apt_components:
   - main
   - contrib
-debootstrap_script: 'stretch'
 can_merge_usr: true
 sources:
   - label: debian

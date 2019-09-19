@@ -684,7 +684,6 @@ class Builder:
             shutil.copyfile(_DEBOS_BASE_RECIPE, dest_recipe)
 
             for helper in (
-                'add-foreign-architectures',
                 'clean-up-base',
                 'clean-up-before-pack',
                 'disable-services',
@@ -717,17 +716,6 @@ class Builder:
                 ','.join(self.dpkg_archs),
             )
             output = os.path.join(self.build_area, tarball)
-
-            script = self.suite_details.get('debootstrap_script')
-
-            if script is not None:
-                # TODO: flatdeb has historically used a configurable
-                # debootstrap_script, but debos doesn't support scripts other
-                # than 'unstable'. Does the Debian script work for precise and
-                # produce the same results as the 'precise' script?
-                # https://github.com/go-debos/debos/issues/16
-                logger.debug(
-                    'Ignoring /usr/share/debootstrap/scripts/%s', script)
 
             self.configure_apt(
                 os.path.join(scratch, 'suites', apt_suite, 'overlay'),
@@ -1154,13 +1142,13 @@ class Builder:
                         argv.append(
                             'platform_post_script:platform_post_script')
 
-                overlay = os.path.join(scratch, 'runtimes', runtime, 'overlay')
+                overlay = os.path.join(
+                    scratch, 'runtimes', runtime, 'flatpak-overlay')
                 self.create_flatpak_manifest_overlay(
                     overlay, prefix, runtime, sdk=sdk)
-                self.configure_apt(
-                    os.path.join(scratch, 'runtimes', runtime, 'overlay'),
-                    self.final_apt_sources,
-                )
+                overlay = os.path.join(
+                    scratch, 'runtimes', runtime, 'apt-overlay')
+                self.configure_apt(overlay, self.final_apt_sources)
 
                 argv.append(dest_recipe)
                 subprocess.check_call(argv)

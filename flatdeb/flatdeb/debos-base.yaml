@@ -42,10 +42,10 @@ actions:
     {{ if $keyringpackage }}
     keyring-package: {{ $keyringpackage }}
     {{ end }}
-    {{ if eq $mergedusr "after_debootstrap" }}
-    merged-usr: false
+    {{ if eq $mergedusr "true" }}
+    merged-usr: true
     {{ else }}
-    merged-usr: {{ $mergedusr }}
+    merged-usr: false
     {{ end }}
     variant: minbase
     # TODO: flatdeb has historically used a configurable
@@ -99,8 +99,12 @@ actions:
   {{ if $foreignarchs }}
   - action: run
     label: add-foreign-architectures
-    chroot: false
-    command: 'echo; "$RECIPEDIR/add-foreign-architectures" "$ROOTDIR" {{ $foreignarchs }}'
+    chroot: true
+    command: |
+      set -eux
+      for a in {{ $foreignarchs }}; do
+        dpkg --add-architecture "$a"
+      done
   {{ end }}
 
   - action: run
