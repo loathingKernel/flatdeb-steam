@@ -1,7 +1,6 @@
 ---
 apt_components:
   - main
-debootstrap_script: 'precise'
 # """
 # A copy of the C library was found in an unexpected directory:
 #   '/usr/lib/x86_64-linux-gnu/libc-2.15.so'
