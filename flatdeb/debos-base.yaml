@@ -99,8 +99,12 @@ actions:
   {{ if $foreignarchs }}
   - action: run
     label: add-foreign-architectures
-    chroot: false
-    command: 'echo; "$RECIPEDIR/add-foreign-architectures" "$ROOTDIR" {{ $foreignarchs }}'
+    chroot: true
+    command: |
+      set -eux
+      for a in {{ $foreignarchs }}; do
+        dpkg --add-architecture "$a"
+      done
   {{ end }}
 
   - action: run
