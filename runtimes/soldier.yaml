@@ -58,18 +58,18 @@ sdk:
 
   post_script: |
     set -x
-    ln -sv busybox /usr/bin/dos2unix
-    ln -sv busybox /usr/bin/ifconfig
-    ln -sv busybox /usr/bin/ip
-    ln -sv busybox /usr/bin/nc
-    ln -sv busybox /usr/bin/ping
-    ln -sv busybox /usr/bin/ping6
-    ln -sv busybox /usr/bin/route
-    ln -sv busybox /usr/bin/telnet
-    ln -sv busybox /usr/bin/traceroute
-    ln -sv busybox /usr/bin/traceroute6
-    ln -sv busybox /usr/bin/unix2dos
-    ln -sv busybox /usr/bin/vi
-    ln -sv busybox /usr/bin/xxd
+    ln -sv busybox /bin/dos2unix
+    ln -sv busybox /bin/ifconfig
+    ln -sv busybox /bin/ip
+    ln -sv busybox /bin/nc
+    ln -sv busybox /bin/ping
+    ln -sv busybox /bin/ping6
+    ln -sv busybox /bin/route
+    ln -sv busybox /bin/telnet
+    ln -sv busybox /bin/traceroute
+    ln -sv busybox /bin/traceroute6
+    ln -sv busybox /bin/unix2dos
+    ln -sv busybox /bin/vi
+    ln -sv busybox /bin/xxd
 
 ...

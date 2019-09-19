@@ -1,14 +1,7 @@
 ---
 apt_components:
   - main
-# """
-# A copy of the C library was found in an unexpected directory:
-#   '/usr/lib/x86_64-linux-gnu/libc-2.15.so'
-# It is not safe to upgrade the C library in this situation;
-# please remove that copy of the C library or get it out of
-# '/usr/lib/x86_64-linux-gnu' and try again.
-# """
-can_merge_usr: after_debootstrap
+can_merge_usr: after_sysroot
 strip_source_version_suffix: '\+srt[0-9]+'
 sources:
   - label: steamrt

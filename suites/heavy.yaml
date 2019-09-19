@@ -1,7 +1,7 @@
 ---
 apt_components:
   - main
-can_merge_usr: true
+can_merge_usr: after_sysroot
 strip_source_version_suffix: '\+srthb.*'
 sources:
   - label: debian
