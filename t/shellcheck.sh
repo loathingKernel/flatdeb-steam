@@ -15,7 +15,6 @@ fi
 n=0
 for shell_script in \
         deb-buildapi/configure \
-        flatdeb/add-foreign-architectures \
         flatdeb/clean-up-base \
         flatdeb/clean-up-before-pack \
         flatdeb/disable-services \
