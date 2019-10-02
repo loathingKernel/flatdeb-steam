@@ -41,6 +41,16 @@ post_script: |
     localedef -v -i en_US -c -f UTF-8 en_US.UTF-8 || :
     test -e /usr/lib/locale/locale-archive
   fi
+  # Arch Linux 32-bit biarch glibc looks for locales here. We might
+  # need to use the host system glibc when pressure-vessel brings in the
+  # host graphics drivers.
+  install -d -m755 /usr/lib32
+  ln -s ../lib/locale /usr/lib32/locale
+  # Biarch OSs that are the other way round might conceivably look here
+  if [ -d /lib64 ]; then
+    install -d -m755 /usr/lib64
+    ln -s ../lib/locale /usr/lib64/locale
+  fi
 
 platform:
   null: null
