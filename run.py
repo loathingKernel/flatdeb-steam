@@ -895,6 +895,7 @@ class Builder:
                 'apt-install',
                 'clean-up-base',
                 'clean-up-before-pack',
+                'collect-dbgsym',
                 'collect-source-code',
                 'dbgsym-use-build-id',
                 'disable-services',

@@ -60,13 +60,37 @@ actions:
 
   # TODO: Everything before this step is common to the Platform and SDK
 
+  {{ if $sdk }}
+  - action: run
+    label: copy manifest from platform
+    chroot: false
+    command: 'echo; cp "$RECIPEDIR/manifest.dpkg.platform" "$ROOTDIR/usr"'
+  - action: run
+    label: copy manifest from platform
+    chroot: false
+    command: 'echo; cp "$RECIPEDIR/manifest.dpkg.built-using.platform" "$ROOTDIR/usr"'
+  - action: run
+    label: copy manifest from platform
+    chroot: false
+    command: 'echo; cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"'
+  {{ if $debug_symbols }}
+  - action: run
+    label: collect-dbgsym
+    chroot: false
+    command: |
+      set -e
+      echo
+      "$RECIPEDIR/collect-dbgsym" "$ROOTDIR"
+  {{ end }}
   # We do this as a separate step in case it involves removing any
-  # of the common packages
-  {{ if and $sdk $sdk_packages }}
+  # of the common packages, or replacing automatic debug symbols with
+  # legacy debug symbols that might have more coverage
+  {{ if $sdk_packages }}
   - action: run
     label: apt-install
     chroot: false
     command: echo; $RECIPEDIR/apt-install {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/sdk_packages.yaml"
+  {{ end }}
   {{ end }}
 
   {{ if not $sdk }}
@@ -136,18 +160,6 @@ actions:
       fi
 
   {{ if $sdk }}
-  - action: run
-    label: copy manifest from platform
-    chroot: false
-    command: 'echo; cp "$RECIPEDIR/manifest.dpkg.platform" "$ROOTDIR/usr"'
-  - action: run
-    label: copy manifest from platform
-    chroot: false
-    command: 'echo; cp "$RECIPEDIR/manifest.dpkg.built-using.platform" "$ROOTDIR/usr"'
-  - action: run
-    label: copy manifest from platform
-    chroot: false
-    command: 'echo; cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"'
   - action: run
     label: collect-source-code
     chroot: false

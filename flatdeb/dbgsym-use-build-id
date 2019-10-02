@@ -65,6 +65,9 @@ def main():
             subdirs.remove('.build-id')
 
         for f in files:
+            if f.endswith('.txt'):
+                continue
+
             # Scrape the output of readelf to find the build-ID for this
             # binary
             path = os.path.join(dirname, f)

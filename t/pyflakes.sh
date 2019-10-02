@@ -13,6 +13,7 @@ if [ "x${PYFLAKES:=pyflakes3}" = xfalse ] || \
 elif "${PYFLAKES}" \
     ./*.py \
     flatdeb/apt-install \
+    flatdeb/collect-dbgsym \
     flatdeb/collect-source-code \
     flatdeb/dbgsym-use-build-id \
     flatdeb/purge-conffiles \
