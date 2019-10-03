@@ -13,6 +13,7 @@ i=0
 for script in \
     ./*.py \
     flatdeb/apt-install \
+    flatdeb/collect-dbgsym \
     flatdeb/collect-source-code \
     flatdeb/dbgsym-use-build-id \
     flatdeb/purge-conffiles \
