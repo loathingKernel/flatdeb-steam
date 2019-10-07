@@ -330,6 +330,7 @@ actions:
     command: >
       set -e;
       echo;
+      install -d "$ROOTDIR/debug";
       tar -cf "$ARTIFACTDIR/{{ $debug_tarball }}"
       --numeric-owner
       --sort=name
