@@ -4,6 +4,7 @@ apt_components:
   - contrib
   - non-free
 can_merge_usr: after_sysroot
+has_automatic_dbgsym: true
 strip_source_version_suffix: '\+bsrt2\..*'
 sources:
   - label: debian

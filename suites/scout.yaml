@@ -2,6 +2,7 @@
 apt_components:
   - main
 can_merge_usr: after_sysroot
+has_automatic_dbgsym: true
 strip_source_version_suffix: '\+srt[0-9]+'
 sources:
   - label: steamrt
