@@ -241,6 +241,7 @@ class Builder:
         self.sdk_variant_name = None
         self.sdk_variant_id = None
         self.debug_symbols = True
+        self.automatic_dbgsym = True
 
         self.logger = logger.getChild('Builder')
 
@@ -473,9 +474,24 @@ class Builder:
             '--no-apt-debug', dest='apt_debug',
             action='store_false')
         parser.add_argument(
-            '--debug-symbols', action='store_true', default=True)
+            '--debug-symbols', action='store_true', default=True,
+            help='Include packages that are tagged as debug symbols',
+        )
         parser.add_argument(
-            '--no-debug-symbols', dest='debug_symbols', action='store_false')
+            '--no-debug-symbols', dest='debug_symbols', action='store_false',
+            help='Exclude packages that are tagged as debug symbols',
+        )
+        parser.add_argument(
+            '--automatic-dbgsym', action='store_true', default=None,
+            help='Include corresponding automatic -dbgsym packages for '
+                 'each package in the Platform (default: detect from suite)',
+        )
+        parser.add_argument(
+            '--no-automatic-dbgsym', dest='automatic_dbgsym',
+            action='store_false', default=None,
+            help='Do not include corresponding automatic -dbgsym packages '
+                 'for each package in the Platform',
+        )
 
         subparser = subparsers.add_parser(
             'base',
@@ -570,6 +586,13 @@ class Builder:
 
         self.strip_source_version_suffix = self.suite_details.get(
             'strip_source_version_suffix', '')
+
+        if args.automatic_dbgsym is None:
+            self.automatic_dbgsym = self.suite_details.get(
+                'has_automatic_dbgsym', True,
+            )
+        else:
+            self.automatic_dbgsym = args.automatic_dbgsym
 
         self.build_apt_sources = self.generate_apt_sources(
             add=args.add_apt_source + args.add_build_apt_source,
@@ -1074,11 +1097,25 @@ class Builder:
                     argv.append('-t')
                     argv.append('sdk:yes')
                     argv.append('-t')
-                    argv.append(
-                        'debug_symbols:{}'.format(
-                            str(self.debug_symbols).lower()
-                        )
-                    )
+
+                    if self.debug_symbols:
+                        argv.append('debug_symbols:yes')
+                    else:
+                        argv.append('debug_symbols:')
+
+                    argv.append('-t')
+
+                    if self.automatic_dbgsym:
+                        argv.append('automatic_dbgsym:yes')
+                    else:
+                        argv.append('automatic_dbgsym:')
+
+                    argv.append('-t')
+                    argv.append('debug_tarball:' + debug_tarball + '.new')
+                    argv.append('-t')
+                    argv.append('debug_prefix:' + debug_prefix)
+                    argv.append('-t')
+                    argv.append('sources_prefix:' + sources_prefix)
                     argv.append('-t')
                     argv.append('debug_tarball:' + debug_tarball + '.new')
                     argv.append('-t')
