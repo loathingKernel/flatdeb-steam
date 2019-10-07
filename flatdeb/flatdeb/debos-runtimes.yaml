@@ -24,6 +24,7 @@
 {{- $sources_prefix := or .sources_prefix (printf "%s-sources" $artifact_prefix) -}}
 {{- $sources_tarball := or .sources_tarball "" -}}
 {{- $debug_symbols := or .debug_symbols false -}}
+{{- $automatic_dbgsym := or .automatic_dbgsym false -}}
 {{- $debug_prefix := or .debug_prefix (printf "%s-debug" $artifact_prefix) -}}
 {{- $debug_tarball := or .debug_tarball (printf "%s.tar.gz" $debug_prefix) -}}
 
@@ -73,7 +74,7 @@ actions:
     label: copy manifest from platform
     chroot: false
     command: 'echo; cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"'
-  {{ if $debug_symbols }}
+  {{ if and $debug_symbols $automatic_dbgsym }}
   - action: run
     label: collect-dbgsym
     chroot: false
@@ -330,6 +331,7 @@ actions:
     command: >
       set -e;
       echo;
+      install -d "$ROOTDIR/debug";
       tar -cf "$ARTIFACTDIR/{{ $debug_tarball }}"
       --numeric-owner
       --sort=name
