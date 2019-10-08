@@ -1126,12 +1126,6 @@ class Builder:
                     argv.append('debug_prefix:' + debug_prefix)
                     argv.append('-t')
                     argv.append('sources_prefix:' + sources_prefix)
-                    argv.append('-t')
-                    argv.append('debug_tarball:' + debug_tarball + '.new')
-                    argv.append('-t')
-                    argv.append('debug_prefix:' + debug_prefix)
-                    argv.append('-t')
-                    argv.append('sources_prefix:' + sources_prefix)
 
                     sdk_packages = list(self.get_runtime_packages(
                         sdk_details.get('add_packages', [])
