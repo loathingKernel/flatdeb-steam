@@ -30,7 +30,7 @@ add_packages:
   - steamrt-container
 
 post_script: |
-  set -x
+  set -eux
   ln -s /usr/libexec/flatpak-xdg-utils/xdg-email /usr/bin/
   ln -s /usr/libexec/flatpak-xdg-utils/xdg-open /usr/bin/
   install -d -m755 /usr/lib/locale
@@ -67,7 +67,7 @@ sdk:
         debug_symbols: true
 
   post_script: |
-    set -x
+    set -eux
     ln -sv busybox /bin/dos2unix
     ln -sv busybox /bin/ifconfig
     ln -sv busybox /bin/ip

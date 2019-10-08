@@ -28,7 +28,7 @@ add_packages:
   - steamrt-libs
 
 post_script: |
-  set -x
+  set -eux
   install -d -m755 /usr/lib/locale
   install -d -m755 /usr/share/i18n
   find /usr -type d -empty -print0 | xargs -0 -t -I '{}' -- touch '{}/.exists'
@@ -64,7 +64,7 @@ sdk:
     - steamrt-libdevel-non-multiarch
 
   post_script: |
-    set -x
+    set -eux
     ln -sv busybox /bin/dos2unix
     ln -sv busybox /bin/ifconfig
     ln -sv busybox /bin/ip
