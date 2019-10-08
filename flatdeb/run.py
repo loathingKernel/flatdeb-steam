@@ -242,6 +242,7 @@ class Builder:
         self.sdk_variant_id = None
         self.debug_symbols = True
         self.automatic_dbgsym = True
+        self.strict = False
 
         self.logger = logger.getChild('Builder')
 
@@ -492,6 +493,14 @@ class Builder:
             help='Do not include corresponding automatic -dbgsym packages '
                  'for each package in the Platform',
         )
+        parser.add_argument(
+            '--strict', action='store_true', default=False,
+            help='Make various warnings into fatal errors',
+        )
+        parser.add_argument(
+            '--no-strict', action='store_false', dest='strict', default=False,
+            help='Do not make various warnings fatal (default)',
+        )
 
         subparser = subparsers.add_parser(
             'base',
@@ -554,6 +563,7 @@ class Builder:
         self.ostree_repo = args.ostree_repo
         self.export_bundles = args.export_bundles
         self.ostree_mode = args.ostree_mode
+        self.strict = args.strict
 
         if self.export_bundles and not self.ostree_commit:
             parser.error(
@@ -968,6 +978,7 @@ class Builder:
                 )
                 ostree_prefix = artifact_prefix + '-runtime'
                 out_tarball = ostree_prefix + '.tar.gz'
+                sources_prefix = artifact_prefix + '-sources'
 
                 argv = [
                     'debos',
@@ -1050,7 +1061,6 @@ class Builder:
                     argv.append('post_script:post_script')
 
                 if sdk:
-                    sources_prefix = artifact_prefix + '-sources'
                     sources_tarball = sources_prefix + '.tar.gz'
 
                     debug_prefix = artifact_prefix + '-debug'
@@ -1116,12 +1126,6 @@ class Builder:
                     argv.append('debug_prefix:' + debug_prefix)
                     argv.append('-t')
                     argv.append('sources_prefix:' + sources_prefix)
-                    argv.append('-t')
-                    argv.append('debug_tarball:' + debug_tarball + '.new')
-                    argv.append('-t')
-                    argv.append('debug_prefix:' + debug_prefix)
-                    argv.append('-t')
-                    argv.append('sources_prefix:' + sources_prefix)
 
                     sdk_packages = list(self.get_runtime_packages(
                         sdk_details.get('add_packages', [])
@@ -1130,6 +1134,11 @@ class Builder:
                         sdk_details.get('add_packages_multiarch', []),
                         multiarch=True,
                     ))
+
+                    # We probably have this anyway, but we need it for
+                    # dpkg-scansources
+                    if 'dpkg-dev' not in sdk_packages:
+                        sdk_packages.append('dpkg-dev')
 
                     if sdk_packages:
                         logger.info('Installing extra packages for SDK:')
@@ -1192,6 +1201,16 @@ class Builder:
                 subprocess.check_call(argv)
 
                 if sdk:
+                    output = os.path.join(
+                        self.build_area,
+                        sources_prefix + '.MISSING.txt',
+                    )
+
+                    if os.path.exists(output) and self.strict:
+                        raise SystemExit(
+                            'Some source code was missing: aborting'
+                        )
+
                     if sysroot_prefix is not None:
                         assert sysroot_tarball is not None
                         output = os.path.join(self.build_area, sysroot_tarball)

@@ -74,6 +74,9 @@ var/lock \
 var/tmp \
 ${NULL}
 
+# dpkg exclusions don't always exclude subdirectories
+find usr/share/doc -depth -xdev -type d -empty -delete
+
 # For portability between systems, especially if we're exporting a
 # sysroot tarball for schroot (which assumes it can use host uids and
 # gids for the chroot), we don't want to include /var/lib/apt/lists/*/

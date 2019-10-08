@@ -344,12 +344,12 @@ actions:
   - action: run
     label: list of included source code
     chroot: false
-    command: >
-      set -e;
-      cd "$ARTIFACTDIR";
-      dir="{{ or $sources_directory "$ROOTDIR/src/files" }}";
-      cp -v "$dir/sources.txt"
-      "{{ $sources_prefix }}.sources.txt"
+    command: |
+      set -e
+      cd "$ARTIFACTDIR"
+      dir="{{ or $sources_directory "$ROOTDIR/src/files" }}"
+      cp -v "$dir/Sources.gz" "{{ $sources_prefix }}.deb822.gz"
+      cp -v "$dir/sources.txt" "{{ $sources_prefix }}.sources.txt"
 
   - action: run
     label: list of missing source code
