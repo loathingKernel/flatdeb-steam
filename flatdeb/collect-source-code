@@ -310,6 +310,28 @@ def main():
 
     parent = args.output or os.path.join(args.sysroot, 'src', 'files')
 
+    with open(
+        os.path.join(parent, 'Sources'), 'w'
+    ) as writer:
+        subprocess.check_call(in_chroot + [
+            'sh', '-euc',
+            'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
+            'sh',                       # argv[0]
+            '/src/files',               # working directory
+            'dpkg-scansources',
+            '.',
+        ], stdout=writer)
+
+    with open(
+        os.path.join(parent, 'Sources.gz'), 'wb'
+    ) as binary_writer:
+        subprocess.check_call([
+            'pigz', '-c', '-n', '--rsyncable',
+            os.path.join(parent, 'Sources'),
+        ], stdout=binary_writer)
+
+    os.remove(os.path.join(parent, 'Sources'))
+
     try:
         with open(
             os.path.join(parent, 'sources.txt'), 'r'

@@ -1131,6 +1131,11 @@ class Builder:
                         multiarch=True,
                     ))
 
+                    # We probably have this anyway, but we need it for
+                    # dpkg-scansources
+                    if 'dpkg-dev' not in sdk_packages:
+                        sdk_packages.append('dpkg-dev')
+
                     if sdk_packages:
                         logger.info('Installing extra packages for SDK:')
                         sdk_packages.sort()
