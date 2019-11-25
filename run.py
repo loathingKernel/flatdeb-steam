@@ -243,6 +243,8 @@ class Builder:
         self.automatic_dbgsym = True
         self.collect_source_code = True
         self.strict = False
+        self.do_platform = False
+        self.do_sdk = False
 
         self.logger = logger.getChild('Builder')
 
@@ -511,6 +513,24 @@ class Builder:
             help='Do not make various warnings fatal (default)',
         )
 
+        parser.add_argument(
+            '--platform', action='store_true', default=None,
+            help='Build Platform image (default unless --sdk is used)',
+        )
+        parser.add_argument(
+            '--no-platform', action='store_false', dest='platform',
+            default=None,
+            help='Do not build Platform (default if --sdk is used)',
+        )
+        parser.add_argument(
+            '--sdk', action='store_true', default=None,
+            help='Build SDK image (default unless --platform is used)',
+        )
+        parser.add_argument(
+            '--no-sdk', action='store_false', dest='sdk', default=None,
+            help='Do not build SDK (default if --platform is used)',
+        )
+
         subparser = subparsers.add_parser(
             'base',
             help='Build a fresh base tarball',
@@ -574,6 +594,23 @@ class Builder:
         self.ostree_mode = args.ostree_mode
         self.strict = args.strict
 
+        if args.platform is None and args.sdk is None:
+            self.do_platform = True
+            self.do_sdk = True
+        elif args.sdk:
+            self.do_platform = bool(args.platform)
+            self.do_sdk = True
+        elif args.platform:
+            self.do_platform = True
+            self.do_sdk = bool(args.sdk)
+        else:
+            self.do_platform = bool(args.platform)
+            self.do_sdk = bool(args.sdk)
+
+        if not (self.do_sdk or self.do_platform):
+            parser.error(
+                '--no-sdk and --no-platform cannot work together')
+
         if self.export_bundles and not self.ostree_commit:
             parser.error(
                 '--export-bundles and --no-ostree-commit cannot '
@@ -613,7 +650,13 @@ class Builder:
         else:
             self.automatic_dbgsym = args.automatic_dbgsym
 
-        self.collect_source_code = args.collect_source_code
+        if self.do_sdk:
+            self.collect_source_code = args.collect_source_code
+        else:
+            # --no-sdk overrides --collect-source-code: if we are not
+            # building the SDK then we have no opportunity to collect
+            # the source code
+            self.collect_source_code = False
 
         self.build_apt_sources = self.generate_apt_sources(
             add=args.add_apt_source + args.add_build_apt_source,
@@ -969,6 +1012,12 @@ class Builder:
             # Do the Platform first, because we download its source
             # packages as part of preparing the Sdk
             for sdk in (False, True):
+                if sdk and not self.do_sdk:
+                    continue
+
+                if not sdk and not self.do_platform:
+                    continue
+
                 packages = list(self.get_runtime_packages(
                     self.runtime_details.get('add_packages', [])
                 ))
