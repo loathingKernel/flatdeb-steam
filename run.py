@@ -241,6 +241,7 @@ class Builder:
         self.sdk_variant_id = None
         self.debug_symbols = True
         self.automatic_dbgsym = True
+        self.collect_source_code = True
         self.strict = False
 
         self.logger = logger.getChild('Builder')
@@ -493,6 +494,15 @@ class Builder:
                  'for each package in the Platform',
         )
         parser.add_argument(
+            '--collect-source-code', action='store_true', default=True,
+            help='Include source code for each package (default)',
+        )
+        parser.add_argument(
+            '--no-collect-source-code', dest='collect_source_code',
+            action='store_false', default=True,
+            help='Do not include source code',
+        )
+        parser.add_argument(
             '--strict', action='store_true', default=False,
             help='Make various warnings into fatal errors',
         )
@@ -602,6 +612,8 @@ class Builder:
             )
         else:
             self.automatic_dbgsym = args.automatic_dbgsym
+
+        self.collect_source_code = args.collect_source_code
 
         self.build_apt_sources = self.generate_apt_sources(
             add=args.add_apt_source + args.add_build_apt_source,
@@ -1095,7 +1107,7 @@ class Builder:
                     if generate_source_tarball is None:
                         generate_source_tarball = not generate_source_directory
 
-                    if generate_source_tarball:
+                    if self.collect_source_code and generate_source_tarball:
                         sources_tarball = sources_prefix + '.tar.gz'
                         argv.append('-t')
                         argv.append(
@@ -1111,6 +1123,13 @@ class Builder:
                         argv.append('debug_symbols:yes')
                     else:
                         argv.append('debug_symbols:')
+
+                    argv.append('-t')
+
+                    if self.collect_source_code:
+                        argv.append('collect_source_code:yes')
+                    else:
+                        argv.append('collect_source_code:')
 
                     argv.append('-t')
 
@@ -1205,10 +1224,14 @@ class Builder:
                         sources_prefix + '.MISSING.txt',
                     )
 
-                    if os.path.exists(output) and self.strict:
-                        raise SystemExit(
-                            'Some source code was missing: aborting'
-                        )
+                    if self.collect_source_code:
+                        if os.path.exists(output) and self.strict:
+                            raise SystemExit(
+                                'Some source code was missing: aborting'
+                            )
+                    else:
+                        with open(output, 'w') as writer:
+                            writer.write('EVERYTHING\n')
 
                     if sysroot_prefix is not None:
                         assert sysroot_tarball is not None
@@ -1259,7 +1282,7 @@ class Builder:
                             '--tar-autocreate-parents',
                         ])
 
-                    if generate_source_tarball:
+                    if self.collect_source_code and generate_source_tarball:
                         output = os.path.join(self.build_area, sources_tarball)
                         os.rename(output + '.new', output)
 

@@ -21,6 +21,7 @@
 {{- $ostree_prefix := or .ostree_prefix (printf "%s-runtime" $artifact_prefix) -}}
 {{- $ostree_tarball := or .ostree_tarball (printf "%s.tar.gz" $ostree_prefix) -}}
 {{- $sources_directory := or .sources_directory "" -}}
+{{- $collect_source_code := or .collect_source_code false -}}
 {{- $sources_prefix := or .sources_prefix (printf "%s-sources" $artifact_prefix) -}}
 {{- $sources_tarball := or .sources_tarball "" -}}
 {{- $debug_symbols := or .debug_symbols false -}}
@@ -160,7 +161,7 @@ actions:
         cp "$ROOTDIR/usr/lib/os-release" "$ARTIFACTDIR/{{ $artifact_prefix }}.os-release.txt"
       fi
 
-  {{ if $sdk }}
+  {{ if and $sdk $collect_source_code }}
   - action: run
     label: collect-source-code
     chroot: false
@@ -171,7 +172,9 @@ actions:
         {{ if $sources_directory }}--output="$ARTIFACTDIR/{{ $sources_directory }}"{{ end }} \
         --strip-source-version-suffix="{{ $strip_source_version_suffix }}" \
         "$ROOTDIR"
-  {{ else }}
+  {{ end }}
+
+  {{ if not $sdk }}
   - action: run
     label: copy manifest for SDK
     chroot: false
@@ -308,7 +311,7 @@ actions:
       files metadata
 
   {{ if $sdk }}
-  {{ if $sources_tarball }}
+  {{ if and $collect_source_code $sources_tarball }}
   - action: run
     label: pack source code
     chroot: false
@@ -341,6 +344,7 @@ actions:
       .
   {{ end }}
 
+  {{ if $collect_source_code }}
   - action: run
     label: list of included source code
     chroot: false
@@ -350,6 +354,7 @@ actions:
       dir="{{ or $sources_directory "$ROOTDIR/src/files" }}"
       cp -v "$dir/Sources.gz" "{{ $sources_prefix }}.deb822.gz"
       cp -v "$dir/sources.txt" "{{ $sources_prefix }}.sources.txt"
+  {{ end }}
 
   - action: run
     label: list of missing source code
