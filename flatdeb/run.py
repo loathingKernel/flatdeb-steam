@@ -228,7 +228,6 @@ class Builder:
         self.ostree_commit = True
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
-        self.sources_required = set()   # type: typing.Set[str]
         self.strip_source_version_suffix = None
         self.apt_keyrings = []          # type: typing.List[str]
         #: apt sources to use when building the runtime
@@ -242,7 +241,10 @@ class Builder:
         self.sdk_variant_id = None
         self.debug_symbols = True
         self.automatic_dbgsym = True
+        self.collect_source_code = True
         self.strict = False
+        self.do_platform = False
+        self.do_sdk = False
 
         self.logger = logger.getChild('Builder')
 
@@ -494,12 +496,39 @@ class Builder:
                  'for each package in the Platform',
         )
         parser.add_argument(
+            '--collect-source-code', action='store_true', default=True,
+            help='Include source code for each package (default)',
+        )
+        parser.add_argument(
+            '--no-collect-source-code', dest='collect_source_code',
+            action='store_false', default=True,
+            help='Do not include source code',
+        )
+        parser.add_argument(
             '--strict', action='store_true', default=False,
             help='Make various warnings into fatal errors',
         )
         parser.add_argument(
             '--no-strict', action='store_false', dest='strict', default=False,
             help='Do not make various warnings fatal (default)',
+        )
+
+        parser.add_argument(
+            '--platform', action='store_true', default=None,
+            help='Build Platform image (default unless --sdk is used)',
+        )
+        parser.add_argument(
+            '--no-platform', action='store_false', dest='platform',
+            default=None,
+            help='Do not build Platform (default if --sdk is used)',
+        )
+        parser.add_argument(
+            '--sdk', action='store_true', default=None,
+            help='Build SDK image (default unless --platform is used)',
+        )
+        parser.add_argument(
+            '--no-sdk', action='store_false', dest='sdk', default=None,
+            help='Do not build SDK (default if --platform is used)',
         )
 
         subparser = subparsers.add_parser(
@@ -565,6 +594,23 @@ class Builder:
         self.ostree_mode = args.ostree_mode
         self.strict = args.strict
 
+        if args.platform is None and args.sdk is None:
+            self.do_platform = True
+            self.do_sdk = True
+        elif args.sdk:
+            self.do_platform = bool(args.platform)
+            self.do_sdk = True
+        elif args.platform:
+            self.do_platform = True
+            self.do_sdk = bool(args.sdk)
+        else:
+            self.do_platform = bool(args.platform)
+            self.do_sdk = bool(args.sdk)
+
+        if not (self.do_sdk or self.do_platform):
+            parser.error(
+                '--no-sdk and --no-platform cannot work together')
+
         if self.export_bundles and not self.ostree_commit:
             parser.error(
                 '--export-bundles and --no-ostree-commit cannot '
@@ -603,6 +649,14 @@ class Builder:
             )
         else:
             self.automatic_dbgsym = args.automatic_dbgsym
+
+        if self.do_sdk:
+            self.collect_source_code = args.collect_source_code
+        else:
+            # --no-sdk overrides --collect-source-code: if we are not
+            # building the SDK then we have no opportunity to collect
+            # the source code
+            self.collect_source_code = False
 
         self.build_apt_sources = self.generate_apt_sources(
             add=args.add_apt_source + args.add_build_apt_source,
@@ -958,6 +1012,12 @@ class Builder:
             # Do the Platform first, because we download its source
             # packages as part of preparing the Sdk
             for sdk in (False, True):
+                if sdk and not self.do_sdk:
+                    continue
+
+                if not sdk and not self.do_platform:
+                    continue
+
                 packages = list(self.get_runtime_packages(
                     self.runtime_details.get('add_packages', [])
                 ))
@@ -1096,7 +1156,7 @@ class Builder:
                     if generate_source_tarball is None:
                         generate_source_tarball = not generate_source_directory
 
-                    if generate_source_tarball:
+                    if self.collect_source_code and generate_source_tarball:
                         sources_tarball = sources_prefix + '.tar.gz'
                         argv.append('-t')
                         argv.append(
@@ -1112,6 +1172,13 @@ class Builder:
                         argv.append('debug_symbols:yes')
                     else:
                         argv.append('debug_symbols:')
+
+                    argv.append('-t')
+
+                    if self.collect_source_code:
+                        argv.append('collect_source_code:yes')
+                    else:
+                        argv.append('collect_source_code:')
 
                     argv.append('-t')
 
@@ -1206,10 +1273,14 @@ class Builder:
                         sources_prefix + '.MISSING.txt',
                     )
 
-                    if os.path.exists(output) and self.strict:
-                        raise SystemExit(
-                            'Some source code was missing: aborting'
-                        )
+                    if self.collect_source_code:
+                        if os.path.exists(output) and self.strict:
+                            raise SystemExit(
+                                'Some source code was missing: aborting'
+                            )
+                    else:
+                        with open(output, 'w') as writer:
+                            writer.write('EVERYTHING\n')
 
                     if sysroot_prefix is not None:
                         assert sysroot_tarball is not None
@@ -1260,7 +1331,7 @@ class Builder:
                             '--tar-autocreate-parents',
                         ])
 
-                    if generate_source_tarball:
+                    if self.collect_source_code and generate_source_tarball:
                         output = os.path.join(self.build_area, sources_tarball)
                         os.rename(output + '.new', output)
 
