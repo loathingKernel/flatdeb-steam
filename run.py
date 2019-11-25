@@ -228,7 +228,6 @@ class Builder:
         self.ostree_commit = True
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
-        self.sources_required = set()   # type: typing.Set[str]
         self.strip_source_version_suffix = None
         self.apt_keyrings = []          # type: typing.List[str]
         #: apt sources to use when building the runtime
