@@ -27,7 +27,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 """
-Fetch source code for packages installed in the given sysroot.
+Fetch detached debug symbols for packages installed in the given sysroot.
 """
 
 import argparse
@@ -43,6 +43,8 @@ except ImportError:
 else:
     typing  # silence "unused" warnings
 
+from debian.deb822 import Packages
+
 
 logger = logging.getLogger('flatdeb.collect-dbgsym')
 
@@ -50,38 +52,46 @@ logger = logging.getLogger('flatdeb.collect-dbgsym')
 class InstalledPackage:
     def __init__(self, fields):
         # type: (typing.Sequence[str]) -> None
-        self.binary = fields[0]
+        self.qualified_binary = fields[0]
+        self.binary = self.qualified_binary.split(':')[0]
         self.binary_version = fields[1]
+        self.source = fields[2] or self.binary
 
     def __str__(self):
         # type: () -> str
-        return '{}_{}'.format(self.binary, self.binary_version)
+        return '{}_{}'.format(self.qualified_binary, self.binary_version)
 
     def __hash__(self):
         # type: () -> int
-        return hash(self.binary) ^ hash(self.binary_version)
+        return hash(self.qualified_binary) ^ hash(self.binary_version)
 
     def __eq__(self, other):
         # type: (typing.Any) -> bool
         if isinstance(other, InstalledPackage):
             return (
-                self.binary,
+                self.qualified_binary,
                 self.binary_version,
+                self.source,
             ) == (
-                other.binary,
+                other.qualified_binary,
                 other.binary_version,
+                other.source,
             )
         else:
             return NotImplemented
 
     @property
     def dbgsym_package(self):
+        return self.binary + '-dbgsym'
+
+    @property
+    def qualified_dbgsym_package(self):
         # type: () -> str
 
-        if ':' in self.binary:
-            return self.binary.replace(':', '-dbgsym:')
+        if ':' in self.qualified_binary:
+            return self.qualified_binary.replace(':', '-dbgsym:')
         else:
-            return self.binary + '-dbgsym'
+            return self.qualified_binary + '-dbgsym'
 
 
 def read_manifest(path):
@@ -138,20 +148,27 @@ def main():
     else:
         platform_packages = []
 
-    to_get = []     # type: typing.List[str]
+    to_inspect = set()      # type: typing.Set[str]
 
-    for p in platform_packages:
-        logger.info('Package in Platform: %s', p)
-        to_get.append('{}={}'.format(p.dbgsym_package, p.binary_version))
+    for want in platform_packages:
+        logger.info('Package in Platform: %s from %s', want, want.source)
+        to_inspect.add(
+            '{}={}'.format(want.qualified_dbgsym_package, want.binary_version))
 
-    subprocess.run(in_chroot + [
-        'sh', '-euc', '''
-        for x in "$@"; do
-            apt-get -y -q -q -m install "$x" || true
-        done
-        ''',
-        'sh',   # $0
-    ] + to_get)
+    result = subprocess.run(
+        in_chroot_quick + ['apt-cache', 'show'] + list(to_inspect),
+        stdout=subprocess.PIPE,
+    )
+
+    binaries = []       # type: typing.List[Packages]
+    to_get = set()      # type: typing.Set[str]
+
+    for binary_stanza in Packages.iter_paragraphs(
+        sequence=result.stdout.splitlines(keepends=True),
+        encoding='utf-8',
+    ):
+        if binary_stanza['Package'].endswith('-dbgsym'):
+            binaries.append(binary_stanza)
 
     parent = os.path.join(
         args.sysroot, 'usr', 'lib', 'debug',
@@ -165,46 +182,70 @@ def main():
         os.path.join(parent, 'dbgsym-packages-not-installed.txt'),
         'w',
     ) as missing_writer:
-        for p in platform_packages:
-            if subprocess.run(
-                in_chroot_quick + [
-                    'dpkg-query', '-W', p.dbgsym_package,
-                ],
-                stdout=writer,
-                stderr=subprocess.DEVNULL,
-            ).returncode == 0:
+        for want in platform_packages:
+            same_name = []      # type: typing.List[Packages]
+
+            for binary_stanza in binaries:
+                if want.dbgsym_package == binary_stanza['Package']:
+                    same_name.append(binary_stanza)
+
+            if not same_name:
                 logger.info(
-                    'Installed -dbgsym package: %s_%s',
-                    p.dbgsym_package,
-                    p.binary_version,
+                    'Skipped nonexistent -dbgsym package: %s',
+                    want.dbgsym_package,
                 )
-            else:
-                result = subprocess.run(
-                    in_chroot_quick + [
-                        'apt-cache', '-q', 'showpkg', p.dbgsym_package,
-                    ],
-                    stdout=subprocess.PIPE,
+                continue
+
+            for binary_stanza in same_name:
+                source = binary_stanza.get(
+                    'Source',
+                    binary_stanza['Package'],
                 )
 
-                if result.returncode == 0 and result.stdout:
-                    logger.warning(
-                        'Unable to install -dbgsym package: %s_%s',
-                        p.dbgsym_package,
-                        p.binary_version,
-                    )
-                    logger.warning(
-                        'Versions available:\n%s',
-                        result.stdout.decode('utf-8', errors='replace'),
-                    )
-                    missing_writer.write('{}\t{}\n'.format(
-                        p.dbgsym_package,
-                        p.binary_version,
-                    ))
-                else:
-                    logger.info(
-                        'Skipped nonexistent -dbgsym package: %s',
-                        p.dbgsym_package,
-                    )
+                # It's important to check this to avoid including debug
+                # symbols that would require new source code that is not
+                # already required by the non-debug packages
+                if want.source != source:
+                    continue
+
+                if want.binary_version != binary_stanza['Version']:
+                    continue
+
+                logger.info(
+                    'Installing -dbgsym package: %s_%s',
+                    want.qualified_dbgsym_package,
+                    want.binary_version,
+                )
+                writer.write('{}\t{}\n'.format(
+                    want.qualified_dbgsym_package,
+                    want.binary_version,
+                ))
+                to_get.add('{}={}'.format(
+                    want.qualified_dbgsym_package,
+                    want.binary_version,
+                ))
+                break
+            else:
+                logger.warning(
+                    'Unable to install -dbgsym package: %s_%s from %s',
+                    want.qualified_dbgsym_package,
+                    want.binary_version,
+                    want.source,
+                )
+                missing_writer.write('{}\t{}\n'.format(
+                    want.qualified_dbgsym_package,
+                    want.binary_version,
+                ))
+
+                for binary_stanza in same_name:
+                    logger.info('Available version:\n%s', binary_stanza)
+
+    subprocess.run(
+        in_chroot + [
+            'apt-get', '-y', '-q', '-q', '-m', 'install',
+        ] + list(to_get),
+        check=True,
+    )
 
 
 if __name__ == '__main__':
