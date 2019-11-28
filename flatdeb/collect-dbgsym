@@ -57,6 +57,11 @@ class InstalledPackage:
         self.binary_version = fields[1]
         self.source = fields[2] or self.binary
 
+        if ':' not in self.qualified_binary:
+            self.architecture = None    # type: typing.Optional[str]
+        else:
+            self.architecture = self.qualified_binary.split(':')[-1]
+
     def __str__(self):
         # type: () -> str
         return '{}_{}'.format(self.qualified_binary, self.binary_version)
@@ -120,6 +125,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='Install corresponding -dbgsym packages if available',
     )
+    parser.add_argument('--primary-architecture', default=None)
     parser.add_argument('--debug', action='store_true', default=False)
     parser.add_argument('sysroot')
 
@@ -155,6 +161,12 @@ def main():
         logger.info('Package in Platform: %s from %s', want, want.source)
         to_inspect.add(
             '{}={}'.format(want.qualified_dbgsym_package, want.binary_version))
+
+    if args.primary_architecture is None:
+        args.primary_architecture = subprocess.run(
+            in_chroot_quick + ['dpkg', '--print-architecture'],
+            stdout=subprocess.PIPE,
+        ).stdout.decode('ascii').strip()
 
     result = subprocess.run(
         in_chroot_quick + ['apt-cache', 'show'] + list(to_inspect),
@@ -210,6 +222,18 @@ def main():
                     continue
 
                 if want.binary_version != binary_stanza['Version']:
+                    continue
+
+                if (
+                    want.architecture is not None
+                    and want.architecture != args.primary_architecture
+                    and binary_stanza.get('Multi-Arch', 'no') != 'same'
+                ):
+                    logger.info(
+                        'Not installing %s: not Multi-Arch: same even '
+                        'though the library is',
+                        want.qualified_dbgsym_package,
+                    )
                     continue
 
                 logger.info(
