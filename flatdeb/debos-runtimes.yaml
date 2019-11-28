@@ -97,7 +97,7 @@ actions:
     command: |
       set -e
       echo
-      "$RECIPEDIR/collect-dbgsym" "$ROOTDIR"
+      "$RECIPEDIR/collect-dbgsym" {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR"
   {{ end }}
   # We do this as a separate step in case it involves removing any
   # of the common packages, or replacing automatic debug symbols with
