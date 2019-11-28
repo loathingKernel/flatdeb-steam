@@ -1045,6 +1045,9 @@ class Builder:
                     '--artifactdir={}'.format(self.build_area),
                     '--scratchsize=8G',
                     '-t', 'architecture:{}'.format(self.primary_dpkg_arch),
+                    '-t', 'foreignarchs:{}'.format(
+                        ' '.join(self.dpkg_archs[1:]),
+                    ),
                     '-t', 'flatpak_arch:{}'.format(self.flatpak_arch),
                     '-t', 'suite:{}'.format(self.apt_suite),
                     '-t', 'ospack:{}'.format(tarball),
