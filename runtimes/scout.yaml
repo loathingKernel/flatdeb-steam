@@ -59,6 +59,10 @@ platform:
     set -eux
     find /usr -type d -empty -print0 | xargs -0 -t -I '{}' -- touch '{}/.exists'
 
+    if [ -x /usr/bin/python3.5 ] && ! [ -e /usr/bin/python3 ]; then
+      ln -fns python3.5 /usr/bin/python3
+    fi
+
 sdk:
   add_packages_multiarch:
     - steamrt-libdebug:
