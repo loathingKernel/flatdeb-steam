@@ -229,8 +229,8 @@ actions:
 
   - action: run
     label: put-ldconfig-in-path
-    chroot: true
-    script: put-ldconfig-in-path
+    chroot: false
+    command: 'echo; "$RECIPEDIR/put-ldconfig-in-path" "$ROOTDIR"'
 
   - action: run
     label: clean-up-before-pack
@@ -279,8 +279,8 @@ actions:
 
   - action: run
     label: symlink-alternatives
-    chroot: true
-    script: symlink-alternatives
+    chroot: false
+    command: 'echo; "$RECIPEDIR/symlink-alternatives" "$ROOTDIR"'
 
   {{ if $debug_symbols }}
   - action: run
