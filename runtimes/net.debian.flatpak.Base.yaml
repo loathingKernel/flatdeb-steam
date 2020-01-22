@@ -17,6 +17,7 @@ sdk:
     - gdb
     - libc6-dbg
     - ltrace
+    - python3-debian
     - strace
     - valgrind
 ...
