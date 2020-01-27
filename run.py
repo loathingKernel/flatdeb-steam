@@ -1123,6 +1123,20 @@ class Builder:
                     argv.append('-t')
                     argv.append('post_script:post_script')
 
+                pre_apt_script = self.runtime_details.get('pre_apt_script', '')
+
+                if pre_apt_script:
+                    dest = os.path.join(scratch, 'pre_apt_script')
+
+                    with open(dest, 'w', encoding='utf-8') as writer:
+                        writer.write('#!/bin/sh\n')
+                        writer.write(pre_apt_script)
+                        writer.write('\n')
+
+                    os.chmod(dest, 0o755)
+                    argv.append('-t')
+                    argv.append('pre_apt_script:pre_apt_script')
+
                 if sdk:
                     sources_tarball = sources_prefix + '.tar.gz'
 
