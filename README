@@ -13,6 +13,7 @@ On a Debian 10 'buster' machine:
     binutils \
     debootstrap \
     debos \
+    dpkg-dev \
     flatpak \
     flatpak-builder \
     ostree \
