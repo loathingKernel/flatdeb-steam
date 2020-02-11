@@ -136,6 +136,7 @@ def main():
         '--directory={}'.format(args.sysroot),
         '--as-pid2',
         '--tmpfs=/run/lock',
+        '--register=no',
     ]
     in_chroot_quick = [
         'chroot', args.sysroot,
