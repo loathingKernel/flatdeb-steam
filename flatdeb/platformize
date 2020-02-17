@@ -122,6 +122,7 @@ unwanted=()
 for package in \
     adduser \
     apt \
+    apt-transport-https \
     gnupg \
     ifupdown \
     initramfs-tools \
