@@ -46,6 +46,8 @@ post_script: |
     install -d -m755 /usr/lib64
     ln -s ../lib/locale /usr/lib64/locale
   fi
+  # Ensure that the libdrm folder is present
+  install -d -m755 /usr/share/libdrm
 
 platform:
   post_script: |
