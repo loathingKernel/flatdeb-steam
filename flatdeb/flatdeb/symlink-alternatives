@@ -30,15 +30,23 @@ set -o pipefail
 
 me="$(basename "$0")"
 
-if [ "$#" != 0 ] || [ "x$(id -u)" != x0 ]; then
+if [ "$#" != 1 ] || [ "$1" = '--help' ] || [ "x$(id -u)" != x0 ] ||
+        ! [ -d "$1" ]; then
     echo "$me: Usage:" >&2
-    echo "    $me" >&2
+    echo "    $me SYSROOT" >&2
     echo "" >&2
-    echo "Run this script as root, in the container." >&2
+    echo "Run this script as root." >&2
     exit 2
 fi
 
-find / -xdev '(' \
+sysroot="$1"
+cd "$sysroot"
+
+in_chroot () {
+    chroot "$sysroot" "$@"
+}
+
+in_chroot find / -xdev '(' \
     -lname '/etc/alternatives/*' -o \
     -lname '/etc/locale.alias' \
 ')' -exec sh -euc '

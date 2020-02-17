@@ -55,7 +55,7 @@ in_chroot () {
     done
 
     systemd-nspawn --directory="$sysroot" --as-pid2 --tmpfs=/run/lock \
-    env DEBIAN_FRONTEND=noninteractive \
+    --register=no env DEBIAN_FRONTEND=noninteractive \
     "$@"
 }
 
@@ -68,18 +68,6 @@ install -d \
 "$sysroot/var/lib/apt/lists" \
 "$sysroot/var/lock" \
 ${NULL}
-
-# We use aptitude to help prepare the Platform runtime, and
-# it's a useful thing to have in the Sdk runtime
-in_chroot apt-get -q -y --no-install-recommends install aptitude
-
-# All packages will be removed from the platform runtime
-# unless they are Essential, depended-on, or in the
-# add_packages list.
-in_chroot aptitude -y markauto '?installed'
-
-# Ubuntu precise doesn't like apt being up for autoremoval.
-in_chroot aptitude -y unmarkauto apt
 
 # Required for openjdk-8-jre-headless
 install -d "$sysroot/usr/share/man/man1"

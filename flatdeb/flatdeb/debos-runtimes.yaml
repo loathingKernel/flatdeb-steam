@@ -4,6 +4,7 @@
 {{- $suite := or .suite "stretch" -}}
 {{- $flatpak_arch := or .flatpak_arch $architecture -}}
 {{- $packages := or .packages "" -}}
+{{- $pre_apt_script := or .pre_apt_script "" -}}
 {{- $post_script := or .post_script "" -}}
 {{- $sdk := or .sdk false -}}
 {{- $sdk_packages := or .sdk_packages "" -}}
@@ -53,6 +54,13 @@ actions:
     label: prepare-runtime
     chroot: false
     command: 'echo; "$RECIPEDIR/prepare-runtime" "$ROOTDIR"'
+
+  {{ if $pre_apt_script }}
+  - action: run
+    label: pre_apt_script
+    chroot: true
+    script: '{{ $pre_apt_script }}'
+  {{ end }}
 
   {{ if $packages }}
   - action: run
@@ -229,8 +237,8 @@ actions:
 
   - action: run
     label: put-ldconfig-in-path
-    chroot: true
-    script: put-ldconfig-in-path
+    chroot: false
+    command: 'echo; "$RECIPEDIR/put-ldconfig-in-path" "$ROOTDIR"'
 
   - action: run
     label: clean-up-before-pack
@@ -279,8 +287,8 @@ actions:
 
   - action: run
     label: symlink-alternatives
-    chroot: true
-    script: symlink-alternatives
+    chroot: false
+    command: 'echo; "$RECIPEDIR/symlink-alternatives" "$ROOTDIR"'
 
   {{ if $debug_symbols }}
   - action: run

@@ -54,7 +54,7 @@ in_chroot () {
     done
 
     systemd-nspawn --directory="$sysroot" --as-pid2 --tmpfs=/run/lock \
-    env DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes \
+    --register=no env DEBIAN_FRONTEND=noninteractive SUDO_FORCE_REMOVE=yes \
     "$@"
 }
 
@@ -122,6 +122,7 @@ unwanted=()
 for package in \
     adduser \
     apt \
+    apt-transport-https \
     gnupg \
     ifupdown \
     initramfs-tools \
