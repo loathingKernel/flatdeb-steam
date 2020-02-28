@@ -46,10 +46,17 @@ def main():
     parser = argparse.ArgumentParser(
         description='Collect source code for app',
     )
+    parser.add_argument('--strip-source-version-suffix', default='')
     parser.add_argument('--export', default=os.getcwd())
     parser.add_argument('packages', nargs='*')
 
     args = parser.parse_args()
+
+    strip_source_version_suffix = None
+
+    if args.strip_source_version_suffix:
+        strip_source_version_suffix = re.compile(
+            '(?:' + args.strip_source_version_suffix + ')$')
 
     subprocess.check_call(['cp', '-PRp', '/usr/var', '/'])
     subprocess.check_call(['install', '-d', '/var/cache/apt/archives/partial'])
@@ -69,6 +76,8 @@ def main():
             source = package
         if source.endswith(')'):
             source, version = source.rstrip(')').split(' (')
+        if strip_source_version_suffix is not None:
+            version = strip_source_version_suffix.sub('', version)
         assert source
         assert version
 
@@ -81,6 +90,8 @@ def main():
         if bu:
             for dep in bu.split(', '):
                 source, version = dep.rstrip(')').split(' (= ')
+                if strip_source_version_suffix is not None:
+                    version = strip_source_version_suffix.sub('', version)
                 assert source
                 assert version
 

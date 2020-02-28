@@ -1880,6 +1880,8 @@ class Builder:
                             'DEBIAN_FRONTEND=noninteractive',
                             '{}/collect-app-source-code'.format(packages),
                             '--export={}'.format(packages),
+                            '--strip-source-version-suffix={}'.format(
+                                self.strip_source_version_suffix),
                         ] + module['x-flatdeb-apt-packages'])
                         os.remove(
                             os.path.join(packages, 'collect-app-source-code')
