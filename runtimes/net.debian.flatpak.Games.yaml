@@ -48,6 +48,7 @@ sdk:
     - libsdl2-dev
     - libvorbis-dev
     - ltrace
+    - python3-debian
     - strace
     - valgrind
     - zlib1g-dev

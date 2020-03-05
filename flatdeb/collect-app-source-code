@@ -1,0 +1,129 @@
+#!/usr/bin/python3
+
+# flatdeb - build Flatpak runtimes from Debian packages
+#
+# Copyright (c) 2020 Collabora Ltd.
+#
+# SPDX-License-Identifier: MIT
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+"""
+Fetch source code for app packages.
+"""
+
+import argparse
+import glob
+import logging
+import os
+import re
+import shutil
+import subprocess
+import sys
+from debian.debfile import DebFile
+
+logger = logging.getLogger('flatdeb.collect-app-source-code')
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Collect source code for app',
+    )
+    parser.add_argument('--strip-source-version-suffix', default='')
+    parser.add_argument('--export', default=os.getcwd())
+    parser.add_argument('packages', nargs='*')
+
+    args = parser.parse_args()
+
+    strip_source_version_suffix = None
+
+    if args.strip_source_version_suffix:
+        strip_source_version_suffix = re.compile(
+            '(?:' + args.strip_source_version_suffix + ')$')
+
+    subprocess.check_call(['cp', '-PRp', '/usr/var', '/'])
+    subprocess.check_call(['install', '-d', '/var/cache/apt/archives/partial'])
+    subprocess.check_call(['fakeroot', 'apt-get', 'update'])
+    subprocess.check_call(['fakeroot', 'apt-get', '-y', '--download-only',
+                          '--no-install-recommends', 'install'] +
+                          args.packages)
+
+    for file in glob.glob("/var/cache/apt/archives/*.deb"):
+        debian_control = DebFile(file).control.debcontrol()
+        package = debian_control.get('Package')
+        source = debian_control.get('Source')
+        bu = debian_control.get('Built-Using')
+        version = debian_control.get('Version')
+
+        if not source:
+            source = package
+        if source.endswith(')'):
+            source, version = source.rstrip(')').split(' (')
+        if strip_source_version_suffix is not None:
+            version = strip_source_version_suffix.sub('', version)
+        assert source
+        assert version
+
+        subprocess.check_call([
+            'apt-get', '-y', '--download-only',
+            '-oAPT::Get::Only-Source=true', 'source',
+            '{}={}'.format(source, version),
+        ], cwd=args.export)
+
+        if bu:
+            for dep in bu.split(', '):
+                source, version = dep.rstrip(')').split(' (= ')
+                if strip_source_version_suffix is not None:
+                    version = strip_source_version_suffix.sub('', version)
+                assert source
+                assert version
+
+                subprocess.check_call([
+                    'apt-get', '-y', '--download-only',
+                    '-oAPT::Get::Only-Source=true', 'source',
+                    '{}={}'.format(source, version),
+                ], cwd=args.export)
+
+    for file in glob.glob("/var/cache/apt/archives/*.deb"):
+        shutil.move(file, args.export)
+    shutil.move('/var/lib/apt/lists', args.export)
+
+
+if __name__ == '__main__':
+    if sys.stderr.isatty():
+        try:
+            import colorlog
+        except ImportError:
+            pass
+        else:
+            formatter = colorlog.ColoredFormatter(
+                '%(log_color)s%(levelname)s:%(name)s:%(reset)s %(message)s')
+            handler = logging.StreamHandler()
+            handler.setFormatter(formatter)
+            logging.getLogger().addHandler(handler)
+    else:
+        logging.basicConfig()
+
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        raise SystemExit(130)
