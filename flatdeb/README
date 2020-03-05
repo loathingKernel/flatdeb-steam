@@ -55,6 +55,9 @@ Then you can run:
     ./run.py --suite=stretch --arch=amd64 app \
         apps/org.debian.packages.mesa_utils.yaml
 
+To use the ./run.py app subcommand, you must include python3 and python3-debian
+in the SDK.
+
 On the same machine, or a test machine onto which you have copied
 `$HOME/.cache/flatdeb/repo` with `rsync` or similar:
 

@@ -217,6 +217,7 @@ class Builder:
             self.xdg_cache_dir, 'flatdeb',
         )
         self.ostree_repo = os.path.join(self.build_area, 'ostree-repo')
+        self.remote_url = None
 
         self.__dpkg_archs = []      # type: typing.Sequence[str]
         self.flatpak_arch = None    # type: typing.Optional[str]
@@ -404,6 +405,7 @@ class Builder:
         )
         parser.add_argument('--build-area', default=self.build_area)
         parser.add_argument('--ostree-repo', default=self.ostree_repo)
+        parser.add_argument('--remote-url', default=self.remote_url)
         parser.add_argument(
             '--ostree-commit', action='store_true', default=self.ostree_commit,
         )
@@ -590,6 +592,7 @@ class Builder:
         self.runtime_branch = args.runtime_branch
         self.ostree_commit = args.ostree_commit
         self.ostree_repo = args.ostree_repo
+        self.remote_url = args.remote_url
         self.export_bundles = args.export_bundles
         self.ostree_mode = args.ostree_mode
         self.strict = args.strict
@@ -1738,6 +1741,10 @@ class Builder:
         manifest['branch'] = self.app_branch
         manifest['runtime-version'] = self.runtime_branch
 
+        if self.remote_url is None:
+            self.remote_url = 'file://{}'.format(
+                urllib.parse.quote(self.ostree_repo))
+
         with ExitStack() as stack:
             # We assume the build area has xattr support
             self.ensure_build_area()
@@ -1756,14 +1763,14 @@ class Builder:
                 'flatpak', '--user',
                 'remote-add', '--if-not-exists', '--no-gpg-verify',
                 'flatdeb',
-                'file://{}'.format(urllib.parse.quote(self.ostree_repo)),
+                '{}'.format(self.remote_url),
             ])
             subprocess.check_call([
                 'env',
                 'XDG_DATA_HOME={}/home'.format(scratch),
                 'flatpak', '--user',
                 'remote-modify', '--no-gpg-verify',
-                '--url=file://{}'.format(urllib.parse.quote(self.ostree_repo)),
+                '--url={}'.format(self.remote_url),
                 'flatdeb',
             ])
 
@@ -1850,6 +1857,14 @@ class Builder:
                                 dir=scratch,
                             ),
                         )
+                        shutil.copy2(
+                            os.path.join(
+                                os.path.dirname(__file__),
+                                'flatdeb',
+                                'collect-app-source-code',
+                            ),
+                            packages
+                        )
                         subprocess.check_call([
                             'env',
                             'XDG_DATA_HOME={}/home'.format(scratch),
@@ -1863,56 +1878,14 @@ class Builder:
                                 self.runtime_branch,
                             ),
                             'DEBIAN_FRONTEND=noninteractive',
-                            'export={}'.format(packages),
-                            'sh',
-                            '-euc',
-
-                            'cp -PRp /usr/var /\n'
-                            'install -d /var/cache/apt/archives/partial\n'
-                            'fakeroot apt-get update\n'
-                            'fakeroot apt-get -y --download-only \\\n'
-                            '    --no-install-recommends install "$@"\n'
-                            'for x in /var/cache/apt/archives/*.deb; do\n'
-                            '    package="$(dpkg-deb -f "$x" Package)"\n'
-                            '    source="$(dpkg-deb -f "$x" Source)"\n'
-                            '    bu="$(dpkg-deb -f "$x" Built-Using)"\n'
-                            '    version="$(dpkg-deb -f "$x" Version)"\n'
-                            '    if [ -z "$source" ]; then\n'
-                            '        source="$package"\n'
-                            '    fi\n'
-                            '    if [ "${source% (*}" != "$source" ]; then\n'
-                            '        version="${source#* (}"\n'
-                            '        version="${version%)}"\n'
-                            '        source="${source% (*}"\n'
-                            '    fi\n'
-                            '    ( cd "$export" && \\\n'
-                            '         apt-get -y --download-only \\\n'
-                            '         -oAPT::Get::Only-Source=true source \\\n'
-                            '         "$source=$version"\n'
-                            '    )\n'
-                            '    if [ -n "$bu" ]; then\n'
-                            '        oldIFS="$IFS"\n'
-                            '        IFS=","\n'
-                            '        for dep in $bu; do\n'
-                            '            bu="$(echo "$bu" | tr -d " ")"\n'
-                            '            version="${bu#*(=}"\n'
-                            '            version="${version%)}"\n'
-                            '            source="${bu%(*}"\n'
-                            '            ( cd "$export" && \\\n'
-                            '               apt-get -y --download-only \\\n'
-                            '               -oAPT::Get::Only-Source=true \\\n'
-                            '               source "$source=$version"\n'
-                            '            )\n'
-                            '        done\n'
-                            '        IFS="$oldIFS"\n'
-                            '    fi\n'
-                            'done\n'
-                            'mv /var/cache/apt/archives/*.deb "$export"\n'
-                            'mv /var/lib/apt/lists "$export"\n'
-                            '',
-
-                            'sh',   # argv[0]
+                            '{}/collect-app-source-code'.format(packages),
+                            '--export={}'.format(packages),
+                            '--strip-source-version-suffix={}'.format(
+                                self.strip_source_version_suffix),
                         ] + module['x-flatdeb-apt-packages'])
+                        os.remove(
+                            os.path.join(packages, 'collect-app-source-code')
+                        )
 
                         obtained = subprocess.check_output([
                             'sh', '-euc',
