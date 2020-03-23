@@ -42,10 +42,8 @@ post_script: |
   install -d -m755 /usr/lib32
   ln -s ../lib/locale /usr/lib32/locale
   # Biarch OSs that are the other way round might conceivably look here
-  if [ -d /lib64 ]; then
-    install -d -m755 /usr/lib64
-    ln -s ../lib/locale /usr/lib64/locale
-  fi
+  install -d -m755 /usr/lib64
+  ln -s ../lib/locale /usr/lib64/locale
   # Ensure that the libdrm folder is present
   install -d -m755 /usr/share/libdrm
   # Arch Linux uses a non-standard ELF interpreter for some binaries in the
