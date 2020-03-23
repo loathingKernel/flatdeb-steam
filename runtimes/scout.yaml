@@ -60,6 +60,11 @@ post_script: |
   ln -s /lib64/ld-linux-x86-64.so.2 /usr/lib/
   # Few lines above we already ensured that /usr/lib32 exists
   ln -s /lib/ld-linux.so.2 /usr/lib32/
+  # Create symlinks to support the non-standard Exherbo library paths
+  install -d -m755 /usr/i686-pc-linux-gnu
+  install -d -m755 /usr/x86_64-pc-linux-gnu
+  ln -s /usr/lib/i386-linux-gnu /usr/i686-pc-linux-gnu/lib
+  ln -s /usr/lib/x86_64-linux-gnu /usr/x86_64-pc-linux-gnu/lib
 
 platform:
   post_script: |
