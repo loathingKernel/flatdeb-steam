@@ -52,6 +52,11 @@ post_script: |
   fi
   # Ensure that the libdrm folder is present
   install -d -m755 /usr/share/libdrm
+  # Arch Linux uses a non-standard ELF interpreter for some binaries in the
+  # glibc package. We create two symlinks as a workaround.
+  ln -s /lib64/ld-linux-x86-64.so.2 /usr/lib/
+  # Few lines above we already ensured that /usr/lib32 exists
+  ln -s /lib/ld-linux.so.2 /usr/lib32/
 
 platform:
   post_script: |
