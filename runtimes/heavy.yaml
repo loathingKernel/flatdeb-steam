@@ -56,6 +56,15 @@ post_script: |
   install -d -m755 /usr/x86_64-pc-linux-gnu
   ln -s /usr/lib/i386-linux-gnu /usr/i686-pc-linux-gnu/lib
   ln -s /usr/lib/x86_64-linux-gnu /usr/x86_64-pc-linux-gnu/lib
+  # Ensure gconv directories. Previously we already ensured to have both
+  # /usr/lib32 and /usr/lib64. "/usr/(i686|x86_64)-pc-linux-gnu/lib" are
+  # symlinked to "/usr/lib/(i386|x86_64)-linux-gnu", so there is no need to
+  # create a "gconv" folder for them.
+  install -d -m755 /usr/lib32/gconv
+  install -d -m755 /usr/lib/gconv
+  install -d -m755 /usr/lib64/gconv
+  install -d -m755 /usr/lib/i386-linux-gnu/gconv
+  install -d -m755 /usr/lib/x86_64-linux-gnu/gconv
 
 platform:
   post_script: |
