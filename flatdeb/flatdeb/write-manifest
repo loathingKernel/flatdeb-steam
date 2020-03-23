@@ -130,15 +130,17 @@ exec 3>"$sysroot/usr/manifest.dpkg.built-using"
 printf '#Built-Binary\t#Built-Using-Source\t#Built-Using-Version\n' >&3
 
 # shellcheck disable=SC2016
-in_chroot dpkg-query -W -f '$Package\t${Built-Using}\n' | perl -ne '
+in_chroot dpkg-query -W -f '${Package}\t${Built-Using}\n' | perl -ne '
 chomp;
-next unless /^\S+\t.+$/;
+die "Unable to parse dpkg-query output: $_\n" unless /^(\S+)\t(.*)$/;
+next unless $2;
 my $binary = $1;
 my @using = split /,/, $2;
 next unless @using;
 foreach my $using (@using) {
-    $using =~ s/ //;
-    next unless $using =~ /^(\S+)\(=(\S+)\)$/;
+    $using =~ s/ //g;
+    die "Unable to parse Built-Using: $using\n"
+        unless $using =~ /^(\S+)\(=(\S+)\)$/;
     print "$binary\t$1\t$2\n";
 }
 ' | LC_ALL=C sort -u >&3
