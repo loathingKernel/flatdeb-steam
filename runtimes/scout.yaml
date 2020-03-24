@@ -56,8 +56,13 @@ post_script: |
   # Arch Linux uses a non-standard ELF interpreter for some binaries in the
   # glibc package. We create two symlinks as a workaround.
   ln -fnsv /lib64/ld-linux-x86-64.so.2 /usr/lib/
-  # Few lines above we already ensured that /usr/lib32 exists
-  ln -fnsv /lib/ld-linux.so.2 /usr/lib32/
+  # Few lines above we already ensured that /usr/lib32 exists.
+  if [ -e /lib32/ld-linux.so.2 ]; then
+      # Create a symlink that the /usr merge will be able to merge
+      ln -fnsv /lib32/ld-linux.so.2 /usr/lib32/
+  else
+      ln -fnsv /lib/ld-linux.so.2 /usr/lib32/
+  fi
   # Create symlinks to support the non-standard Exherbo library paths
   install -d -m755 /usr/i686-pc-linux-gnu
   install -d -m755 /usr/x86_64-pc-linux-gnu
