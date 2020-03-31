@@ -27,6 +27,7 @@
 id_prefix: com.valvesoftware.SteamRuntime
 
 add_packages_multiarch:
+  - steamrt-container-host-compat
   - steamrt-libs
 
 add_packages:
