@@ -983,6 +983,7 @@ class Builder:
 
             for helper in (
                 'apt-install',
+                'check-packages-source',
                 'clean-up-base',
                 'clean-up-before-pack',
                 'collect-dbgsym',
@@ -1093,6 +1094,11 @@ class Builder:
                 argv.append('variant_id:{}'.format(
                     self.escape_variant_id(variant_id)
                 ))
+
+                # TODO: Add the ability to disable this check (or do it only for official builds)
+                # TODO: Handle multiple apt sources?
+                argv.append('-t')
+                argv.append('apt_sources:{}'.format(self.build_apt_sources[0].uri))
 
                 if packages:
                     logger.info('Installing packages:')

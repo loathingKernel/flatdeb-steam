@@ -1,4 +1,5 @@
 {{- $apt_debug := or .apt_debug false -}}
+{{- $apt_sources := or .apt_sources "" -}}
 {{- $architecture := or .architecture "amd64" -}}
 {{- $foreignarchs := or .foreignarchs "" -}}
 {{- $suite := or .suite "stretch" -}}
@@ -117,6 +118,13 @@ actions:
     chroot: false
     command: echo; $RECIPEDIR/apt-install {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/sdk_packages.yaml"
   {{ end }}
+  {{ end }}
+
+  {{ if $apt_sources }}
+  - action: run
+    label: check-packages-source
+    chroot: false
+    command: 'echo; $RECIPEDIR/check-packages-source "$ROOTDIR" "{{ $apt_sources }}"'
   {{ end }}
 
   {{ if not $sdk }}

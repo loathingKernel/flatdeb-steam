@@ -1,0 +1,127 @@
+#!/usr/bin/python3
+
+# flatdeb — build Flatpak runtimes from Debian packages
+#
+# Copyright © 2016-2017 Simon McVittie
+# Copyright © 2017-2020 Collabora Ltd.
+#
+# SPDX-License-Identifier: MIT
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+"""
+Check that, if available, the installed packages are all from the provided source
+"""
+
+import argparse
+import logging
+import os
+import subprocess
+import sys
+import yaml
+
+try:
+    import typing
+except ImportError:
+    pass
+else:
+    typing  # silence "unused" warnings
+
+
+logger = logging.getLogger('flatdeb.check-packages-source')
+
+
+def main():
+    # type: (...) -> None
+    parser = argparse.ArgumentParser(
+        description='Check that, if available, the installed packages are all from the provided source'
+    )
+    parser.add_argument('sysroot')
+    parser.add_argument('repositories', nargs='+')
+
+    args = parser.parse_args()
+
+    in_chroot_quick = [
+        'chroot', args.sysroot,
+    ]
+
+    dpkg_out = subprocess.check_output(in_chroot_quick + [
+        "dpkg",
+        "-l",
+    ]).decode('utf-8').splitlines()
+
+    for line in dpkg_out:
+        if not line.startswith("ii"):
+            continue
+        _, package, version, _ = line.split(maxsplit=3)
+
+        # TODO: switch to logger.info
+        print("Checking ", package, version)
+
+        process = subprocess.run(
+            in_chroot_quick + ['apt-cache', 'madison', package],
+            stdout=subprocess.PIPE,
+        )
+
+        madison = process.stdout.decode('utf-8').splitlines()
+
+        formatted_version = "{} |".format(version)
+
+        # If this package was also provided by our repositories
+        if any(elem in str(madison) for elem in args.repositories):
+            # Check if the installed version is from our repositories
+            superseded = True
+            for entry in madison:
+                if formatted_version in entry:
+                    print(entry)
+                    if any(elem in entry for elem in args.repositories):
+                        superseded = False
+
+            if superseded:
+                logger.warning('The package %s has been superseded and is now at version %s', package, version)
+                #TODO remove this print
+                print('The package %s has been superseded and is now at version %s', package, version)
+                raise SystemExit(2)
+
+
+if __name__ == '__main__':
+    if sys.stderr.isatty():
+        try:
+            import colorlog
+        except ImportError:
+            pass
+        else:
+            formatter = colorlog.ColoredFormatter(
+                '%(log_color)s%(levelname)s:%(name)s:%(reset)s %(message)s')
+            handler = logging.StreamHandler()
+            handler.setFormatter(formatter)
+            logging.getLogger().addHandler(handler)
+    else:
+        logging.basicConfig()
+
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        raise SystemExit(130)
+    except subprocess.CalledProcessError as e:
+        logger.error('%s', e)
+        raise SystemExit(1)
