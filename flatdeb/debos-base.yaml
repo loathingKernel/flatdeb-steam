@@ -6,7 +6,7 @@
 {{- $mirror := or .mirror "http://deb.debian.org/debian" -}}
 {{- $mergedusr := or .mergedusr "false" }}
 {{- $keyring := or .keyring "" -}}
-{{- $keyringpackage := or .keyringpackage "" -}}
+{{- $additional_base_packages := or .additional_base_packages "" -}}
 {{- $build_id := or .build_id "" -}}
 {{- $variant := or .variant "Minimal base system" -}}
 {{- $variant_id := or .variant_id "base" -}}
@@ -39,9 +39,6 @@ actions:
     {{ else }}
     check-gpg: false
     {{ end }}
-    {{ if $keyringpackage }}
-    keyring-package: {{ $keyringpackage }}
-    {{ end }}
     {{ if eq $mergedusr "true" }}
     merged-usr: true
     {{ else }}
@@ -71,13 +68,11 @@ actions:
     chroot: false
     command: 'find "$ROOTDIR/etc/apt" -ls'
 
+  {{ if $additional_base_packages }}
   - action: apt
     recommends: false
-    packages:
-      - apt-transport-https
-      {{ if $keyringpackage }}
-      - {{ $keyringpackage }}
-      {{ end }}
+    packages: {{ $additional_base_packages }}
+  {{ end }}
 
   - action: run
     label: disable-services
