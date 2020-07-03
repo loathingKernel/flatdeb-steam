@@ -1,4 +1,6 @@
 ---
+additional_base_packages:
+  - steamrt-customizations
 apt_components:
   - main
   - contrib

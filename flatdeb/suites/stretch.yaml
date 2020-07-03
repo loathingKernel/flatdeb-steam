@@ -1,4 +1,6 @@
 ---
+additional_base_packages:
+  - apt-transport-https
 apt_components:
   - main
   - contrib
