@@ -853,6 +853,13 @@ class Builder:
                     self.escape_variant_id(self.variant_id)
                 ))
 
+            add_pkgs = self.suite_details.get('additional_base_packages')
+            if add_pkgs:
+                argv.append('-t')
+                argv.append('additional_base_packages:{}'.format(
+                    self.yaml_dump_one_line(add_pkgs)
+                ))
+
             for keyring in self.apt_keyrings:
                 if os.path.exists(os.path.join('suites', keyring)):
                     keyring = os.path.join('suites', keyring)
