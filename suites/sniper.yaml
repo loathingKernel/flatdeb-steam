@@ -1,0 +1,30 @@
+---
+additional_base_packages:
+  - steamrt-customizations
+apt_components:
+  - main
+  - contrib
+  - non-free
+can_merge_usr: after_sysroot
+has_automatic_dbgsym: true
+strip_source_version_suffix: '\+bsrt3\..*'
+sources:
+  - label: debian
+    apt_uri: 'http://deb.debian.org/debian'
+    apt_suite: 'bullseye'
+    keyring: 'debian-archive-keyring.gpg'
+  - label: debian-debug
+    apt_uri: 'http://deb.debian.org/debian-debug'
+    apt_suite: 'bullseye-debug'
+    keyring: 'debian-archive-keyring.gpg'
+    deb-src: false
+  # Not available yet
+  #- label: debian-security
+  #  apt_uri: 'http://security.debian.org/debian-security'
+  #  apt_suite: 'bullseye/updates'
+  #  keyring: 'debian-archive-keyring.gpg'
+  # Not available to the public yet, so this URL is just a guess.
+  - label: steamrt
+    apt_uri: 'http://repo.steampowered.com/steamrt-sniper'
+    keyring: 'valve-archive-keyring.gpg'
+...
