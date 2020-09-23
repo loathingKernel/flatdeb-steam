@@ -18,11 +18,10 @@ sources:
     apt_suite: 'bullseye-debug'
     keyring: 'debian-archive-keyring.gpg'
     deb-src: false
-  # Not available yet
-  #- label: debian-security
-  #  apt_uri: 'http://security.debian.org/debian-security'
-  #  apt_suite: 'bullseye/updates'
-  #  keyring: 'debian-archive-keyring.gpg'
+  - label: debian-security
+    apt_uri: 'http://security.debian.org/debian-security'
+    apt_suite: 'bullseye-security'
+    keyring: 'debian-archive-keyring.gpg'
   # Not available to the public yet, so this URL is just a guess.
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt-sniper'
