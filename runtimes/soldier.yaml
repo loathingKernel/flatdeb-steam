@@ -78,11 +78,6 @@ post_script: |
     test -e /usr/i686-pc-linux-gnu/lib/ld-linux.so.2
   fi
 
-platform:
-  post_script: |
-    set -eux
-    find /usr -type d -empty -print0 | xargs -0 -t -I '{}' -- touch '{}/.exists'
-
 sdk:
   add_packages_multiarch:
     - steamrt-libdebug:
