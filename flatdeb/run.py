@@ -247,6 +247,10 @@ class Builder:
         self.do_platform = False
         self.do_sdk = False
 
+        self.metadata = GLib.KeyFile()
+        self.metadata_debug = GLib.KeyFile()
+        self.metadata_sources = GLib.KeyFile()
+
         self.logger = logger.getChild('Builder')
 
     @staticmethod
@@ -1356,6 +1360,8 @@ class Builder:
                             '--tree=tar={}'.format(output),
                             '--fsync=false',
                             '--tar-autocreate-parents',
+                            '--add-metadata-string',
+                            'xa.metadata=' + self.metadata_debug.to_data()[0],
                         ])
 
                     if self.collect_source_code and generate_source_tarball:
@@ -1379,6 +1385,8 @@ class Builder:
                                 '--tree=tar={}'.format(output),
                                 '--fsync=false',
                                 '--tar-autocreate-parents',
+                                '--add-metadata-string',
+                                'xa.metadata=' + self.metadata_sources.to_data()[0],
                             ])
 
                 output = os.path.join(self.build_area, out_tarball)
@@ -1400,6 +1408,8 @@ class Builder:
                         '--tree=tar={}'.format(output),
                         '--fsync=false',
                         '--tar-autocreate-parents',
+                        '--add-metadata-string',
+                        'xa.metadata=' + self.metadata.to_data()[0],
                     ])
 
             if self.ostree_commit:
@@ -1493,7 +1503,7 @@ class Builder:
         metadata = os.path.join(overlay, 'metadata')
         os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
 
-        keyfile = GLib.KeyFile()
+        keyfile = self.metadata
         keyfile.set_string('Runtime', 'name', runtime)
         keyfile.set_string(
             'Runtime', 'runtime',
@@ -1649,7 +1659,7 @@ class Builder:
             metadata = os.path.join(overlay, 'debug', 'metadata')
             os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
 
-            keyfile = GLib.KeyFile()
+            keyfile = self.metadata_debug
             keyfile.set_string('Runtime', 'name', runtime + '.Debug')
             keyfile.set_string(
                 'Runtime', 'runtime',
@@ -1682,7 +1692,7 @@ class Builder:
             metadata = os.path.join(overlay, 'src', 'metadata')
             os.makedirs(os.path.dirname(metadata), 0o755, exist_ok=True)
 
-            keyfile = GLib.KeyFile()
+            keyfile = self.metadata_sources
             keyfile.set_string('Runtime', 'name', runtime + '.Sources')
             keyfile.set_string(
                 'Runtime', 'runtime',
