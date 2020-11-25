@@ -51,8 +51,6 @@ set -x
 sysroot="$1"
 cd "$sysroot"
 
-rm -fr --one-file-system usr/local
-
 rm -fr --one-file-system \
     etc/apparmor \
     etc/apparmor.d \
