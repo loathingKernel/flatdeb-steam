@@ -77,6 +77,13 @@ post_script: |
     fi
     test -e /usr/i686-pc-linux-gnu/lib/ld-linux.so.2
   fi
+  # https://github.com/ValveSoftware/steam-runtime/issues/302
+  # https://github.com/ValveSoftware/steam-for-linux/issues/6310
+  for prefix in /usr /usr/local; do
+    install -d "${prefix}/share/steam"
+    ln -fns "/run/host${prefix}/share/steam/compatibilitytools.d" \
+                     "${prefix}/share/steam/compatibilitytools.d"
+  done
 
 sdk:
   add_packages_multiarch:
