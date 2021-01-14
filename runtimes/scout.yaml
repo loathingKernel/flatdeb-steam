@@ -156,27 +156,4 @@ sdk:
     update-alternatives --set gcc /usr/bin/gcc-4.8
     update-alternatives --set g++ /usr/bin/g++-4.8
     update-alternatives --set cpp-bin /usr/bin/cpp-4.8
-
-add-extensions:
-  # FIXME: This is not properly multiarch-aware, but it's enough for a
-  # proof of concept.
-  com.valvesoftware.SteamRuntime.GL:
-    directory: lib/GL
-    subdirectories: true
-    no-autodownload: true
-    autodelete: false
-    add-ld-path: lib
-    download-if: active-gl-driver
-    enable-if: active-gl-driver
-    merge-dirs: vulkan/icd.d;glvnd/egl_vendor.d
-  # FIXME: Ideally this should only be added for 64-bit architectures
-  com.valvesoftware.SteamRuntime.GL32:
-    directory: lib/GL32
-    subdirectories: true
-    no-autodownload: true
-    autodelete: false
-    add-ld-path: lib
-    download-if: active-gl-driver
-    enable-if: active-gl-driver
-    merge-dirs: vulkan/icd.d;glvnd/egl_vendor.d
 ...
