@@ -102,18 +102,25 @@ sdk:
 
   post_script: |
     set -eux
-    ln -sv busybox /bin/dos2unix
-    ln -sv busybox /bin/ifconfig
-    ln -sv busybox /bin/ip
-    ln -sv busybox /bin/nc
-    ln -sv busybox /bin/ping
-    ln -sv busybox /bin/ping6
-    ln -sv busybox /bin/route
-    ln -sv busybox /bin/telnet
-    ln -sv busybox /bin/traceroute
-    ln -sv busybox /bin/traceroute6
-    ln -sv busybox /bin/unix2dos
-    ln -sv busybox /bin/vi
-    ln -sv busybox /bin/xxd
+
+    for bin in \
+      dos2unix \
+      ifconfig \
+      ip \
+      nc \
+      ping \
+      ping6 \
+      route \
+      telnet \
+      traceroute \
+      traceroute6 \
+      unix2dos \
+      vi \
+      xxd \
+    ; do
+      if [ -e /bin/busybox ] && ! [ -e "/bin/$bin" ] && ! [ -e "/usr/bin/$bin" ]; then
+        ln -fnsv busybox "/bin/$bin"
+      fi
+    done
 
 ...
