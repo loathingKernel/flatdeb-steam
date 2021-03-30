@@ -36,7 +36,8 @@ add_packages:
 post_script: |
   set -eux
   ln -s /usr/libexec/flatpak-xdg-utils/xdg-email /usr/bin/
-  ln -s /usr/libexec/flatpak-xdg-utils/xdg-open /usr/bin/
+  # We are going to use steam-runtime-urlopen as our xdg-open, so we
+  # do not make a symlink of the flatpak-xdg-utils implementation.
 
   if [ -e /usr/share/i18n/locales/en_US ]; then
     echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
