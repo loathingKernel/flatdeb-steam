@@ -30,7 +30,7 @@ sources:
   - label: ubuntu
     for_build: false
     for_final: true
-    apt_uri: 'http://archive.ubuntu.com/ubuntu'
+    apt_uri: 'http://old-releases.ubuntu.com/ubuntu'
     apt_suite: 'precise'
     keyring: 'ubuntu-archive-keyring.gpg'
     apt_components:
