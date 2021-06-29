@@ -2,10 +2,8 @@
 
 # flatdeb — build Flatpak runtimes from Debian packages
 #
-# Copyright © 2016-2017 Simon McVittie
-# Copyright © 2017 Collabora Ltd.
-#
-# Partially derived from vectis, copyright © 2015-2017 Simon McVittie
+# Copyright 2015-2017 Simon McVittie
+# Copyright 2017-2021 Collabora Ltd.
 #
 # SPDX-License-Identifier: MIT
 #
