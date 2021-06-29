@@ -18,6 +18,12 @@ sources:
     apt_suite: 'bullseye-debug'
     keyring: 'debian-archive-keyring.gpg'
     deb-src: false
+  # For security updates' detached debug symbols
+  - label: debian-pu-debug
+    apt_uri: 'http://deb.debian.org/debian-debug'
+    apt_suite: 'bullseye-proposed-updates-debug'
+    keyring: 'debian-archive-keyring.gpg'
+    deb-src: false
   - label: debian-unstable
     apt_uri: 'http://deb.debian.org/debian'
     apt_suite: 'unstable'
