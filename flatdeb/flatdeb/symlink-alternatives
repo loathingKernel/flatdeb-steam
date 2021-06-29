@@ -46,6 +46,7 @@ in_chroot () {
     chroot "$sysroot" "$@"
 }
 
+# shellcheck disable=SC2016
 in_chroot find / -xdev '(' \
     -lname '/etc/alternatives/*' -o \
     -lname '/etc/locale.alias' \

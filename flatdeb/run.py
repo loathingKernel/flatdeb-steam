@@ -2,10 +2,8 @@
 
 # flatdeb — build Flatpak runtimes from Debian packages
 #
-# Copyright © 2016-2017 Simon McVittie
-# Copyright © 2017 Collabora Ltd.
-#
-# Partially derived from vectis, copyright © 2015-2017 Simon McVittie
+# Copyright 2015-2017 Simon McVittie
+# Copyright 2017-2021 Collabora Ltd.
 #
 # SPDX-License-Identifier: MIT
 #
@@ -217,7 +215,7 @@ class Builder:
             self.xdg_cache_dir, 'flatdeb',
         )
         self.ostree_repo = os.path.join(self.build_area, 'ostree-repo')
-        self.remote_url = None
+        self.remote_url = None      # type: typing.Optional[str]
 
         self.__dpkg_archs = []      # type: typing.Sequence[str]
         self.flatpak_arch = None    # type: typing.Optional[str]
@@ -500,6 +498,34 @@ class Builder:
             action='store_false', default=None,
             help='Do not include corresponding automatic -dbgsym packages '
                  'for each package in the Platform',
+        )
+        parser.add_argument(
+            '--dbgsym-tarball', action='store_true', default=None,
+            help='',
+        )
+        parser.add_argument(
+            '--no-dbgsym-tarball', dest='dbgsym_tarball',
+            action='store_false', default=None,
+            help='',
+        )
+        parser.add_argument(
+            '--ddeb-directory',
+            metavar='DIR',
+            default='',
+            help=(
+                'Download detached debug symbol .deb/.ddeb packages '
+                'into DIR'
+            ),
+        )
+        parser.add_argument(
+            '--no-ddeb-directory',
+            dest='ddeb_directory',
+            action='store_const',
+            const='',
+            help=(
+                'Do not collect detached debug symbol .deb/.ddeb packages '
+                'in a directory'
+            ),
         )
         parser.add_argument(
             '--collect-source-code', action='store_true', default=True,
@@ -963,6 +989,8 @@ class Builder:
         self,
         *,
         yaml_file,                          # type: str
+        ddeb_directory='',
+        dbgsym_tarball=None,
         generate_source_directory='',
         generate_source_tarball=True,
         generate_sysroot_tarball=False,
@@ -1218,8 +1246,27 @@ class Builder:
                     else:
                         argv.append('automatic_dbgsym:')
 
-                    argv.append('-t')
-                    argv.append('debug_tarball:' + debug_tarball + '.new')
+                    if ddeb_directory:
+                        os.makedirs(
+                            os.path.join(
+                                self.build_area,
+                                ddeb_directory,
+                            ),
+                            0o755,
+                            exist_ok=True,
+                        )
+                        argv.append('-t')
+                        argv.append(
+                            'ddeb_directory:{}'.format(
+                                ddeb_directory))
+
+                    if dbgsym_tarball is None:
+                        dbgsym_tarball = not ddeb_directory
+
+                    if dbgsym_tarball:
+                        argv.append('-t')
+                        argv.append('debug_tarball:' + debug_tarball + '.new')
+
                     argv.append('-t')
                     argv.append('debug_prefix:' + debug_prefix)
                     argv.append('-t')
@@ -1386,7 +1433,8 @@ class Builder:
                                 '--fsync=false',
                                 '--tar-autocreate-parents',
                                 '--add-metadata-string',
-                                'xa.metadata=' + self.metadata_sources.to_data()[0],
+                                ('xa.metadata='
+                                 + self.metadata_sources.to_data()[0]),
                             ])
 
                 output = os.path.join(self.build_area, out_tarball)
@@ -1988,7 +2036,7 @@ if __name__ == '__main__':
         try:
             import colorlog
         except ImportError:
-            pass
+            logging.basicConfig()
         else:
             formatter = colorlog.ColoredFormatter(
                 '%(log_color)s%(levelname)s:%(name)s:%(reset)s %(message)s')

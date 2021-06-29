@@ -48,6 +48,6 @@ in_chroot () {
     chroot "$sysroot" "$@"
 }
 
-if ! test -e $sysroot/bin/ldconfig; then
+if ! test -e "$sysroot/bin/ldconfig"; then
     in_chroot ln -s /sbin/ldconfig /bin/ldconfig
 fi

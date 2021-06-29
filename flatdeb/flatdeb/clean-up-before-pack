@@ -29,7 +29,6 @@ set -u
 set -o pipefail
 
 me="$(basename "$0")"
-NULL=
 
 if [ "$#" != 1 ] || [ "$1" = '--help' ] || [ "x$(id -u)" != x0 ] ||
         ! [ -d "$1" ]; then
@@ -72,7 +71,7 @@ var/lib/dpkg/status-old \
 var/lib/urandom \
 var/lock \
 var/tmp \
-${NULL}
+${NULL+}
 
 # dpkg exclusions don't always exclude subdirectories
 find usr/share/doc -depth -xdev -type d -empty -delete

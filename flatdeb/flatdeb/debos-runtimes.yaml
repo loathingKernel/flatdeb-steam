@@ -22,6 +22,7 @@
 {{- $sysroot_tarball := or .sysroot_tarball "" -}}
 {{- $ostree_prefix := or .ostree_prefix (printf "%s-runtime" $artifact_prefix) -}}
 {{- $ostree_tarball := or .ostree_tarball (printf "%s.tar.gz" $ostree_prefix) -}}
+{{- $ddeb_directory := or .ddeb_directory "" -}}
 {{- $sources_directory := or .sources_directory "" -}}
 {{- $collect_source_code := or .collect_source_code false -}}
 {{- $sources_prefix := or .sources_prefix (printf "%s-sources" $artifact_prefix) -}}
@@ -29,7 +30,7 @@
 {{- $debug_symbols := or .debug_symbols false -}}
 {{- $automatic_dbgsym := or .automatic_dbgsym false -}}
 {{- $debug_prefix := or .debug_prefix (printf "%s-debug" $artifact_prefix) -}}
-{{- $debug_tarball := or .debug_tarball (printf "%s.tar.gz" $debug_prefix) -}}
+{{- $debug_tarball := or .debug_tarball "" -}}
 
 architecture: {{ $architecture }}
 
@@ -99,9 +100,9 @@ actions:
       if [ -e "$RECIPEDIR/manifest.platform.deb822.gz" ]; then
         cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"
       fi
-  {{ if and $debug_symbols $automatic_dbgsym }}
+  {{ if and $debug_symbols $automatic_dbgsym $debug_tarball }}
   - action: run
-    label: collect-dbgsym
+    label: populate /usr/lib/debug
     chroot: false
     command: |
       set -e
@@ -116,6 +117,25 @@ actions:
     label: apt-install
     chroot: false
     command: echo; $RECIPEDIR/apt-install {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/sdk_packages.yaml"
+  {{ end }}
+  # Do this after the apt-install for SDK packages, so that we can
+  # re-download things like libc6-dbg
+  {{ if and $debug_symbols $ddeb_directory }}
+  # Downloading -dbgsym packages needs the SDK manifest
+  - action: run
+    label: write-manifest
+    chroot: false
+    command: |
+      set -e
+      echo
+      "$RECIPEDIR/write-manifest" "$ROOTDIR"
+  - action: run
+    label: download -dbgsym packages
+    chroot: false
+    command: |
+      set -e
+      echo
+      "$RECIPEDIR/collect-dbgsym" {{ if $apt_debug }}--debug{{ end }} --download="$ARTIFACTDIR/{{ $ddeb_directory }}" "$ROOTDIR"
   {{ end }}
   {{ end }}
 
@@ -170,6 +190,8 @@ actions:
     command: |
       set -e
       echo
+      # We might have already done this in the case of the SDK, but it's
+      # harmless to do it again
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
       cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg.built-using"
@@ -290,7 +312,7 @@ actions:
     chroot: false
     command: 'echo; "$RECIPEDIR/symlink-alternatives" "$ROOTDIR"'
 
-  {{ if $debug_symbols }}
+  {{ if and $debug_symbols $debug_tarball }}
   - action: run
     label: dbgsym-use-build-id
     chroot: false
@@ -351,7 +373,7 @@ actions:
       .
   {{ end }}
 
-  {{ if $debug_symbols }}
+  {{ if and $debug_symbols $debug_tarball }}
   - action: run
     label: pack debug symbols
     chroot: false
