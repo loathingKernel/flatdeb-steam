@@ -217,7 +217,7 @@ class Builder:
             self.xdg_cache_dir, 'flatdeb',
         )
         self.ostree_repo = os.path.join(self.build_area, 'ostree-repo')
-        self.remote_url = None
+        self.remote_url = None      # type: typing.Optional[str]
 
         self.__dpkg_archs = []      # type: typing.Sequence[str]
         self.flatpak_arch = None    # type: typing.Optional[str]
@@ -1386,7 +1386,8 @@ class Builder:
                                 '--fsync=false',
                                 '--tar-autocreate-parents',
                                 '--add-metadata-string',
-                                'xa.metadata=' + self.metadata_sources.to_data()[0],
+                                ('xa.metadata='
+                                 + self.metadata_sources.to_data()[0]),
                             ])
 
                 output = os.path.join(self.build_area, out_tarball)
