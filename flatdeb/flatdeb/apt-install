@@ -113,7 +113,7 @@ if __name__ == '__main__':
         try:
             import colorlog
         except ImportError:
-            pass
+            logging.basicConfig()
         else:
             formatter = colorlog.ColoredFormatter(
                 '%(log_color)s%(levelname)s:%(name)s:%(reset)s %(message)s')

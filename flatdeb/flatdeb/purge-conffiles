@@ -77,7 +77,9 @@ def main():
         '--show',
         '-f', r'${Status}:${Package}\n',
     ], stdout=subprocess.PIPE, universal_newlines=True) as dpkg_query:
-        for line in dpkg_query.stdout:
+        stdout = dpkg_query.stdout
+        assert stdout is not None
+        for line in stdout:
             if line == '\n':
                 continue
 
@@ -110,7 +112,7 @@ if __name__ == '__main__':
         try:
             import colorlog
         except ImportError:
-            pass
+            logging.basicConfig()
         else:
             formatter = colorlog.ColoredFormatter(
                 '%(log_color)s%(levelname)s:%(name)s:%(reset)s %(message)s')
