@@ -29,7 +29,6 @@ set -u
 set -o pipefail
 
 me="$(basename "$0")"
-NULL=
 sdk=
 
 if [ "${1-}" = '--sdk' ]; then
@@ -153,7 +152,7 @@ rm -fr --one-file-system \
     var/opt \
     var/run \
     var/spool \
-    ${NULL}
+    ${NULL+}
 
 for d in \
     var/lib/dbus \
@@ -213,7 +212,7 @@ else
         share/bash-completion \
         share/bug \
         var \
-        ${NULL}
+        ${NULL+}
 fi
 
 rm -fr --one-file-system boot media mnt opt proc run srv sys tmp

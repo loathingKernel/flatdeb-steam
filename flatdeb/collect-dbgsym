@@ -1,9 +1,7 @@
 #!/usr/bin/python3
 
-# flatdeb — build Flatpak runtimes from Debian packages
-#
-# Copyright © 2016-2017 Simon McVittie
-# Copyright © 2017-2018 Collabora Ltd.
+# Copyright 2016-2017 Simon McVittie
+# Copyright 2017-2021 Collabora Ltd.
 #
 # SPDX-License-Identifier: MIT
 #
@@ -62,6 +60,11 @@ class InstalledPackage:
         else:
             self.architecture = self.qualified_binary.split(':')[-1]
 
+    @property
+    def is_debug(self):
+        # type: () -> bool
+        return self.binary.endswith('-dbg') or self.binary.endswith('-dbgsym')
+
     def __str__(self):
         # type: () -> str
         return '{}_{}'.format(self.qualified_binary, self.binary_version)
@@ -85,13 +88,34 @@ class InstalledPackage:
         else:
             return NotImplemented
 
+    def __lt__(self, other):
+        # type: (typing.Any) -> bool
+        if isinstance(other, InstalledPackage):
+            return (
+                self.qualified_binary,
+                self.binary_version,
+                self.source,
+            ) < (
+                other.qualified_binary,
+                other.binary_version,
+                other.source,
+            )
+        else:
+            return NotImplemented
+
     @property
     def dbgsym_package(self):
+        # type: () -> str
+        if self.is_debug:
+            return self.binary
+
         return self.binary + '-dbgsym'
 
     @property
     def qualified_dbgsym_package(self):
         # type: () -> str
+        if self.is_debug:
+            return self.qualified_binary
 
         if ':' in self.qualified_binary:
             return self.qualified_binary.replace(':', '-dbgsym:')
@@ -127,20 +151,43 @@ def main():
     )
     parser.add_argument('--primary-architecture', default=None)
     parser.add_argument('--debug', action='store_true', default=False)
+    parser.add_argument(
+        '--download', metavar='DIR', default='',
+        help='Download to DIR [default: install]',
+    )
     parser.add_argument('sysroot')
 
     args = parser.parse_args()
 
-    in_chroot = [
-        'systemd-nspawn',
-        '--directory={}'.format(args.sysroot),
-        '--as-pid2',
-        '--tmpfs=/run/lock',
-        '--register=no',
-    ]
-    in_chroot_quick = [
-        'chroot', args.sysroot,
-    ]
+    if args.sysroot == '/':
+        in_chroot = []
+        in_chroot_quick = []
+
+        if args.download:
+            in_chroot.extend([
+                'sh', '-euc', 'cd "$1"; shift; exec "$@"', 'sh',
+                args.download,
+            ])
+    else:
+        in_chroot = [
+            'systemd-nspawn',
+            '--directory={}'.format(args.sysroot),
+            '--as-pid2',
+            '--tmpfs=/run/lock',
+            '--register=no',
+        ]
+        in_chroot_quick = [
+            'chroot', args.sysroot,
+        ]
+
+        if args.download:
+            in_chroot.extend([
+                '--bind={}:{}'.format(
+                    os.path.realpath(args.download),
+                    '/usr/lib/debug',
+                ),
+                '--chdir=/usr/lib/debug',
+            ])
 
     in_chroot.append('env')
 
@@ -156,12 +203,37 @@ def main():
     else:
         platform_packages = []
 
+    wanted_packages = set(platform_packages)
+
+    sdk_manifest = os.path.join(
+        args.sysroot, 'usr', 'manifest.dpkg')
+
+    if os.path.exists(sdk_manifest):
+        sdk_packages = read_manifest(sdk_manifest)
+    else:
+        sdk_packages = []
+
     to_inspect = set()      # type: typing.Set[str]
 
     for want in platform_packages:
         logger.info('Package in Platform: %s from %s', want, want.source)
         to_inspect.add(
-            '{}={}'.format(want.qualified_dbgsym_package, want.binary_version))
+            '{}={}'.format(
+                want.qualified_dbgsym_package,
+                want.binary_version,
+            )
+        )
+
+    for want in sdk_packages:
+        if want.is_debug:
+            logger.info('Debug package in SDK: %s from %s', want, want.source)
+            wanted_packages.add(want)
+            to_inspect.add(
+                '{}={}'.format(
+                    want.qualified_binary,
+                    want.binary_version,
+                )
+            )
 
     if args.primary_architecture is None:
         args.primary_architecture = subprocess.run(
@@ -181,13 +253,23 @@ def main():
         sequence=result.stdout.splitlines(keepends=True),
         encoding='utf-8',
     ):
+        if 'Filename' not in binary_stanza:
+            # locally-installed but not available from apt
+            continue
+
         if binary_stanza['Package'].endswith('-dbgsym'):
             binaries.append(binary_stanza)
 
-    parent = os.path.join(
-        args.sysroot, 'usr', 'lib', 'debug',
-    )
-    os.makedirs(parent, exist_ok=True)
+        if binary_stanza['Package'].endswith('-dbg'):
+            binaries.append(binary_stanza)
+
+    if args.download:
+        parent = args.download
+    else:
+        parent = os.path.join(
+            args.sysroot, 'usr', 'lib', 'debug',
+        )
+        os.makedirs(parent, exist_ok=True)
 
     with open(
         os.path.join(parent, 'dbgsym-packages-installed.txt'),
@@ -196,7 +278,7 @@ def main():
         os.path.join(parent, 'dbgsym-packages-not-installed.txt'),
         'w',
     ) as missing_writer:
-        for want in platform_packages:
+        for want in sorted(wanted_packages):
             same_name = []      # type: typing.List[Packages]
 
             for binary_stanza in binaries:
@@ -227,6 +309,13 @@ def main():
 
                 if (
                     want.architecture is not None
+                    and want.architecture != binary_stanza['Architecture']
+                ):
+                    continue
+
+                if (
+                    not args.download
+                    and want.architecture is not None
                     and want.architecture != args.primary_architecture
                     and binary_stanza.get('Multi-Arch', 'no') != 'same'
                 ):
@@ -238,17 +327,20 @@ def main():
                     continue
 
                 logger.info(
-                    'Installing -dbgsym package: %s_%s',
-                    want.qualified_dbgsym_package,
-                    want.binary_version,
+                    'Will install debug symbols from %s:%s_%s',
+                    binary_stanza['Package'],
+                    binary_stanza['Architecture'],
+                    binary_stanza['Version'],
                 )
-                writer.write('{}\t{}\n'.format(
-                    want.qualified_dbgsym_package,
-                    want.binary_version,
+                writer.write('{}:{}\t{}\n'.format(
+                    binary_stanza['Package'],
+                    binary_stanza['Architecture'],
+                    binary_stanza['Version'],
                 ))
-                to_get.add('{}={}'.format(
-                    want.qualified_dbgsym_package,
-                    want.binary_version,
+                to_get.add('{}:{}={}'.format(
+                    binary_stanza['Package'],
+                    binary_stanza['Architecture'],
+                    binary_stanza['Version'],
                 ))
                 break
             else:
@@ -266,6 +358,13 @@ def main():
                 for binary_stanza in same_name:
                     logger.info('Available version:\n%s', binary_stanza)
 
+    if not to_get:
+        logger.info('Nothing to do')
+        return
+
+    for spec in sorted(to_get):
+        logger.info('To download: %s', spec)
+
     options = ['-y', '-m']
 
     if args.debug:
@@ -275,10 +374,16 @@ def main():
         options.append('-oDebug::pkgProblemResolver=true')
         options.append('-oDebug::pkgProblemResolver::ShowScores=true')
 
-    subprocess.run(
-        in_chroot + ['apt-get'] + options + ['install'] + list(to_get),
-        check=True,
-    )
+    if args.download:
+        subprocess.run(
+            in_chroot + ['apt-get'] + options + ['download'] + sorted(to_get),
+            check=True,
+        )
+    else:
+        subprocess.run(
+            in_chroot + ['apt-get'] + options + ['install'] + sorted(to_get),
+            check=True,
+        )
 
 
 if __name__ == '__main__':
