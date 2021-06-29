@@ -358,6 +358,10 @@ def main():
                 for binary_stanza in same_name:
                     logger.info('Available version:\n%s', binary_stanza)
 
+    if not to_get:
+        logger.info('Nothing to do')
+        return
+
     for spec in sorted(to_get):
         logger.info('To download: %s', spec)
 

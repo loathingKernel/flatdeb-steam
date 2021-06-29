@@ -500,6 +500,34 @@ class Builder:
                  'for each package in the Platform',
         )
         parser.add_argument(
+            '--dbgsym-tarball', action='store_true', default=None,
+            help='',
+        )
+        parser.add_argument(
+            '--no-dbgsym-tarball', dest='dbgsym_tarball',
+            action='store_false', default=None,
+            help='',
+        )
+        parser.add_argument(
+            '--ddeb-directory',
+            metavar='DIR',
+            default='',
+            help=(
+                'Download detached debug symbol .deb/.ddeb packages '
+                'into DIR'
+            ),
+        )
+        parser.add_argument(
+            '--no-ddeb-directory',
+            dest='ddeb_directory',
+            action='store_const',
+            const='',
+            help=(
+                'Do not collect detached debug symbol .deb/.ddeb packages '
+                'in a directory'
+            ),
+        )
+        parser.add_argument(
             '--collect-source-code', action='store_true', default=True,
             help='Include source code for each package (default)',
         )
@@ -961,6 +989,8 @@ class Builder:
         self,
         *,
         yaml_file,                          # type: str
+        ddeb_directory='',
+        dbgsym_tarball=None,
         generate_source_directory='',
         generate_source_tarball=True,
         generate_sysroot_tarball=False,
@@ -1216,8 +1246,27 @@ class Builder:
                     else:
                         argv.append('automatic_dbgsym:')
 
-                    argv.append('-t')
-                    argv.append('debug_tarball:' + debug_tarball + '.new')
+                    if ddeb_directory:
+                        os.makedirs(
+                            os.path.join(
+                                self.build_area,
+                                ddeb_directory,
+                            ),
+                            0o755,
+                            exist_ok=True,
+                        )
+                        argv.append('-t')
+                        argv.append(
+                            'ddeb_directory:{}'.format(
+                                ddeb_directory))
+
+                    if dbgsym_tarball is None:
+                        dbgsym_tarball = not ddeb_directory
+
+                    if dbgsym_tarball:
+                        argv.append('-t')
+                        argv.append('debug_tarball:' + debug_tarball + '.new')
+
                     argv.append('-t')
                     argv.append('debug_prefix:' + debug_prefix)
                     argv.append('-t')
