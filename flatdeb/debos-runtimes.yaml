@@ -244,8 +244,23 @@ actions:
     command: 'echo; dpkg --purge --force-remove-essential --force-depends dpkg'
   {{ end }}
 
+  - action: run
+    label: distrust build-only apt keys
+    chroot: false
+    command: |
+      set -e
+      echo
+      rm -frv "$ROOTDIR/etc/apt/trusted.gpg"
+      rm -frv "$ROOTDIR/etc/apt/trusted.gpg~"
+      rm -frv "$ROOTDIR/etc/apt/trusted.gpg.d"
+
   - action: overlay
     source: runtimes/{{ $runtime }}/apt-overlay
+
+  - action: run
+    label: list final apt configuration
+    chroot: false
+    command: 'find "$ROOTDIR/etc/apt" -ls'
 
   - action: run
     label: save final sources.list
