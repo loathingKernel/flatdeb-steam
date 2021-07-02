@@ -1,0 +1,17 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: flatdeb-steam
+Source: https://gitlab.steamos.cloud/steamrt/flatdeb-steam
+
+Files:
+ flatdeb/README
+Copyright: 2017-2020 Collabora Ltd.
+License: MIT
+
+Files:
+ flatdeb/apps/openarena/*.patch
+Copyright: 2018 Collabora Ltd.
+License: GPL-2.0-or-later
+
+Files: suites/*.gpg
+Copyright: n/a
+License: LicenseRef-NotApplicable

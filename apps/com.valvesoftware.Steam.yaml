@@ -1,4 +1,6 @@
 ---
+# Copyright 2017 Collabora Ltd.
+# SPDX-License-Identifier: MIT
 id: com.valvesoftware.Steam
 branch: scout_beta
 runtime: com.valvesoftware.SteamRuntime.Platform

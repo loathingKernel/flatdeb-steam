@@ -1,6 +1,11 @@
 flatdeb - Steam
 ===============
 
+<!-- This document:
+Copyright 2020 Collabora Ltd.
+SPDX-License-Identifier: MIT
+-->
+
 [flatdeb](https://salsa.debian.org/smcv/flatdeb) builds Flatpak-style
 runtimes from Debian packages. This repository sets it up for the
 Steam Runtime.

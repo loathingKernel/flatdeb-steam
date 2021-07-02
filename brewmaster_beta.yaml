@@ -1,4 +1,6 @@
 ---
+# Copyright 2017-2019 Collabora Ltd.
+# SPDX-License-Identifier: MIT
 apt_components:
   - main
   - contrib

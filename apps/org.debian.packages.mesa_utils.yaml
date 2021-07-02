@@ -1,4 +1,6 @@
 ---
+# Copyright 2017-2018 Collabora Ltd.
+# SPDX-License-Identifier: MIT
 id: org.debian.packages.mesa_utils
 branch: scout_beta
 runtime: com.valvesoftware.SteamRuntime.Platform

@@ -1,6 +1,11 @@
 Contributing to flatdeb-steam
 =============================
 
+<!-- This document:
+Copyright 2020 Collabora Ltd.
+SPDX-License-Identifier: MIT
+-->
+
 Reporting bugs
 --------------
 

@@ -1,4 +1,6 @@
 ---
+# Copyright 2017-2021 Collabora Ltd.
+# SPDX-License-Identifier: MIT
 additional_base_packages:
   - apt-transport-https
 apt_components:
