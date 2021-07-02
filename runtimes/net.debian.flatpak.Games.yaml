@@ -1,4 +1,6 @@
 ---
+# Copyright 2017-2020 Collabora Ltd.
+# SPDX-License-Identifier: MIT
 id_prefix: net.debian.flatpak.Games
 
 add_packages_multiarch:

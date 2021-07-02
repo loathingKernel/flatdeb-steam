@@ -1,3 +1,6 @@
+# Copyright 2019 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+
 FROM scratch
 ADD @sysroot_tarball@ /
 RUN \

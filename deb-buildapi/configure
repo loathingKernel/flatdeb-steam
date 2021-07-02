@@ -1,4 +1,6 @@
 #!/bin/sh
+# Copyright 2017-2018 Collabora Ltd.
+# SPDX-License-Identifier: MIT
 
 if [ ! -e Makefile ]; then
 	cp "$(dirname "$0")/Makefile" Makefile
