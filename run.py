@@ -228,10 +228,12 @@ class Builder:
         self.ostree_mode = 'archive-z2'
         self.export_bundles = False
         self.strip_source_version_suffix = None
-        self.apt_keyrings = []          # type: typing.List[str]
+        self.bootstrap_apt_keyring = ''
         #: apt sources to use when building the runtime
+        self.build_apt_keyrings = []    # type: typing.List[str]
         self.build_apt_sources = []     # type: typing.List[AptSource]
         #: apt sources to leave in /etc/apt/sources.list afterwards
+        self.final_apt_keyrings = []    # type: typing.List[str]
         self.final_apt_sources = []     # type: typing.List[AptSource]
         self.build_id = None
         self.variant_name = None
@@ -437,7 +439,13 @@ class Builder:
         parser.add_argument(
             '--add-final-apt-source', action='append', default=[])
         parser.add_argument(
+            '--bootstrap-apt-keyring', default='')
+        parser.add_argument(
             '--add-apt-keyring', action='append', default=[])
+        parser.add_argument(
+            '--add-build-apt-keyring', action='append', default=[])
+        parser.add_argument(
+            '--add-final-apt-keyring', action='append', default=[])
         parser.add_argument(
             '--generate-sysroot-tarball', action='store_true')
         parser.add_argument(
@@ -611,6 +619,7 @@ class Builder:
             os.chdir(args.chdir)
 
         self.apt_debug = args.apt_debug
+        self.bootstrap_apt_keyring = args.bootstrap_apt_keyring
         self.build_area = args.build_area
         self.build_id = args.build_id
         self.debug_symbols = args.debug_symbols
@@ -704,8 +713,11 @@ class Builder:
             for_build=False,
         )
 
-        for addition in args.add_apt_keyring:
-            self.apt_keyrings.append(addition)
+        for addition in args.add_apt_keyring + args.add_build_apt_keyring:
+            self.build_apt_keyrings.append(addition)
+
+        for addition in args.add_apt_keyring + args.add_final_apt_keyring:
+            self.final_apt_keyrings.append(addition)
 
         if self.build_apt_sources[0].kind != 'deb':
             parser.error('First apt source must provide .deb packages')
@@ -728,7 +740,10 @@ class Builder:
             keyring = source.get('keyring')
 
             if keyring is not None:
-                self.apt_keyrings.append(keyring)
+                if for_build:
+                    self.build_apt_keyrings.append(keyring)
+                else:
+                    self.final_apt_keyrings.append(keyring)
 
             uri = source['apt_uri']
             suite = source.get('apt_suite', self.apt_suite)
@@ -825,6 +840,15 @@ class Builder:
             os.makedirs(
                 os.path.join(
                     scratch, 'suites', apt_suite, 'overlay', 'etc',
+                    'apt', 'sources.list.d',
+                ),
+                0o755,
+                exist_ok=True,
+            )
+
+            os.makedirs(
+                os.path.join(
+                    scratch, 'suites', apt_suite, 'overlay', 'etc',
                     'apt', 'trusted.gpg.d',
                 ),
                 0o755,
@@ -840,6 +864,7 @@ class Builder:
             self.configure_apt(
                 os.path.join(scratch, 'suites', apt_suite, 'overlay'),
                 self.build_apt_sources,
+                self.build_apt_keyrings,
             )
 
             argv = [
@@ -890,7 +915,12 @@ class Builder:
                     self.yaml_dump_one_line(add_pkgs)
                 ))
 
-            for keyring in self.apt_keyrings:
+            apt_keyrings = list(self.build_apt_keyrings)
+
+            if self.bootstrap_apt_keyring:
+                apt_keyrings[:0] = [self.bootstrap_apt_keyring]
+
+            for keyring in apt_keyrings:
                 if os.path.exists(os.path.join('suites', keyring)):
                     keyring = os.path.join('suites', keyring)
                 elif os.path.exists(keyring):
@@ -1340,7 +1370,11 @@ class Builder:
                     overlay, prefix, runtime, sdk=sdk)
                 overlay = os.path.join(
                     scratch, 'runtimes', runtime, 'apt-overlay')
-                self.configure_apt(overlay, self.final_apt_sources)
+                self.configure_apt(
+                    overlay,
+                    self.final_apt_sources,
+                    self.final_apt_keyrings,
+                )
 
                 argv.append(dest_recipe)
                 subprocess.check_call(argv)
@@ -1502,13 +1536,28 @@ class Builder:
 
                         os.rename(output + '.new', output)
 
-    def configure_apt(self, overlay, apt_sources):
-        # type: (str, typing.Iterable[AptSource]) -> None
+    def configure_apt(
+        self,
+        overlay,        # type: str
+        apt_sources,    # type: typing.Iterable[AptSource]
+        apt_keyrings,   # type: typing.Iterable[str]
+    ):
+        # type: (...) -> None
         """
         Configure apt. We only do this once, so that all chroots
         created from the same base have their version numbers
         aligned.
         """
+        os.makedirs(
+            os.path.join(overlay, 'etc', 'apt', 'apt.conf.d'),
+            0o755,
+            exist_ok=True,
+        )
+        os.makedirs(
+            os.path.join(overlay, 'etc', 'apt', 'sources.list.d'),
+            0o755,
+            exist_ok=True,
+        )
         os.makedirs(
             os.path.join(overlay, 'etc', 'apt', 'trusted.gpg.d'),
             0o755,
@@ -1523,7 +1572,7 @@ class Builder:
             for source in apt_sources:
                 writer.write('{}\n'.format(source))
 
-            for keyring in self.apt_keyrings:
+            for keyring in apt_keyrings:
                 if os.path.exists(os.path.join('suites', keyring)):
                     keyring = os.path.join('suites', keyring)
                 elif os.path.exists(keyring):

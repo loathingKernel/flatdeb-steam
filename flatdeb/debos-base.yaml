@@ -69,6 +69,17 @@ actions:
       mkdir "$ROOTDIR/etc/apt/sources.list.d"
 
   - action: run
+    label: clean up bootstrap apt configuration
+    chroot: false
+    command: |
+      set -e
+      echo
+      rm -frv "$ROOTDIR/etc/apt/trustdb.gpg"
+      rm -frv "$ROOTDIR/etc/apt/trustdb.gpg~"
+      rm -frv "$ROOTDIR/etc/apt/trusted.gpg"
+      rm -frv "$ROOTDIR/etc/apt/trusted.gpg~"
+
+  - action: run
     label: list apt configuration
     chroot: false
     command: 'find "$ROOTDIR/etc/apt" -ls'
