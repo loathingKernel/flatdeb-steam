@@ -1,3 +1,6 @@
+# Copyright 2018-2021 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+
 {{- $architecture := or .architecture "amd64" -}}
 {{- /* Use a YAML list here */ -}}
 {{- $components := or .components "" -}}

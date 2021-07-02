@@ -1,0 +1,13 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: flatdeb
+Source: https://salsa.debian.org/smcv/flatdeb
+
+Files:
+ README
+Copyright: 2017-2020 Collabora Ltd.
+License: MIT
+
+Files:
+ apps/openarena/*.patch
+Copyright: 2018 Collabora Ltd.
+License: GPL-2.0-or-later
