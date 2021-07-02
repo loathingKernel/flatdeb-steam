@@ -1,2 +1,5 @@
+# Copyright 2017 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+
 /.flatpak-builder/
 __pycache__/

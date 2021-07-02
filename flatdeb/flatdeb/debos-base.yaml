@@ -1,3 +1,8 @@
+{{/*
+Copyright 2018-2021 Collabora Ltd.
+SPDX-License-Identifier: MIT
+*/}}
+
 {{- $architecture := or .architecture "amd64" -}}
 {{- /* Use a YAML list here */ -}}
 {{- $components := or .components "" -}}
@@ -62,6 +67,17 @@ actions:
       echo
       rm -fr "$ROOTDIR/etc/apt/sources.list.d"
       mkdir "$ROOTDIR/etc/apt/sources.list.d"
+
+  - action: run
+    label: clean up bootstrap apt configuration
+    chroot: false
+    command: |
+      set -e
+      echo
+      rm -frv "$ROOTDIR/etc/apt/trustdb.gpg"
+      rm -frv "$ROOTDIR/etc/apt/trustdb.gpg~"
+      rm -frv "$ROOTDIR/etc/apt/trusted.gpg"
+      rm -frv "$ROOTDIR/etc/apt/trusted.gpg~"
 
   - action: run
     label: list apt configuration

@@ -1,3 +1,6 @@
+# Copyright 2017-2018 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+
 all:
 	if ! [ -d /var/lib/dpkg ]; then \
 		cp -PRp /usr/var /; \
