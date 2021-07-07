@@ -42,6 +42,17 @@ fi
 sysroot="$1"
 cd "$sysroot"
 
+set_file_contents () {
+    file="$1"
+    permissions="${2-0644}"
+
+    install -d "$sysroot/$(dirname "$file")"
+    rm -f "$sysroot/$file"
+    cat > "$sysroot/$file.dpkg-new"
+    chmod "$permissions" "$sysroot/$file.dpkg-new"
+    mv -f "$sysroot/$file.dpkg-new" "$sysroot/$file"
+}
+
 in_chroot () {
     chroot "$sysroot" "$@"
 }
@@ -72,6 +83,16 @@ var/lib/urandom \
 var/lock \
 var/tmp \
 ${NULL+}
+
+rm -f "$sysroot/var/log/apt/eipp.log.xz"
+rm -f "$sysroot/var/log/bootstrap.log"
+set_file_contents var/log/alternatives.log </dev/null
+set_file_contents var/log/dpkg.log </dev/null
+
+if [ -d "$sysroot/var/log/apt" ]; then
+    set_file_contents var/log/apt/history.log </dev/null
+    set_file_contents var/log/apt/term.log </dev/null
+fi
 
 # dpkg exclusions don't always exclude subdirectories
 find usr/share/doc -depth -xdev -type d -empty -delete

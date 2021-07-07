@@ -72,6 +72,16 @@ rm -fr "$sysroot/usr/share/linda"
 rm -fr "$sysroot/usr/share/lintian"
 rm -fr "$sysroot/usr/share/man"
 
+rm -f "$sysroot/var/log/apt/eipp.log.xz"
+rm -f "$sysroot/var/log/bootstrap.log"
+set_file_contents var/log/alternatives.log </dev/null
+set_file_contents var/log/dpkg.log </dev/null
+
+if [ -d "$sysroot/var/log/apt" ]; then
+    set_file_contents var/log/apt/history.log </dev/null
+    set_file_contents var/log/apt/term.log </dev/null
+fi
+
 # For license compliance, we should keep the copyright
 # files intact
 set_file_contents etc/dpkg/dpkg.cfg.d/flatpak-runtime <<EOF
