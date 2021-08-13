@@ -41,7 +41,6 @@ sources:
     apt_uri: 'http://security.debian.org/debian-security'
     apt_suite: 'testing-security'
     keyring: 'debian-archive-keyring.gpg'
-  # Not available to the public yet, so this URL is just a guess.
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt-sniper'
     keyring: 'valve-archive-keyring.gpg'

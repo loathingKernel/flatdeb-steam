@@ -16,7 +16,6 @@ sources:
   - label: security
     apt_uri: 'http://security.debian.org'
     apt_suite: 'jessie/updates'
-  # Not available to the public yet, so this URL is just a guess.
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt-heavy'
     keyring: 'valve-archive-keyring.gpg'
