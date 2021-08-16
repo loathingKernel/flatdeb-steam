@@ -8,7 +8,7 @@ apt_components:
 sources:
   - apt_uri: 'http://repo.steampowered.com/steamos'
     keyring: 'valve-archive-keyring.gpg'
-  - apt_uri: 'http://deb.debian.org/debian'
+  - apt_uri: 'http://archive.debian.org/debian'
     apt_suite: 'jessie'
     keyring: 'debian-archive-keyring.gpg'
   - apt_uri: 'http://repo.steampowered.com/steam'
