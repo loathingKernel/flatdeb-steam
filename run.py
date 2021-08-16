@@ -927,6 +927,8 @@ class Builder:
 
             if self.bootstrap_apt_keyring:
                 apt_keyrings[:0] = [self.bootstrap_apt_keyring]
+            elif self.suite_details.get('bootstrap_keyring', ''):
+                apt_keyrings[:0] = [self.suite_details['bootstrap_keyring']]
 
             for keyring in apt_keyrings:
                 if os.path.exists(os.path.join('suites', keyring)):
