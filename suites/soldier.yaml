@@ -10,26 +10,51 @@ apt_components:
 can_merge_usr: after_sysroot
 has_automatic_dbgsym: true
 strip_source_version_suffix: '\+bsrt2\..*'
+bootstrap_keyring: 'debian-archive-keyring.gpg'
 sources:
   - label: debian
     apt_uri: 'http://deb.debian.org/debian'
     apt_suite: 'buster'
-    keyring: 'debian-archive-keyring.gpg'
+    keyrings:
+      - debian-archive-bullseye-automatic.gpg
+      - debian-archive-bullseye-security-automatic.gpg
+      - debian-archive-bullseye-stable.gpg
+      - debian-archive-buster-automatic.gpg
+      - debian-archive-buster-security-automatic.gpg
+      - debian-archive-buster-stable.gpg
   - label: debian-debug
     apt_uri: 'http://deb.debian.org/debian-debug'
     apt_suite: 'buster-debug'
-    keyring: 'debian-archive-keyring.gpg'
+    keyrings:
+      - debian-archive-bullseye-automatic.gpg
+      - debian-archive-bullseye-security-automatic.gpg
+      - debian-archive-bullseye-stable.gpg
+      - debian-archive-buster-automatic.gpg
+      - debian-archive-buster-security-automatic.gpg
+      - debian-archive-buster-stable.gpg
     deb-src: false
   # For security updates' detached debug symbols
   - label: debian-pu-debug
     apt_uri: 'http://deb.debian.org/debian-debug'
     apt_suite: 'buster-proposed-updates-debug'
-    keyring: 'debian-archive-keyring.gpg'
+    keyrings:
+      - debian-archive-bullseye-automatic.gpg
+      - debian-archive-bullseye-security-automatic.gpg
+      - debian-archive-bullseye-stable.gpg
+      - debian-archive-buster-automatic.gpg
+      - debian-archive-buster-security-automatic.gpg
+      - debian-archive-buster-stable.gpg
     deb-src: false
   - label: debian-security
     apt_uri: 'http://security.debian.org/debian-security'
     apt_suite: 'buster/updates'
-    keyring: 'debian-archive-keyring.gpg'
+    keyrings:
+      - debian-archive-bullseye-automatic.gpg
+      - debian-archive-bullseye-security-automatic.gpg
+      - debian-archive-bullseye-stable.gpg
+      - debian-archive-buster-automatic.gpg
+      - debian-archive-buster-security-automatic.gpg
+      - debian-archive-buster-stable.gpg
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt-soldier'
     keyring: 'valve-archive-keyring.gpg'
