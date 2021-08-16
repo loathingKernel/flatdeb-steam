@@ -745,6 +745,14 @@ class Builder:
                 else:
                     self.final_apt_keyrings.append(keyring)
 
+            keyrings = source.get('keyrings', [])
+
+            if keyrings:
+                if for_build:
+                    self.build_apt_keyrings.extend(keyrings)
+                else:
+                    self.final_apt_keyrings.extend(keyrings)
+
             uri = source['apt_uri']
             suite = source.get('apt_suite', self.apt_suite)
             suite = suite.replace('*', self.apt_suite)
@@ -865,6 +873,7 @@ class Builder:
                 os.path.join(scratch, 'suites', apt_suite, 'overlay'),
                 self.build_apt_sources,
                 self.build_apt_keyrings,
+                apt_keyring_prefix='flatdeb-build-',
             )
 
             argv = [
@@ -919,6 +928,8 @@ class Builder:
 
             if self.bootstrap_apt_keyring:
                 apt_keyrings[:0] = [self.bootstrap_apt_keyring]
+            elif self.suite_details.get('bootstrap_keyring', ''):
+                apt_keyrings[:0] = [self.suite_details['bootstrap_keyring']]
 
             for keyring in apt_keyrings:
                 if os.path.exists(os.path.join('suites', keyring)):
@@ -931,7 +942,7 @@ class Builder:
                 dest = os.path.join(
                     scratch, 'suites', apt_suite, 'overlay',
                     'etc', 'apt', 'trusted.gpg.d',
-                    os.path.basename(keyring),
+                    'flatdeb-build-' + os.path.basename(keyring),
                 )
                 shutil.copyfile(keyring, dest)
 
@@ -940,7 +951,7 @@ class Builder:
                     'keyring:suites/{}/overlay/etc/apt/trusted.gpg.d/'
                     '{}'.format(
                         apt_suite,
-                        os.path.basename(keyring),
+                        'flatdeb-build-' + os.path.basename(keyring),
                     )
                 )
 
@@ -1541,6 +1552,7 @@ class Builder:
         overlay,        # type: str
         apt_sources,    # type: typing.Iterable[AptSource]
         apt_keyrings,   # type: typing.Iterable[str]
+        apt_keyring_prefix='',
     ):
         # type: (...) -> None
         """
@@ -1585,7 +1597,7 @@ class Builder:
                     os.path.join(
                         overlay,
                         'etc', 'apt', 'trusted.gpg.d',
-                        os.path.basename(keyring),
+                        apt_keyring_prefix + os.path.basename(keyring),
                     ),
                 )
 
