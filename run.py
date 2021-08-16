@@ -873,6 +873,7 @@ class Builder:
                 os.path.join(scratch, 'suites', apt_suite, 'overlay'),
                 self.build_apt_sources,
                 self.build_apt_keyrings,
+                apt_keyring_prefix='flatdeb-build-',
             )
 
             argv = [
@@ -941,7 +942,7 @@ class Builder:
                 dest = os.path.join(
                     scratch, 'suites', apt_suite, 'overlay',
                     'etc', 'apt', 'trusted.gpg.d',
-                    os.path.basename(keyring),
+                    'flatdeb-build-' + os.path.basename(keyring),
                 )
                 shutil.copyfile(keyring, dest)
 
@@ -950,7 +951,7 @@ class Builder:
                     'keyring:suites/{}/overlay/etc/apt/trusted.gpg.d/'
                     '{}'.format(
                         apt_suite,
-                        os.path.basename(keyring),
+                        'flatdeb-build-' + os.path.basename(keyring),
                     )
                 )
 
@@ -1551,6 +1552,7 @@ class Builder:
         overlay,        # type: str
         apt_sources,    # type: typing.Iterable[AptSource]
         apt_keyrings,   # type: typing.Iterable[str]
+        apt_keyring_prefix='',
     ):
         # type: (...) -> None
         """
@@ -1595,7 +1597,7 @@ class Builder:
                     os.path.join(
                         overlay,
                         'etc', 'apt', 'trusted.gpg.d',
-                        os.path.basename(keyring),
+                        apt_keyring_prefix + os.path.basename(keyring),
                     ),
                 )
 
