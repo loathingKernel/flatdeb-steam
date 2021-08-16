@@ -13,19 +13,17 @@ strip_source_version_suffix: '\+bsrt[34]\..*'
 sources:
   - label: debian
     apt_uri: 'http://deb.debian.org/debian'
-    # TODO: Change all testing references to bookworm after bullseye
-    # is released
-    apt_suite: 'testing'
+    apt_suite: 'bookworm'
     keyring: 'debian-archive-keyring.gpg'
   - label: debian-debug
     apt_uri: 'http://deb.debian.org/debian-debug'
-    apt_suite: 'testing-debug'
+    apt_suite: 'bookworm-debug'
     keyring: 'debian-archive-keyring.gpg'
     deb-src: false
   # For security updates' detached debug symbols
   - label: debian-pu-debug
     apt_uri: 'http://deb.debian.org/debian-debug'
-    apt_suite: 'testing-proposed-updates-debug'
+    apt_suite: 'bookworm-proposed-updates-debug'
     keyring: 'debian-archive-keyring.gpg'
     deb-src: false
   - label: debian-unstable
@@ -39,7 +37,7 @@ sources:
     deb-src: false
   - label: debian-security
     apt_uri: 'http://security.debian.org/debian-security'
-    apt_suite: 'testing-security'
+    apt_suite: 'bookworm-security'
     keyring: 'debian-archive-keyring.gpg'
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt-sniper'
