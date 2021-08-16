@@ -745,6 +745,14 @@ class Builder:
                 else:
                     self.final_apt_keyrings.append(keyring)
 
+            keyrings = source.get('keyrings', [])
+
+            if keyrings:
+                if for_build:
+                    self.build_apt_keyrings.extend(keyrings)
+                else:
+                    self.final_apt_keyrings.extend(keyrings)
+
             uri = source['apt_uri']
             suite = source.get('apt_suite', self.apt_suite)
             suite = suite.replace('*', self.apt_suite)
