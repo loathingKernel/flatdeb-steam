@@ -10,7 +10,7 @@ has_automatic_dbgsym: false
 strip_source_version_suffix: '\+srthb.*'
 sources:
   - label: debian
-    apt_uri: 'http://archive.debian.org/debian'
+    apt_uri: 'http://deb.debian.org/debian'
     apt_suite: 'jessie'
     keyring: 'debian-archive-keyring.gpg'
   - label: security
