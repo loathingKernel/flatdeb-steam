@@ -60,8 +60,5 @@ sources:
       - debian-archive-bullseye-stable.gpg
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt-sniper'
-    keyrings:
-      - debian-archive-bullseye-automatic.gpg
-      - debian-archive-bullseye-security-automatic.gpg
-      - debian-archive-bullseye-stable.gpg
+    keyring: valve-archive-keyring.gpg
 ...
