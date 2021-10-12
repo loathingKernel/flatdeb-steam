@@ -10,7 +10,7 @@ apt_components:
 can_merge_usr: after_sysroot
 has_automatic_dbgsym: true
 strip_source_version_suffix: '\+bsrt3\..*'
-bootstrap_keyring: 'debian-archive-bullseye-stable.gpg'
+bootstrap_keyring: '0d6c9793-debian-archive-bullseye-stable.gpg'
 sources:
   - label: debian
     apt_uri: 'http://deb.debian.org/debian'
