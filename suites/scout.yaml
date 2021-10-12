@@ -11,12 +11,16 @@ strip_source_version_suffix: '\+srt[0-9]+'
 sources:
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt'
-    keyring: 'valve-archive-keyring.gpg'
+    keyrings:
+      - 'd0bbf5ae-valve-archive-builder.gpg'
+      - '8abddd96-valve-archive-steamos-release-key.gpg'
     apt_components:
       - main
   - label: steamrt-debug
     apt_uri: 'http://repo.steampowered.com/steamrt'
-    keyring: 'valve-archive-keyring.gpg'
+    keyrings:
+      - 'd0bbf5ae-valve-archive-builder.gpg'
+      - '8abddd96-valve-archive-steamos-release-key.gpg'
     apt_components:
       - main/debug
     deb: true
@@ -26,7 +30,8 @@ sources:
     for_final: true
     apt_uri: 'http://repo.steampowered.com/steam'
     apt_suite: 'precise'
-    keyring: 'valve-steam-keyring.gpg'
+    keyrings:
+      - 'b05498b7-valve-archive-steam.gpg'
     apt_components:
       - steam
   - label: ubuntu
@@ -34,7 +39,8 @@ sources:
     for_final: true
     apt_uri: 'http://old-releases.ubuntu.com/ubuntu'
     apt_suite: 'precise'
-    keyring: 'ubuntu-archive-keyring.gpg'
+    keyrings:
+      - 'ubuntu-archive-keyring.gpg'
     apt_components:
       - main
       - restricted

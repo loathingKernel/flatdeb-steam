@@ -12,11 +12,19 @@ sources:
   - label: debian
     apt_uri: 'http://deb.debian.org/debian'
     apt_suite: 'jessie'
-    keyring: 'debian-archive-keyring.gpg'
+    keyrings:
+      - '2b90d010-debian-archive-jessie-automatic.gpg'
+      - 'c857c906-debian-archive-jessie-security-automatic.gpg'
+      - '518e17e1-debian-archive-jessie-stable.gpg'
+      - 'f66aec98-debian-archive-stretch-automatic.gpg'
+      - '8ae22ba9-debian-archive-stretch-security-automatic.gpg'
+      - '1a7b6500-debian-archive-stretch-stable.gpg'
   - label: security
     apt_uri: 'http://security.debian.org'
     apt_suite: 'jessie/updates'
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt-heavy'
-    keyring: 'valve-archive-keyring.gpg'
+    keyrings:
+      - 'd0bbf5ae-valve-archive-builder.gpg'
+      - '8abddd96-valve-archive-steamos-release-key.gpg'
 ...

@@ -16,49 +16,51 @@ sources:
     apt_uri: 'http://deb.debian.org/debian'
     apt_suite: 'bullseye'
     keyrings:
-      - debian-archive-bullseye-automatic.gpg
-      - debian-archive-bullseye-security-automatic.gpg
-      - debian-archive-bullseye-stable.gpg
+      - '8dd47936-debian-archive-bullseye-automatic.gpg'
+      - '4aad5c5d-debian-archive-bullseye-security-automatic.gpg'
+      - '0d6c9793-debian-archive-bullseye-stable.gpg'
   - label: debian-debug
     apt_uri: 'http://deb.debian.org/debian-debug'
     apt_suite: 'bullseye-debug'
     keyrings:
-      - debian-archive-bullseye-automatic.gpg
-      - debian-archive-bullseye-security-automatic.gpg
-      - debian-archive-bullseye-stable.gpg
+      - '8dd47936-debian-archive-bullseye-automatic.gpg'
+      - '4aad5c5d-debian-archive-bullseye-security-automatic.gpg'
+      - '0d6c9793-debian-archive-bullseye-stable.gpg'
     deb-src: false
   # For security updates' detached debug symbols
   - label: debian-pu-debug
     apt_uri: 'http://deb.debian.org/debian-debug'
     apt_suite: 'bullseye-proposed-updates-debug'
     keyrings:
-      - debian-archive-bullseye-automatic.gpg
-      - debian-archive-bullseye-security-automatic.gpg
-      - debian-archive-bullseye-stable.gpg
+      - '8dd47936-debian-archive-bullseye-automatic.gpg'
+      - '4aad5c5d-debian-archive-bullseye-security-automatic.gpg'
+      - '0d6c9793-debian-archive-bullseye-stable.gpg'
     deb-src: false
   - label: debian-unstable
     apt_uri: 'http://deb.debian.org/debian'
     apt_suite: 'unstable'
     keyrings:
-      - debian-archive-bullseye-automatic.gpg
-      - debian-archive-bullseye-security-automatic.gpg
-      - debian-archive-bullseye-stable.gpg
+      - '8dd47936-debian-archive-bullseye-automatic.gpg'
+      - '4aad5c5d-debian-archive-bullseye-security-automatic.gpg'
+      - '0d6c9793-debian-archive-bullseye-stable.gpg'
   - label: debian-unstable-debug
     apt_uri: 'http://deb.debian.org/debian-debug'
     apt_suite: 'unstable-debug'
     keyrings:
-      - debian-archive-bullseye-automatic.gpg
-      - debian-archive-bullseye-security-automatic.gpg
-      - debian-archive-bullseye-stable.gpg
+      - '8dd47936-debian-archive-bullseye-automatic.gpg'
+      - '4aad5c5d-debian-archive-bullseye-security-automatic.gpg'
+      - '0d6c9793-debian-archive-bullseye-stable.gpg'
     deb-src: false
   - label: debian-security
     apt_uri: 'http://security.debian.org/debian-security'
     apt_suite: 'bullseye-security'
     keyrings:
-      - debian-archive-bullseye-automatic.gpg
-      - debian-archive-bullseye-security-automatic.gpg
-      - debian-archive-bullseye-stable.gpg
+      - '8dd47936-debian-archive-bullseye-automatic.gpg'
+      - '4aad5c5d-debian-archive-bullseye-security-automatic.gpg'
+      - '0d6c9793-debian-archive-bullseye-stable.gpg'
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt-sniper'
-    keyring: valve-archive-keyring.gpg
+    keyrings:
+      - 'd0bbf5ae-valve-archive-builder.gpg'
+      - '8abddd96-valve-archive-steamos-release-key.gpg'
 ...
