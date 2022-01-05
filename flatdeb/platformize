@@ -44,6 +44,10 @@ fi
 sysroot="$1"
 cd "$sysroot"
 
+in_chroot_simple () {
+    chroot -- "$sysroot" "$@"
+}
+
 in_chroot () {
     local var
 
@@ -61,14 +65,14 @@ in_chroot () {
 list_packages_ignore_arch () {
     # ${} here is interpreted by dpkg-query
     # shellcheck disable=SC2016
-    in_chroot dpkg-query --show -f '${Package}\n' | LC_ALL=C sort -u
+    in_chroot_simple dpkg-query --show -f '${Package}\n' | LC_ALL=C sort -u
 }
 
 is_installed () {
     local status
     # ${} here is interpreted by dpkg-query
     # shellcheck disable=SC2016
-    if ! status="$(in_chroot dpkg-query --show -f '${Status}\n' "$@")"; then
+    if ! status="$(in_chroot_simple dpkg-query --show -f '${Status}\n' "$@")"; then
         return 1
     fi
     case "$status" in
@@ -85,7 +89,7 @@ is_installed () {
 declare -a unwanted=()
 
 echo "Packages installed at the moment:"
-list_packages_ignore_arch | sed -ne 's/^/- /'
+list_packages_ignore_arch | sed -e 's/^/- /'
 
 for package in \
     aptitude \
@@ -109,7 +113,7 @@ fi
 in_chroot apt-get -y --purge autoremove
 
 echo "Packages installed before destroying Essential set:"
-list_packages_ignore_arch | sed -ne 's/^/- /'
+list_packages_ignore_arch | sed -e 's/^/- /'
 
 unwanted=()
 
