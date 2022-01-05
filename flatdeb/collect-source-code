@@ -311,17 +311,15 @@ def main():
 
     parent = args.output or os.path.join(args.sysroot, 'src', 'files')
 
-    with open(
-        os.path.join(parent, 'Sources'), 'w'
-    ) as writer:
-        subprocess.check_call(in_chroot + [
-            'sh', '-euc',
-            'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
-            'sh',                       # argv[0]
-            '/src/files',               # working directory
-            'dpkg-scansources',
-            '.',
-        ], stdout=writer)
+    subprocess.check_call(in_chroot + [
+        'sh', '-euc',
+        'mkdir -p "$1"; cd "$1"; shift; exec >"$1"; shift; "$@"',
+        'sh',                       # argv[0]
+        '/src/files',               # working directory
+        '/src/files/Sources',
+        'dpkg-scansources',
+        '.',
+    ])
 
     with open(
         os.path.join(parent, 'Sources.gz'), 'wb'
