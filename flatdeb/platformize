@@ -89,7 +89,7 @@ is_installed () {
 declare -a unwanted=()
 
 echo "Packages installed at the moment:"
-list_packages_ignore_arch | sed -ne 's/^/- /'
+list_packages_ignore_arch | sed -e 's/^/- /'
 
 for package in \
     aptitude \
@@ -113,7 +113,7 @@ fi
 in_chroot apt-get -y --purge autoremove
 
 echo "Packages installed before destroying Essential set:"
-list_packages_ignore_arch | sed -ne 's/^/- /'
+list_packages_ignore_arch | sed -e 's/^/- /'
 
 unwanted=()
 
