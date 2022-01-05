@@ -64,6 +64,10 @@ def main():
         'SUDO_FORCE_REMOVE=yes',
     ]
 
+    in_chroot_simple = [
+        'chroot', '--', args.sysroot,
+    ]
+
     for var in ('ftp_proxy', 'http_proxy', 'https_proxy', 'no_proxy'):
         if var in os.environ:
             in_chroot.append('{}={}'.format(var, os.environ[var]))
@@ -72,7 +76,7 @@ def main():
 
     unwanted = set()        # type: typing.Set[str]
 
-    with subprocess.Popen(in_chroot + [
+    with subprocess.Popen(in_chroot_simple + [
         'dpkg-query',
         '--show',
         '-f', r'${Status}:${Package}\n',
@@ -80,6 +84,8 @@ def main():
         stdout = dpkg_query.stdout
         assert stdout is not None
         for line in stdout:
+            line = line.replace('\r', '')
+
             if line == '\n':
                 continue
 
