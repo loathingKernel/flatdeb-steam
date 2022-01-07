@@ -80,10 +80,9 @@ Depending on the current state of the Steam Runtime development cycle,
 the `scout` runtime as configured here might require unreleased packages;
 roll back recent commits if necessary.
 
-The apt sources necessary to build the `heavy`, `soldier` and `sniper`
-runtimes are not currently public (we publish the source code and the
-final container image, but not the individual binary packages yet).
-See the corresponding branches in
+Some of the runtimes visible in `suites/` and `runtimes/` are not
+currently available to the public: they represent possible future
+development. Please see
 <https://gitlab.steamos.cloud/steamrt/steamrt/> for more information
 about the various branches of the Steam Runtime.
 
