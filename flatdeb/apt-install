@@ -82,7 +82,7 @@ def main():
         if var in os.environ:
             in_chroot.append('{}={}'.format(var, os.environ[var]))
 
-    options = ['-q']
+    options = ['-q', '-oAcquire::Retries=3']
     packages = []       # type: typing.List[str]
 
     if args.debug:

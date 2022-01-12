@@ -273,6 +273,7 @@ def main():
 
     options = ['-q', '-q', '-y', '--download-only']
     options.append('-oAPT::Get::Only-Source=true')
+    options.append('-oAcquire::Retries=3')
 
     try:
         subprocess.check_call(in_chroot + [

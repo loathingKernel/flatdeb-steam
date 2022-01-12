@@ -58,7 +58,7 @@ def main():
         strip_source_version_suffix = re.compile(
             '(?:' + args.strip_source_version_suffix + ')$')
 
-    options = ['-q']
+    options = ['-q', '-oAcquire::Retries=3']
 
     subprocess.check_call(['cp', '-PRp', '/usr/var', '/'])
     subprocess.check_call(['install', '-d', '/var/cache/apt/archives/partial'])
