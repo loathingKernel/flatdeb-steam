@@ -107,10 +107,10 @@ if [ -n "${unwanted[*]}" ]; then
         echo "- $p"
     done
 
-    in_chroot apt-get -y purge "${unwanted[@]}"
+    in_chroot apt-get -q -y purge "${unwanted[@]}"
 fi
 
-in_chroot apt-get -y --purge autoremove
+in_chroot apt-get -q -y --purge autoremove
 
 echo "Packages installed before destroying Essential set:"
 list_packages_ignore_arch | sed -e 's/^/- /'

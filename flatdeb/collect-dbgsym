@@ -365,7 +365,7 @@ def main():
     for spec in sorted(to_get):
         logger.info('To download: %s', spec)
 
-    options = ['-y', '-m']
+    options = ['-y', '-m', '-q']
 
     if args.debug:
         options.append('-oDebug::pkgDepCache::AutoInstall=true')
