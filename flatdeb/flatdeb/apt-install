@@ -82,7 +82,7 @@ def main():
         if var in os.environ:
             in_chroot.append('{}={}'.format(var, os.environ[var]))
 
-    options = []        # type: typing.List[str]
+    options = ['-q', '-oAcquire::Retries=3']
     packages = []       # type: typing.List[str]
 
     if args.debug:
@@ -104,7 +104,9 @@ def main():
     ] + options + ['install'] + packages)
 
     subprocess.check_call(in_chroot + [
-        'apt-get', 'clean',
+        'apt-get',
+    ] + options + [
+        'clean',
     ])
 
 

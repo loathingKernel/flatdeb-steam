@@ -271,14 +271,19 @@ def main():
         sources.add(s)
         get_source.append(s.get_source)
 
+    options = ['-q', '-q', '-y', '--download-only']
+    options.append('-oAPT::Get::Only-Source=true')
+    options.append('-oAcquire::Retries=3')
+
     try:
         subprocess.check_call(in_chroot + [
             'sh', '-euc',
             'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
             'sh',                       # argv[0]
             '/src/files',               # working directory
-            'apt-get', '-y', '--download-only', '-q', '-q',
-            '-oAPT::Get::Only-Source=true', 'source',
+            'apt-get'
+        ] + options + [
+            'source',
         ] + get_source)
     except subprocess.CalledProcessError:
         logger.warning(
@@ -292,8 +297,9 @@ def main():
                     'dir="$1"; shift; mkdir -p "$dir"; cd "$dir"; "$@"',
                     'sh',                       # argv[0]
                     '/src/files',               # working directory
-                    'apt-get', '-y', '--download-only', '-q', '-q',
-                    '-oAPT::Get::Only-Source=true', 'source',
+                    'apt-get',
+                ] + options + [
+                    'source',
                     s.get_source,
                 ])
             except subprocess.CalledProcessError:
