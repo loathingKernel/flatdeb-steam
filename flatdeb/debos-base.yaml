@@ -121,12 +121,12 @@ actions:
   - action: run
     label: apt update
     chroot: true
-    command: 'apt-get -y -q update'
+    command: 'apt-get -y -q -oAcquire::Retries=3 update'
 
   - action: run
     label: apt dist-upgrade
     chroot: true
-    command: 'echo; DEBIAN_FRONTEND=noninteractive apt-get -y -q dist-upgrade'
+    command: 'echo; DEBIAN_FRONTEND=noninteractive apt-get -y -q -oAcquire::Retries=3 dist-upgrade'
 
   - action: run
     label: write-manifest

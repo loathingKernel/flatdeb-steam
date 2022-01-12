@@ -58,12 +58,15 @@ def main():
         strip_source_version_suffix = re.compile(
             '(?:' + args.strip_source_version_suffix + ')$')
 
+    options = ['-q', '-oAcquire::Retries=3']
+
     subprocess.check_call(['cp', '-PRp', '/usr/var', '/'])
     subprocess.check_call(['install', '-d', '/var/cache/apt/archives/partial'])
-    subprocess.check_call(['fakeroot', 'apt-get', 'update'])
-    subprocess.check_call(['fakeroot', 'apt-get', '-y', '--download-only',
-                          '--no-install-recommends', 'install'] +
-                          args.packages)
+    subprocess.check_call(['fakeroot', 'apt-get'] + options + ['update'])
+    subprocess.check_call(['fakeroot', 'apt-get'] + options
+                          + ['-y', '--download-only',
+                             '--no-install-recommends', 'install']
+                          + args.packages)
 
     for file in glob.glob("/var/cache/apt/archives/*.deb"):
         debian_control = DebFile(file).control.debcontrol()
@@ -81,8 +84,8 @@ def main():
         assert source
         assert version
 
-        subprocess.check_call([
-            'apt-get', '-y', '--download-only',
+        subprocess.check_call(['apt-get'] + options + [
+            '-y', '--download-only',
             '-oAPT::Get::Only-Source=true', 'source',
             '{}={}'.format(source, version),
         ], cwd=args.export)
@@ -95,8 +98,8 @@ def main():
                 assert source
                 assert version
 
-                subprocess.check_call([
-                    'apt-get', '-y', '--download-only',
+                subprocess.check_call(['apt-get' + options + [
+                    '-y', '--download-only',
                     '-oAPT::Get::Only-Source=true', 'source',
                     '{}={}'.format(source, version),
                 ], cwd=args.export)

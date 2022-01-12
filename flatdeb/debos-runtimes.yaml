@@ -276,7 +276,7 @@ actions:
     chroot: true
     command: |
       set -e
-      apt-get update || true
+      apt-get -q -oAcquire::Retries=3 update || true
 
   - action: run
     label: put-ldconfig-in-path
