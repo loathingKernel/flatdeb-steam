@@ -454,6 +454,27 @@ class Builder:
             action='store_false',
         )
         parser.add_argument(
+            '--generate-platform-sysroot-tarball',
+            action='store_true',
+            default=False,
+        )
+        parser.add_argument(
+            '--no-generate-platform-sysroot-tarball',
+            dest='generate_platform_sysroot_tarball',
+            action='store_false',
+        )
+        parser.add_argument(
+            '--generate-sdk-sysroot-tarball',
+            action='store_true',
+            default=None,
+        )
+        parser.add_argument(
+            '--no-generate-sdk-sysroot-tarball',
+            dest='generate_sdk_sysroot_tarball',
+            action='store_false',
+            default=None,
+        )
+        parser.add_argument(
             '--generate-source-tarball',
             action='store_true',
             default=None,
@@ -648,6 +669,9 @@ class Builder:
         else:
             self.do_platform = bool(args.platform)
             self.do_sdk = bool(args.sdk)
+
+        if args.generate_sdk_sysroot_tarball is None:
+            args.generate_sdk_sysroot_tarball = args.generate_sysroot_tarball
 
         if not (self.do_sdk or self.do_platform):
             parser.error(
@@ -1034,7 +1058,8 @@ class Builder:
         dbgsym_tarball=None,
         generate_source_directory='',
         generate_source_tarball=True,
-        generate_sysroot_tarball=False,
+        generate_platform_sysroot_tarball=False,
+        generate_sdk_sysroot_tarball=False,
         **kwargs
     ):
         # type: (...) -> None
@@ -1122,6 +1147,8 @@ class Builder:
                 ostree_prefix = artifact_prefix + '-runtime'
                 out_tarball = ostree_prefix + '.tar.gz'
                 sources_prefix = artifact_prefix + '-sources'
+                sysroot_prefix = None       # type: typing.Optional[str]
+                sysroot_tarball = None      # type: typing.Optional[str]
 
                 argv = [
                     'debos',
@@ -1226,10 +1253,7 @@ class Builder:
                     debug_prefix = artifact_prefix + '-debug'
                     debug_tarball = debug_prefix + '.tar.gz'
 
-                    sysroot_prefix = None       # type: typing.Optional[str]
-                    sysroot_tarball = None      # type: typing.Optional[str]
-
-                    if generate_sysroot_tarball:
+                    if generate_sdk_sysroot_tarball:
                         sysroot_prefix = artifact_prefix + '-sysroot'
                         sysroot_tarball = sysroot_prefix + '.tar.gz'
                         argv.append('-t')
@@ -1359,6 +1383,16 @@ class Builder:
                         argv.append('-t')
                         argv.append('sdk_post_script:sdk_post_script')
                 else:   # not sdk
+                    if generate_platform_sysroot_tarball:
+                        sysroot_prefix = artifact_prefix + '-sysroot'
+                        sysroot_tarball = sysroot_prefix + '.tar.gz'
+                        argv.append('-t')
+                        argv.append('sysroot_prefix:{}'.format(sysroot_prefix))
+                        argv.append('-t')
+                        argv.append(
+                            'sysroot_tarball:{}'.format(
+                                sysroot_tarball + '.new'))
+
                     platform_details = self.runtime_details.get('platform', {})
                     script = platform_details.get('post_script', '')
 
@@ -1405,33 +1439,47 @@ class Builder:
                         with open(output, 'w') as writer:
                             writer.write('EVERYTHING\n')
 
-                    if sysroot_prefix is not None:
-                        assert sysroot_tarball is not None
-                        output = os.path.join(self.build_area, sysroot_tarball)
-                        os.rename(output + '.new', output)
+                if sysroot_prefix is not None:
+                    assert sysroot_tarball is not None
+                    output = os.path.join(self.build_area, sysroot_tarball)
+                    os.rename(output + '.new', output)
 
-                        output = os.path.join(
-                            self.build_area, sysroot_prefix + '.Dockerfile')
+                    output = os.path.join(
+                        self.build_area, sysroot_prefix + '.Dockerfile')
 
-                        with open(
-                            os.path.join(
-                                os.path.dirname(__file__), 'flatdeb',
-                                'Dockerfile.in'),
-                            'r',
-                            encoding='utf-8',
-                        ) as reader:
-                            content = reader.read()
+                    with open(
+                        os.path.join(
+                            os.path.dirname(__file__), 'flatdeb',
+                            'Dockerfile.in'),
+                        'r',
+                        encoding='utf-8',
+                    ) as reader:
+                        content = reader.read()
 
+                    content = content.replace(
+                        '@sysroot_tarball@', sysroot_tarball)
+
+                    if sdk and sdk_details.get('toolbx', False):
+                        content = content.replace('@nopasswd@', 'true')
                         content = content.replace(
-                            '@sysroot_tarball@', sysroot_tarball)
+                            '@comment_if_not_toolbx@',
+                            '',
+                        )
+                    else:
+                        content = content.replace('@nopasswd@', '')
+                        content = content.replace(
+                            '@comment_if_not_toolbx@',
+                            '# ',
+                        )
 
-                        with open(
-                            output + '.new', 'w', encoding='utf-8'
-                        ) as writer:
-                            writer.write(content)
+                    with open(
+                        output + '.new', 'w', encoding='utf-8'
+                    ) as writer:
+                        writer.write(content)
 
-                        os.rename(output + '.new', output)
+                    os.rename(output + '.new', output)
 
+                if sdk:
                     if self.debug_symbols:
                         output = os.path.join(self.build_area, debug_tarball)
                         os.rename(output + '.new', output)

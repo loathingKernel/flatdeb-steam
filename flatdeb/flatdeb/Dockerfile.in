@@ -7,7 +7,15 @@ RUN \
 set -e; \
 mkdir -p /run/systemd; \
 echo 'docker' > /run/systemd/container; \
+if [ "@nopasswd@" = true ]; then \
+    mkdir -p /etc/sudoers.d; \
+    echo "%sudo ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/flatdeb; \
+    chmod 0440 /etc/sudoers.d/flatdeb; \
+fi; \
 :
+
+@comment_if_not_toolbx@LABEL com.github.containers.toolbox="true"
+@comment_if_not_toolbx@LABEL com.github.debarshiray.toolbox="true"
 
 CMD ["/bin/bash"]
 
