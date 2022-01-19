@@ -112,6 +112,7 @@ platform:
     fi
 
 sdk:
+  toolbx: true
   add_packages_multiarch:
     - steamrt-libdebug:
         debug_symbols: true

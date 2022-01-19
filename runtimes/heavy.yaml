@@ -98,6 +98,7 @@ post_script: |
   done
 
 sdk:
+  toolbx: true
   add_packages_multiarch:
     - steamrt-container-host-compat
     - steamrt-libdevel
