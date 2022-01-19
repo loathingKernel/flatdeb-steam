@@ -54,6 +54,7 @@ sdk:
     - strace
     - valgrind
     - zlib1g-dev
+  toolbx: true
 
 add-extensions:
   # FIXME: This is not properly multiarch-aware, but it's enough for a
