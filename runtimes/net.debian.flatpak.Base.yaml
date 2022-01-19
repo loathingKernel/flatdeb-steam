@@ -22,4 +22,5 @@ sdk:
     - python3-debian
     - strace
     - valgrind
+  toolbx: true
 ...

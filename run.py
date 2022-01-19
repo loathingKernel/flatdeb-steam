@@ -1459,6 +1459,19 @@ class Builder:
                     content = content.replace(
                         '@sysroot_tarball@', sysroot_tarball)
 
+                    if sdk and sdk_details.get('toolbx', False):
+                        content = content.replace('@nopasswd@', 'true')
+                        content = content.replace(
+                            '@comment_if_not_toolbx@',
+                            '',
+                        )
+                    else:
+                        content = content.replace('@nopasswd@', '')
+                        content = content.replace(
+                            '@comment_if_not_toolbx@',
+                            '# ',
+                        )
+
                     with open(
                         output + '.new', 'w', encoding='utf-8'
                     ) as writer:
