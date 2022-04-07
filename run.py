@@ -1080,6 +1080,10 @@ class Builder:
             self.apt_suite,
             ','.join(self.dpkg_archs),
         )
+        source_required = 'base-{}-{}.source-required.txt'.format(
+            self.apt_suite,
+            ','.join(self.dpkg_archs),
+        )
 
         with ExitStack() as stack:
             scratch = stack.enter_context(
@@ -1166,6 +1170,7 @@ class Builder:
                     '-t', 'flatpak_arch:{}'.format(self.flatpak_arch),
                     '-t', 'suite:{}'.format(self.apt_suite),
                     '-t', 'ospack:{}'.format(tarball),
+                    '-t', 'ospack_source_required:{}'.format(source_required),
                     '-t', 'artifact_prefix:{}'.format(artifact_prefix),
                     '-t', 'ostree_prefix:{}'.format(ostree_prefix),
                     '-t', 'ostree_tarball:{}'.format(out_tarball + '.new'),
