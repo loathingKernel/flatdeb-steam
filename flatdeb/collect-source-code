@@ -152,7 +152,8 @@ def main():
     included = set()            # type: typing.Set[SourceRequired]
     missing_sources = set()     # type: typing.Set[SourceRequired]
 
-    for s in sources_required:
+    for s in sorted(sources_required):
+        logger.debug(s.get_source)
         get_source.append(s.get_source)
 
     options = ['-q', '-q', '-y', '--download-only']
