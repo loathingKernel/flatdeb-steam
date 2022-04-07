@@ -854,6 +854,7 @@ class Builder:
                 'clean-up-base',
                 'clean-up-before-pack',
                 'disable-services',
+                'list-required-source-code',
                 'set-build-id',
                 'usrmerge',
                 'write-manifest',
@@ -920,6 +921,9 @@ class Builder:
                     str(
                         self.suite_details.get('can_merge_usr', False),
                     ).lower(),
+                ),
+                '-t', 'strip_source_version_suffix:{}'.format(
+                    self.strip_source_version_suffix,
                 ),
             ]
 
@@ -1076,6 +1080,10 @@ class Builder:
             self.apt_suite,
             ','.join(self.dpkg_archs),
         )
+        source_required = 'base-{}-{}.source-required.txt'.format(
+            self.apt_suite,
+            ','.join(self.dpkg_archs),
+        )
 
         with ExitStack() as stack:
             scratch = stack.enter_context(
@@ -1094,6 +1102,7 @@ class Builder:
                 'collect-source-code',
                 'dbgsym-use-build-id',
                 'disable-services',
+                'list-required-source-code',
                 'make-flatpak-friendly',
                 'platformize',
                 'prepare-runtime',
@@ -1161,6 +1170,7 @@ class Builder:
                     '-t', 'flatpak_arch:{}'.format(self.flatpak_arch),
                     '-t', 'suite:{}'.format(self.apt_suite),
                     '-t', 'ospack:{}'.format(tarball),
+                    '-t', 'ospack_source_required:{}'.format(source_required),
                     '-t', 'artifact_prefix:{}'.format(artifact_prefix),
                     '-t', 'ostree_prefix:{}'.format(ostree_prefix),
                     '-t', 'ostree_tarball:{}'.format(out_tarball + '.new'),

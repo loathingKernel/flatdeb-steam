@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 {{- $variant := or .variant "" -}}
 {{- $variant_id := or .variant_id "" -}}
 {{- $ospack := or .ospack (printf "base-%s-%s.tar.gz" $suite $architecture) -}}
+{{- $ospack_source_required := or .ospack_source_required (printf "base-%s-%s.source-required.txt" $suite $architecture) -}}
 {{- $runtime := .runtime -}}
 {{- $runtime_branch := or .runtime_branch "master" -}}
 {{- $artifact_prefix := or .artifact_prefix (printf "%s-%s-%s" $runtime $flatpak_arch $runtime_branch) -}}
@@ -198,6 +199,11 @@ actions:
       # We might have already done this in the case of the SDK, but it's
       # harmless to do it again
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
+      "$RECIPEDIR/list-required-source-code" \
+        --output="$ARTIFACTDIR/{{ $artifact_prefix }}.source-required.txt" \
+        --sysroot="$ROOTDIR" \
+        --strip-source-version-suffix="{{ $strip_source_version_suffix }}" \
+        ${NULL+}
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
       cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg.built-using"
       cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.deb822.gz"
@@ -221,8 +227,10 @@ actions:
       echo
       "$RECIPEDIR/collect-source-code" \
         {{ if $sources_directory }}--output="$ARTIFACTDIR/{{ $sources_directory }}"{{ end }} \
-        --strip-source-version-suffix="{{ $strip_source_version_suffix }}" \
-        "$ROOTDIR"
+        --sysroot="$ROOTDIR" \
+        "$ARTIFACTDIR/{{ $ospack_source_required }}" \
+        "$ARTIFACTDIR/{{ $artifact_prefix }}.source-required.txt" \
+        ${NULL+}
   {{ end }}
 
   {{ if not $sdk }}
