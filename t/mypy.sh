@@ -21,7 +21,7 @@ for script in \
     flatdeb/set-build-id \
 ; do
     i=$((i + 1))
-    if [ "x${MYPY:="$(command -v mypy || echo false)"}" = xfalse ]; then
+    if [ "${MYPY:="$(command -v mypy || echo false)"}" = false ]; then
         echo "ok $i - $script # SKIP mypy not found"
     elif "${MYPY}" \
             --python-executable="${PYTHON:=python3}" \

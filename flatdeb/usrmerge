@@ -36,7 +36,7 @@ set -o pipefail
 
 me="$(basename "$0")"
 
-if [ "$#" != 1 ] || [ "$1" = '--help' ] || [ "x$(id -u)" != x0 ] ||
+if [ "$#" != 1 ] || [ "$1" = '--help' ] || [ "$(id -u)" != 0 ] ||
         ! [ -d "$1" ]; then
     echo "$me: Usage:" >&2
     echo "    $me SYSROOT" >&2
@@ -63,7 +63,7 @@ for f in bin sbin lib*; do
     fi
 done
 
-if [ "x$unmerged" = xno ]; then
+if [ "$unmerged" = no ]; then
     exit 0
 fi
 
