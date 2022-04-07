@@ -98,7 +98,7 @@ def main():
                 assert source
                 assert version
 
-                subprocess.check_call(['apt-get' + options + [
+                subprocess.check_call(['apt-get'] + options + [
                     '-y', '--download-only',
                     '-oAPT::Get::Only-Source=true', 'source',
                     '{}={}'.format(source, version),
