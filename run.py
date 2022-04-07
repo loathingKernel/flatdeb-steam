@@ -1304,6 +1304,7 @@ class Builder:
                 'put-ldconfig-in-path',
                 'set-build-id',
                 'symlink-alternatives',
+                'unpack-dbgsym',
                 'usrmerge',
                 'write-manifest',
             ):

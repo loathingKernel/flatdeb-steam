@@ -106,15 +106,6 @@ actions:
       if [ -e "$RECIPEDIR/manifest.platform.deb822.gz" ]; then
         cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"
       fi
-  {{ if and $debug_symbols $automatic_dbgsym $debug_tarball }}
-  - action: run
-    label: populate /usr/lib/debug
-    chroot: false
-    command: |
-      set -e
-      echo
-      "$RECIPEDIR/collect-dbgsym" {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR"
-  {{ end }}
   # We do this as a separate step in case it involves removing any
   # of the common packages, or replacing automatic debug symbols with
   # legacy debug symbols that might have more coverage
@@ -126,7 +117,7 @@ actions:
   {{ end }}
   # Do this after the apt-install for SDK packages, so that we can
   # re-download things like libc6-dbg
-  {{ if and $debug_symbols $ddeb_directory }}
+  {{ if $debug_symbols }}
   # Downloading -dbgsym packages needs the SDK manifest
   - action: run
     label: write-manifest
@@ -141,7 +132,19 @@ actions:
     command: |
       set -e
       echo
-      "$RECIPEDIR/collect-dbgsym" {{ if $apt_debug }}--debug{{ end }} --download="$ARTIFACTDIR/{{ $ddeb_directory }}" "$ROOTDIR"
+      {{ if $ddeb_directory }}
+      target="$ARTIFACTDIR/{{ $ddeb_directory }}"
+      {{ else }}
+      target="$ROOTDIR/usr/lib/debug/ddebs"
+      {{ end }}
+      install -d "$target"
+      "$RECIPEDIR/collect-dbgsym" \
+        {{ if $apt_debug }}--debug{{ end }} \
+        --download="$target" \
+        --sysroot="$ROOTDIR" \
+        --platform-manifest="$ROOTDIR/usr/manifest.dpkg.platform" \
+        --sdk-manifest="$ROOTDIR/usr/manifest.dpkg" \
+        ${NULL+}
   {{ end }}
   {{ end }}
 
@@ -349,17 +352,6 @@ actions:
     chroot: false
     command: 'echo; "$RECIPEDIR/symlink-alternatives" "$ROOTDIR"'
 
-  {{ if and $debug_symbols $debug_tarball }}
-  - action: run
-    label: dbgsym-use-build-id
-    chroot: false
-    command: |
-      set -eux
-      if [ -d "$ROOTDIR/usr/lib/debug" ]; then
-        "$RECIPEDIR/dbgsym-use-build-id" --debug-dir "$ROOTDIR/usr/lib/debug"
-      fi
-  {{ end }}
-
   {{ if $sdk }}
   - action: run
     label: make-flatpak-friendly --sdk
@@ -416,19 +408,29 @@ actions:
 
   {{ if and $debug_symbols $debug_tarball }}
   - action: run
-    label: pack debug symbols
+    label: create -dbgsym tarball
     chroot: false
-    command: >
-      set -e;
-      echo;
-      install -d "$ROOTDIR/debug";
-      tar -cf "$ARTIFACTDIR/{{ $debug_tarball }}"
-      --numeric-owner
-      --sort=name
-      --transform="s,^./,,"
-      --use-compress-program="pigz -n --rsyncable"
-      -C "$ROOTDIR/debug"
-      .
+    command: |
+      set -eux
+      {{ if $ddeb_directory }}
+      ddeb_directory="$ARTIFACTDIR/{{ $ddeb_directory }}"
+      {{ else }}
+      ddeb_directory="$ROOTDIR/debug/files/ddebs"
+      {{ end }}
+      install -d "$ROOTDIR/debug/sysroot/usr/lib/debug"
+      "$RECIPEDIR/unpack-dbgsym" "$ddeb_directory" "$ROOTDIR/debug/sysroot"
+      rm -fr "$ROOTDIR/debug/files"
+      mv "$ROOTDIR/debug/sysroot/usr/lib/debug" "$ROOTDIR/debug/files"
+      rm -fr "$ROOTDIR/debug/sysroot"
+      "$RECIPEDIR/dbgsym-use-build-id" --debug-dir "$ROOTDIR/debug/files"
+      tar -cf "$ARTIFACTDIR/{{ $debug_tarball }}" \
+        --numeric-owner \
+        --sort=name \
+        --transform="s,^./,," \
+        --use-compress-program="pigz -n --rsyncable" \
+        -C "$ROOTDIR/debug" \
+        .
+      rm -fr "$ROOTDIR/debug"
   {{ end }}
 
   {{ if $collect_source_code }}

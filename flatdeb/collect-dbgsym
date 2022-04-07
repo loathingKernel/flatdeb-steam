@@ -155,7 +155,9 @@ def main():
         '--download', metavar='DIR', default='',
         help='Download to DIR [default: install]',
     )
-    parser.add_argument('sysroot')
+    parser.add_argument('--platform-manifest', action='append', default=[])
+    parser.add_argument('--sdk-manifest', action='append', default=[])
+    parser.add_argument('--sysroot', default='/')
 
     args = parser.parse_args()
 
@@ -195,45 +197,37 @@ def main():
         if var in os.environ:
             in_chroot.append('{}={}'.format(var, os.environ[var]))
 
-    platform_manifest = os.path.join(
-        args.sysroot, 'usr', 'manifest.dpkg.platform')
+    wanted_packages = set()     # type: typing.Set[InstalledPackage]
+    to_inspect = set()          # type: typing.Set[str]
 
-    if os.path.exists(platform_manifest):
+    for platform_manifest in args.platform_manifest:
         platform_packages = read_manifest(platform_manifest)
-    else:
-        platform_packages = []
 
-    wanted_packages = set(platform_packages)
-
-    sdk_manifest = os.path.join(
-        args.sysroot, 'usr', 'manifest.dpkg')
-
-    if os.path.exists(sdk_manifest):
-        sdk_packages = read_manifest(sdk_manifest)
-    else:
-        sdk_packages = []
-
-    to_inspect = set()      # type: typing.Set[str]
-
-    for want in platform_packages:
-        logger.info('Package in Platform: %s from %s', want, want.source)
-        to_inspect.add(
-            '{}={}'.format(
-                want.qualified_dbgsym_package,
-                want.binary_version,
-            )
-        )
-
-    for want in sdk_packages:
-        if want.is_debug:
-            logger.info('Debug package in SDK: %s from %s', want, want.source)
+        for want in platform_packages:
+            logger.info('Package in Platform: %s from %s', want, want.source)
             wanted_packages.add(want)
             to_inspect.add(
                 '{}={}'.format(
-                    want.qualified_binary,
+                    want.qualified_dbgsym_package,
                     want.binary_version,
                 )
             )
+
+    for sdk_manifest in args.sdk_manifest:
+        sdk_packages = read_manifest(sdk_manifest)
+
+        for want in sdk_packages:
+            if want.is_debug:
+                logger.info(
+                    'Debug package in SDK: %s from %s', want, want.source,
+                )
+                wanted_packages.add(want)
+                to_inspect.add(
+                    '{}={}'.format(
+                        want.qualified_binary,
+                        want.binary_version,
+                    )
+                )
 
     if args.primary_architecture is None:
         args.primary_architecture = subprocess.run(

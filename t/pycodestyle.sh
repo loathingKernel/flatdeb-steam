@@ -20,6 +20,7 @@ elif "${PYCODESTYLE}" \
     flatdeb/list-required-source-code \
     flatdeb/purge-conffiles \
     flatdeb/set-build-id \
+    flatdeb/unpack-dbgsym \
     >&2; then
     echo "1..1"
     echo "ok 1 - $PYCODESTYLE reported no issues"
