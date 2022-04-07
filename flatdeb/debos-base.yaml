@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 {{- $variant_id := or .variant_id "base" -}}
 {{- $artifact_prefix := or .artifact_prefix (printf "base-%s-%s" $suite $architecture) -}}
 {{- $ospack := or .ospack (printf "%s.tar.gz" $artifact_prefix) -}}
+{{- $strip_source_version_suffix := or .strip_source_version_suffix "" -}}
 
 architecture: {{ $architecture }}
 
@@ -135,6 +136,11 @@ actions:
       set -e
       echo
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
+      "$RECIPEDIR/list-required-source-code" \
+        --output="$ARTIFACTDIR/{{ $artifact_prefix }}.source-required.txt" \
+        --sysroot="$ROOTDIR" \
+        --strip-source-version-suffix="{{ $strip_source_version_suffix }}" \
+        ${NULL+}
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
       cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg.built-using"
       cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.deb822.gz"

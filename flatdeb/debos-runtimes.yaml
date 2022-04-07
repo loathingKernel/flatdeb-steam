@@ -198,6 +198,11 @@ actions:
       # We might have already done this in the case of the SDK, but it's
       # harmless to do it again
       "$RECIPEDIR/write-manifest" "$ROOTDIR"
+      "$RECIPEDIR/list-required-source-code" \
+        --output="$ARTIFACTDIR/{{ $artifact_prefix }}.source-required.txt" \
+        --sysroot="$ROOTDIR" \
+        --strip-source-version-suffix="{{ $strip_source_version_suffix }}" \
+        ${NULL+}
       cp "$ROOTDIR/usr/manifest.dpkg" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg"
       cp "$ROOTDIR/usr/manifest.dpkg.built-using" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.dpkg.built-using"
       cp "$ROOTDIR/usr/manifest.deb822.gz" "$ARTIFACTDIR/{{ $artifact_prefix }}.manifest.deb822.gz"

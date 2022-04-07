@@ -854,6 +854,7 @@ class Builder:
                 'clean-up-base',
                 'clean-up-before-pack',
                 'disable-services',
+                'list-required-source-code',
                 'set-build-id',
                 'usrmerge',
                 'write-manifest',
@@ -920,6 +921,9 @@ class Builder:
                     str(
                         self.suite_details.get('can_merge_usr', False),
                     ).lower(),
+                ),
+                '-t', 'strip_source_version_suffix:{}'.format(
+                    self.strip_source_version_suffix,
                 ),
             ]
 
@@ -1094,6 +1098,7 @@ class Builder:
                 'collect-source-code',
                 'dbgsym-use-build-id',
                 'disable-services',
+                'list-required-source-code',
                 'make-flatpak-friendly',
                 'platformize',
                 'prepare-runtime',

@@ -1,0 +1,289 @@
+#!/usr/bin/python3
+
+# flatdeb — build Flatpak runtimes from Debian packages
+#
+# Copyright © 2016-2017 Simon McVittie
+# Copyright © 2017-2022 Collabora Ltd.
+#
+# SPDX-License-Identifier: MIT
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+"""
+List required source code for packages installed in the given sysroot.
+"""
+
+import argparse
+import logging
+import os
+import re
+import subprocess
+import sys
+
+from debian.debian_support import Version
+
+try:
+    import typing
+except ImportError:
+    pass
+else:
+    typing  # silence "unused" warnings
+
+
+logger = logging.getLogger('flatdeb.list-required-source-code')
+
+
+class InstalledPackage:
+    def __init__(self, fields):
+        # type: (typing.Sequence[str]) -> None
+        self.binary = fields[0]
+        self.binary_version = fields[1]
+        self.source = fields[2]
+
+        if self.source.endswith(')'):
+            self.source, self.source_version = (
+                self.source.rstrip(')').split(' ('))
+        else:
+            self.source_version = self.binary_version
+
+            if not self.source:
+                self.source = self.binary
+
+        self.installed_size = fields[3]
+
+    def __str__(self):
+        # type: () -> str
+        return '{}_{}'.format(self.binary, self.binary_version)
+
+    def __hash__(self):
+        # type: () -> int
+        return hash(self.binary) ^ hash(self.binary_version)
+
+    def __eq__(self, other):
+        # type: (typing.Any) -> bool
+        if isinstance(other, InstalledPackage):
+            return (
+                self.binary,
+                self.binary_version,
+            ) == (
+                other.binary,
+                other.binary_version,
+            )
+        else:
+            return NotImplemented
+
+
+class SourceRequired:
+    def __init__(self, source, source_version):
+        # type: (str, Version) -> None
+        self.source = source
+        self.source_version = source_version
+
+    def __str__(self):
+        # type: () -> str
+        return 'src:{}_{}'.format(self.source, self.source_version)
+
+    def __hash__(self):
+        # type: () -> int
+        return hash(self.source) ^ hash(self.source_version)
+
+    def __eq__(self, other):
+        # type: (typing.Any) -> bool
+        if isinstance(other, SourceRequired):
+            return (
+                self.source,
+                self.source_version,
+            ) == (
+                other.source,
+                other.source_version,
+            )
+        else:
+            return NotImplemented
+
+    def __lt__(self, other):
+        # type: (typing.Any) -> bool
+        if isinstance(other, SourceRequired):
+            return (
+                self.source,
+                Version(self.source_version),
+            ) < (
+                other.source,
+                Version(other.source_version),
+            )
+        else:
+            return NotImplemented
+
+    @property
+    def get_source(self):
+        # type: () -> str
+        return '{}={}'.format(self.source, self.source_version)
+
+
+def read_manifest(path):
+    # type: (str) -> typing.List[InstalledPackage]
+
+    ret = []
+
+    with open(path, encoding='utf-8') as reader:
+        for line in reader:
+            line = line.rstrip('\n')
+
+            if not line:
+                continue
+
+            if line.startswith('#'):
+                continue
+
+            assert '\t' in line, repr(line)
+            ret.append(InstalledPackage(line.rstrip('\n').split('\t')))
+
+    return ret
+
+
+def convert_manifest(path):
+    # type: (str) -> typing.Set[SourceRequired]
+    ret = set()     # type: typing.Set[SourceRequired]
+
+    for p in read_manifest(path):
+        ret.add(SourceRequired(p.source, p.source_version))
+
+    return ret
+
+
+def read_built_using(path):
+    # type: (str) -> typing.Set[SourceRequired]
+
+    ret = set()     # type: typing.Set[SourceRequired]
+
+    with open(path, encoding='utf-8') as reader:
+        for line in reader:
+            line = line.rstrip('\n')
+
+            if line.startswith('#'):
+                continue
+
+            package, source, version = line.split('\t')
+            s = SourceRequired(source, version)
+            logger.info(
+                '%s was Built-Using %s',
+                package, s)
+            ret.add(s)
+
+    return ret
+
+
+def main():
+    # type: (...) -> None
+    parser = argparse.ArgumentParser(
+        description='Collect source code',
+    )
+    parser.add_argument('--output', '-o', default='')
+    parser.add_argument('--built-using', action='append', default=[])
+    parser.add_argument('--merge', action='append', default=[])
+    parser.add_argument('--strip-source-version-suffix', default='')
+    parser.add_argument('--sysroot', default='/')
+    parser.add_argument('manifest', nargs='*')
+
+    args = parser.parse_args()
+
+    strip_source_version_suffix = None
+
+    if args.strip_source_version_suffix:
+        strip_source_version_suffix = re.compile(
+            '(?:' + args.strip_source_version_suffix + ')$')
+
+    sources_required = set()    # type: typing.Set[SourceRequired]
+
+    for manifest in args.manifest:
+        sources_required |= convert_manifest(manifest)
+
+    for built_using in args.built_using:
+        sources_required |= read_built_using(built_using)
+
+    for sysroot in args.sysroot:
+        manifest = os.path.join(args.sysroot, 'usr', 'manifest.dpkg')
+        sources_required |= convert_manifest(manifest)
+
+        built_using = os.path.join(
+            args.sysroot, 'usr', 'manifest.dpkg.built-using',
+        )
+        sources_required |= read_built_using(built_using)
+
+    without_suffix = set()      # type: typing.Set[SourceRequired]
+
+    for s in sources_required:
+        source = s.source
+        source_version = s.source_version
+
+        # TODO: Is this necessary any more?
+        source = source.split(':', 1)[0]
+
+        if strip_source_version_suffix is not None:
+            source_version = strip_source_version_suffix.sub(
+                '', source_version)
+
+        s = SourceRequired(source, source_version)
+        without_suffix.add(s)
+
+    for path in args.merge:
+        with open(path, 'r') as reader:
+            for line in reader:
+                if line.startswith('#'):
+                    continue
+
+                source, source_version = line.rstrip('\n').split('\t')[:2]
+                without_suffix.add(SourceRequired(source, source_version))
+
+    if args.output:
+        writer = open(args.output, 'w')     # type: typing.TextIO
+    else:
+        writer = sys.stdout
+
+    with writer:
+        writer.write('#Source\t#Version\n')
+
+        for s in sorted(without_suffix):
+            writer.write('{}\t{}\n'.format(s.source, s.source_version))
+
+
+if __name__ == '__main__':
+    if sys.stderr.isatty():
+        try:
+            import colorlog
+        except ImportError:
+            logging.basicConfig()
+        else:
+            formatter = colorlog.ColoredFormatter(
+                '%(log_color)s%(levelname)s:%(name)s:%(reset)s %(message)s')
+            handler = logging.StreamHandler()
+            handler.setFormatter(formatter)
+            logging.getLogger().addHandler(handler)
+    else:
+        logging.basicConfig()
+
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        raise SystemExit(130)
+    except subprocess.CalledProcessError as e:
+        logger.error('%s', e)
+        raise SystemExit(1)
