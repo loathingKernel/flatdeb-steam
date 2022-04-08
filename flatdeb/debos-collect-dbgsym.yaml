@@ -1,0 +1,71 @@
+{{/*
+Copyright 2018-2022 Collabora Ltd.
+SPDX-License-Identifier: MIT
+*/}}
+
+{{- $architecture := or .architecture "amd64" -}}
+{{- $flatpak_arch := or .flatpak_arch $architecture -}}
+{{- $runtime := .runtime -}}
+{{- $runtime_branch := or .runtime_branch "master" -}}
+{{- $suite := or .suite "stretch" -}}
+
+{{- $apt_debug := or .apt_debug false -}}
+{{- $artifact_prefix := or .artifact_prefix (printf "%s-%s-%s" $runtime $flatpak_arch $runtime_branch) -}}
+{{- $automatic_dbgsym := or .automatic_dbgsym false -}}
+{{- $ddeb_directory := or .ddeb_directory "" -}}
+{{- $debug_prefix := or .debug_prefix (printf "%s-debug" $artifact_prefix) -}}
+{{- $debug_tarball := or .debug_tarball "" -}}
+{{- $ospack := or .ospack (printf "base-%s-%s.tar.gz" $suite $architecture) -}}
+
+architecture: {{ $architecture }}
+
+actions:
+  - action: unpack
+    compression: gz
+    file: {{ $ospack }}
+
+  - action: run
+    label: download -dbgsym packages
+    chroot: false
+    command: |
+      set -e
+      echo
+      {{ if $ddeb_directory }}
+      target="$ARTIFACTDIR/{{ $ddeb_directory }}"
+      {{ else }}
+      target="/scratch/ddebs"
+      {{ end }}
+      install -d "$target"
+      "$RECIPEDIR/collect-dbgsym" \
+        {{ if $apt_debug }}--debug{{ end }} \
+        --download="$target" \
+        --sysroot="$ROOTDIR" \
+        --platform-manifest="$RECIPEDIR/manifest.dpkg.platform" \
+        --sdk-manifest="$RECIPEDIR/manifest.dpkg" \
+        ${NULL+}
+
+  {{ if $debug_tarball }}
+  - action: run
+    label: create -dbgsym tarball
+    chroot: false
+    command: |
+      set -eux
+      {{ if $ddeb_directory }}
+      ddeb_directory="$ARTIFACTDIR/{{ $ddeb_directory }}"
+      {{ else }}
+      ddeb_directory="/scratch/ddebs"
+      {{ end }}
+      rm -fr /scratch/dbgsym
+      install -d /scratch/dbgsym/sysroot/usr/lib/debug
+      "$RECIPEDIR/unpack-dbgsym" "$ddeb_directory" /scratch/dbgsym/sysroot
+      install -m644 "$RECIPEDIR/flatpak-overlay/debug/metadata" /scratch/dbgsym/metadata
+      mv /scratch/dbgsym/sysroot/usr/lib/debug /scratch/dbgsym/files
+      rm -fr /scratch/dbgsym/sysroot
+      "$RECIPEDIR/dbgsym-use-build-id" --debug-dir /scratch/dbgsym/files
+      tar -cf "$ARTIFACTDIR/{{ $debug_tarball }}" \
+        --numeric-owner \
+        --sort=name \
+        --use-compress-program="pigz -n --rsyncable" \
+        -C /scratch/dbgsym \
+        files metadata
+  {{ end }}

@@ -79,6 +79,8 @@ if VERSION is None:
 
 _DEBOS_BASE_RECIPE = os.path.join(
     os.path.dirname(__file__), 'flatdeb', 'debos-base.yaml')
+_DEBOS_COLLECT_DBGSYM_RECIPE = os.path.join(
+    os.path.dirname(__file__), 'flatdeb', 'debos-collect-dbgsym.yaml')
 _DEBOS_COLLECT_SOURCE_RECIPE = os.path.join(
     os.path.dirname(__file__), 'flatdeb', 'debos-collect-source.yaml')
 _DEBOS_RUNTIMES_RECIPE = os.path.join(
@@ -607,6 +609,18 @@ class Builder:
         subparser.add_argument('source_required', nargs='*')
 
         subparser = subparsers.add_parser(
+            'collect-dbgsym',
+            help="Collect a runtime's detached debug symbols",
+        )
+        subparser.add_argument(
+            '--platform-manifest', action='append', default=[],
+        )
+        subparser.add_argument(
+            '--sdk-manifest', action='append', default=[],
+        )
+        subparser.add_argument('runtime_yaml_file')
+
+        subparser = subparsers.add_parser(
             'runtimes',
             help='Build runtimes',
         )
@@ -1008,6 +1022,185 @@ class Builder:
 
             os.rename(output + '.new', output)
 
+    def command_collect_dbgsym(
+        self,
+        *,
+        runtime_yaml_file,                      # type: str
+        ddeb_directory='',
+        dbgsym_tarball=None,                    # type: typing.Optional[bool]
+        platform_manifest=[],                   # type: typing.List[str]
+        sdk_manifest=[],                        # type: typing.List[str]
+        **kwargs
+    ):
+        # type: (...) -> None
+        if self.ostree_commit:
+            self.ensure_local_repo()
+
+        if self.runtime_branch is None:
+            self.runtime_branch = self.apt_suite
+
+        with open(runtime_yaml_file, encoding='utf-8') as reader:
+            self.runtime_details = yaml.safe_load(reader)
+
+        tarball = 'base-{}-{}.tar.gz'.format(
+            self.apt_suite,
+            ','.join(self.dpkg_archs),
+        )
+
+        with ExitStack() as stack:
+            scratch = stack.enter_context(
+                TemporaryDirectory(prefix='flatdeb.')
+            )
+            self.ensure_build_area()
+
+            dest_recipe = os.path.join(scratch, 'flatdeb.yaml')
+            shutil.copyfile(_DEBOS_COLLECT_DBGSYM_RECIPE, dest_recipe)
+
+            for helper in (
+                'collect-dbgsym',
+                'dbgsym-use-build-id',
+                'unpack-dbgsym',
+            ):
+                dest = os.path.join(scratch, helper)
+                shutil.copyfile(
+                    os.path.join(
+                        os.path.dirname(__file__),
+                        'flatdeb',
+                        helper,
+                    ),
+                    dest,
+                )
+                os.chmod(dest, 0o755)
+
+            prefix = self.runtime_details['id_prefix']
+            runtime = prefix + '.Sdk'
+            artifact_prefix = '{}-{}-{}'.format(
+                runtime,
+                ','.join(self.dpkg_archs),
+                self.runtime_branch,
+            )
+
+            with open(
+                os.path.join(scratch, 'manifest.dpkg.platform'),
+                'w',
+            ) as writer:
+                for path in platform_manifest:
+                    with open(path) as reader:
+                        for line in reader:
+                            writer.write(line)
+
+            with open(
+                os.path.join(scratch, 'manifest.dpkg'),
+                'w',
+            ) as writer:
+                for path in sdk_manifest:
+                    with open(path) as reader:
+                        for line in reader:
+                            writer.write(line)
+
+            argv = [
+                'debos',
+                '--artifactdir={}'.format(self.build_area),
+                '--scratchsize=8G',
+                '-t', 'architecture:{}'.format(self.primary_dpkg_arch),
+                '-t', 'flatpak_arch:{}'.format(self.flatpak_arch),
+                '-t', 'suite:{}'.format(self.apt_suite),
+                '-t', 'ospack:{}'.format(tarball),
+                '-t', 'artifact_prefix:{}'.format(artifact_prefix),
+                '-t', 'runtime:{}'.format(runtime),
+                '-t', 'runtime_branch:{}'.format(self.runtime_branch),
+            ]
+
+            debug_prefix = artifact_prefix + '-debug'
+            debug_tarball = debug_prefix + '.tar.gz'
+
+            if self.apt_debug:
+                argv.append('-t')
+                argv.append('apt_debug:true')
+
+            argv.append('-t')
+
+            if self.automatic_dbgsym:
+                argv.append('automatic_dbgsym:yes')
+            else:
+                argv.append('automatic_dbgsym:')
+
+            if ddeb_directory:
+                os.makedirs(
+                    os.path.join(
+                        self.build_area,
+                        ddeb_directory,
+                    ),
+                    0o755,
+                    exist_ok=True,
+                )
+                argv.append('-t')
+                argv.append(
+                    'ddeb_directory:{}'.format(
+                        ddeb_directory))
+
+            if dbgsym_tarball is None:
+                dbgsym_tarball = not ddeb_directory
+
+            if dbgsym_tarball:
+                argv.append('-t')
+                argv.append('debug_tarball:' + debug_tarball + '.new')
+
+            argv.append('-t')
+            argv.append('debug_prefix:' + debug_prefix)
+
+            overlay = os.path.join(
+                scratch, 'flatpak-overlay',
+            )
+            self.create_flatpak_manifest_overlay(
+                overlay, prefix, runtime, sdk=True,
+            )
+
+            argv.append(dest_recipe)
+            subprocess.check_call(argv)
+
+            output = os.path.join(self.build_area, debug_tarball)
+            os.rename(output + '.new', output)
+
+            if self.ostree_commit:
+                logger.info('Committing %s to OSTree', debug_tarball)
+                subprocess.check_call([
+                    'time',
+                    'ostree',
+                    '--repo=' + self.ostree_repo,
+                    'commit',
+                    '--branch=runtime/{}.Debug/{}/{}'.format(
+                        runtime,
+                        self.flatpak_arch,
+                        self.runtime_branch,
+                    ),
+                    '--subject=Update',
+                    '--tree=tar={}'.format(output),
+                    '--fsync=false',
+                    '--tar-autocreate-parents',
+                    '--add-metadata-string',
+                    'xa.metadata=' + self.metadata_debug.to_data()[0],
+                ])
+
+                # Don't keep the history in this working repository:
+                # if history is desired, mirror the commits into a public
+                # repository and maintain history there.
+                subprocess.check_call([
+                    'time',
+                    'ostree',
+                    '--repo=' + self.ostree_repo,
+                    'prune',
+                    '--refs-only',
+                    '--depth=1',
+                ])
+
+                subprocess.check_call([
+                    'time',
+                    'flatpak',
+                    'build-update-repo',
+                    self.ostree_repo,
+                ])
+
     def command_collect_source(
         self,
         *,
@@ -1133,6 +1326,13 @@ class Builder:
 
             argv.append('-t')
             argv.append('sources_prefix:' + sources_prefix)
+
+            overlay = os.path.join(
+                scratch, 'flatpak-overlay',
+            )
+            self.create_flatpak_manifest_overlay(
+                overlay, prefix, runtime, sdk=True,
+            )
 
             argv.append(dest_recipe)
             subprocess.check_call(argv)
