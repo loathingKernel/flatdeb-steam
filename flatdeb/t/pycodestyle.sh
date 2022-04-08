@@ -7,7 +7,7 @@
 set -e
 set -u
 
-if [ "x${PYCODESTYLE:=pycodestyle}" = xfalse ] || \
+if [ "${PYCODESTYLE:=pycodestyle}" = false ] || \
         [ -z "$(command -v "$PYCODESTYLE")" ]; then
     echo "1..0 # SKIP pycodestyle not found"
 elif "${PYCODESTYLE}" \
@@ -17,8 +17,10 @@ elif "${PYCODESTYLE}" \
     flatdeb/collect-app-source-code \
     flatdeb/collect-source-code \
     flatdeb/dbgsym-use-build-id \
+    flatdeb/list-required-source-code \
     flatdeb/purge-conffiles \
     flatdeb/set-build-id \
+    flatdeb/unpack-dbgsym \
     >&2; then
     echo "1..1"
     echo "ok 1 - $PYCODESTYLE reported no issues"

@@ -7,7 +7,7 @@
 set -e
 set -u
 
-if [ "x${PYFLAKES:=pyflakes3}" = xfalse ] || \
+if [ "${PYFLAKES:=pyflakes3}" = false ] || \
         [ -z "$(command -v "$PYFLAKES")" ]; then
     echo "1..0 # SKIP pyflakes3 not found"
 elif "${PYFLAKES}" \
@@ -17,8 +17,10 @@ elif "${PYFLAKES}" \
     flatdeb/collect-app-source-code \
     flatdeb/collect-source-code \
     flatdeb/dbgsym-use-build-id \
+    flatdeb/list-required-source-code \
     flatdeb/purge-conffiles \
     flatdeb/set-build-id \
+    flatdeb/unpack-dbgsym \
     >&2; then
     echo "1..1"
     echo "ok 1 - $PYFLAKES reported no issues"

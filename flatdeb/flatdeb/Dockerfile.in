@@ -5,8 +5,6 @@ FROM scratch
 ADD @sysroot_tarball@ /
 RUN \
 set -e; \
-mkdir -p /run/systemd; \
-echo 'docker' > /run/systemd/container; \
 if [ "@nopasswd@" = true ]; then \
     mkdir -p /etc/sudoers.d; \
     echo "%sudo ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/flatdeb; \

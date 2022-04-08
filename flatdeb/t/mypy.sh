@@ -17,11 +17,13 @@ for script in \
     flatdeb/collect-app-source-code \
     flatdeb/collect-source-code \
     flatdeb/dbgsym-use-build-id \
+    flatdeb/list-required-source-code \
     flatdeb/purge-conffiles \
     flatdeb/set-build-id \
+    flatdeb/unpack-dbgsym \
 ; do
     i=$((i + 1))
-    if [ "x${MYPY:="$(command -v mypy || echo false)"}" = xfalse ]; then
+    if [ "${MYPY:="$(command -v mypy || echo false)"}" = false ]; then
         echo "ok $i - $script # SKIP mypy not found"
     elif "${MYPY}" \
             --python-executable="${PYTHON:=python3}" \
