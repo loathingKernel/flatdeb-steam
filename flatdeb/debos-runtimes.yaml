@@ -225,8 +225,16 @@ actions:
     command: |
       set -e
       echo
+      {{ if $sources_directory }}
+      dir="$ARTIFACTDIR/{{ $sources_directory }}"
+      {{ else }}
+      dir="/scratch/src"
+      {{ end }}
+      install -m644 \
+        "$RECIPEDIR/runtimes/{{ $runtime }}/flatpak-overlay/src/metadata" \
+        "$dir/metadata"
       "$RECIPEDIR/collect-source-code" \
-        {{ if $sources_directory }}--output="$ARTIFACTDIR/{{ $sources_directory }}"{{ end }} \
+        --output="$dir" \
         --sysroot="$ROOTDIR" \
         "$ARTIFACTDIR/{{ $ospack_source_required }}" \
         "$ARTIFACTDIR/{{ $artifact_prefix }}.source-required.txt" \
@@ -390,16 +398,20 @@ actions:
   - action: run
     label: pack source code
     chroot: false
-    command: >
-      set -e;
-      echo;
-      tar -cf "$ARTIFACTDIR/{{ $sources_tarball }}"
-      --numeric-owner
-      --sort=name
-      --transform="s,^./,,"
-      --use-compress-program="pigz -n --rsyncable"
-      -C "$ROOTDIR/src"
-      .
+    command: |
+      set -eux
+      {{ if $sources_directory }}
+      dir="$ARTIFACTDIR/{{ $sources_directory }}"
+      {{ else }}
+      dir="/scratch/src"
+      {{ end }}
+      tar -cf "$ARTIFACTDIR/{{ $sources_tarball }}" \
+        --numeric-owner \
+        --sort=name \
+        --transform='s,^./,files/,;s,^files/metadata$,metadata,' \
+        --use-compress-program="pigz -n --rsyncable" \
+        -C "$dir" \
+        .
   {{ end }}
 
   {{ if and $debug_symbols $debug_tarball }}
@@ -426,7 +438,7 @@ actions:
     command: |
       set -e
       cd "$ARTIFACTDIR"
-      dir="{{ or $sources_directory "$ROOTDIR/src/files" }}"
+      dir="{{ or $sources_directory "/scratch/src" }}"
       cp -v "$dir/Sources.gz" "{{ $sources_prefix }}.deb822.gz"
       cp -v "$dir/sources.txt" "{{ $sources_prefix }}.sources.txt"
   {{ end }}
@@ -437,7 +449,7 @@ actions:
     command: >
       set -e;
       cd "$ARTIFACTDIR";
-      dir="{{ or $sources_directory "$ROOTDIR/src/files" }}";
+      dir="{{ or $sources_directory "/scratch/src" }}"
       test ! -e "$dir/MISSING.txt" ||
       cp -v "$dir/MISSING.txt"
       "{{ $sources_prefix }}.MISSING.txt"
@@ -452,7 +464,7 @@ actions:
       head -n10000
       "$ROOTDIR/files/manifest.dpkg"
       "$ROOTDIR/files/manifest.dpkg.built-using"
-      {{ or $sources_directory "$ROOTDIR/src/files" }}/sources.txt
+      {{ or $sources_directory "/scratch/src" }}/sources.txt
       || true
 
   - action: run
@@ -468,6 +480,6 @@ actions:
       "$ROOTDIR/files/etc/apt/sources.list.d"/*
       "$ROOTDIR/files/etc/debian_chroot"
       "$ROOTDIR/files/lib/os-release"
-      {{ or $sources_directory "$ROOTDIR/src/files" }}/MISSING.txt
+      {{ or $sources_directory "/scratch/src" }}/MISSING.txt
       "$ROOTDIR/metadata"
       || true
