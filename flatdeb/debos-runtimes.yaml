@@ -106,15 +106,6 @@ actions:
       if [ -e "$RECIPEDIR/manifest.platform.deb822.gz" ]; then
         cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"
       fi
-  {{ if and $debug_symbols $automatic_dbgsym $debug_tarball }}
-  - action: run
-    label: populate /usr/lib/debug
-    chroot: false
-    command: |
-      set -e
-      echo
-      "$RECIPEDIR/collect-dbgsym" {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR"
-  {{ end }}
   # We do this as a separate step in case it involves removing any
   # of the common packages, or replacing automatic debug symbols with
   # legacy debug symbols that might have more coverage
@@ -126,7 +117,7 @@ actions:
   {{ end }}
   # Do this after the apt-install for SDK packages, so that we can
   # re-download things like libc6-dbg
-  {{ if and $debug_symbols $ddeb_directory }}
+  {{ if $debug_symbols }}
   # Downloading -dbgsym packages needs the SDK manifest
   - action: run
     label: write-manifest
@@ -141,7 +132,19 @@ actions:
     command: |
       set -e
       echo
-      "$RECIPEDIR/collect-dbgsym" {{ if $apt_debug }}--debug{{ end }} --download="$ARTIFACTDIR/{{ $ddeb_directory }}" "$ROOTDIR"
+      {{ if $ddeb_directory }}
+      target="$ARTIFACTDIR/{{ $ddeb_directory }}"
+      {{ else }}
+      target="/scratch/ddebs"
+      {{ end }}
+      install -d "$target"
+      "$RECIPEDIR/collect-dbgsym" \
+        {{ if $apt_debug }}--debug{{ end }} \
+        --download="$target" \
+        --sysroot="$ROOTDIR" \
+        --platform-manifest="$ROOTDIR/usr/manifest.dpkg.platform" \
+        --sdk-manifest="$ROOTDIR/usr/manifest.dpkg" \
+        ${NULL+}
   {{ end }}
   {{ end }}
 
@@ -225,8 +228,16 @@ actions:
     command: |
       set -e
       echo
+      {{ if $sources_directory }}
+      dir="$ARTIFACTDIR/{{ $sources_directory }}"
+      {{ else }}
+      dir="/scratch/src"
+      {{ end }}
+      install -m644 \
+        "$RECIPEDIR/runtimes/{{ $runtime }}/flatpak-overlay/src/metadata" \
+        "$dir/metadata"
       "$RECIPEDIR/collect-source-code" \
-        {{ if $sources_directory }}--output="$ARTIFACTDIR/{{ $sources_directory }}"{{ end }} \
+        --output="$dir" \
         --sysroot="$ROOTDIR" \
         "$ARTIFACTDIR/{{ $ospack_source_required }}" \
         "$ARTIFACTDIR/{{ $artifact_prefix }}.source-required.txt" \
@@ -341,17 +352,6 @@ actions:
     chroot: false
     command: 'echo; "$RECIPEDIR/symlink-alternatives" "$ROOTDIR"'
 
-  {{ if and $debug_symbols $debug_tarball }}
-  - action: run
-    label: dbgsym-use-build-id
-    chroot: false
-    command: |
-      set -eux
-      if [ -d "$ROOTDIR/usr/lib/debug" ]; then
-        "$RECIPEDIR/dbgsym-use-build-id" --debug-dir "$ROOTDIR/usr/lib/debug"
-      fi
-  {{ end }}
-
   {{ if $sdk }}
   - action: run
     label: make-flatpak-friendly --sdk
@@ -390,33 +390,47 @@ actions:
   - action: run
     label: pack source code
     chroot: false
-    command: >
-      set -e;
-      echo;
-      tar -cf "$ARTIFACTDIR/{{ $sources_tarball }}"
-      --numeric-owner
-      --sort=name
-      --transform="s,^./,,"
-      --use-compress-program="pigz -n --rsyncable"
-      -C "$ROOTDIR/src"
-      .
+    command: |
+      set -eux
+      {{ if $sources_directory }}
+      dir="$ARTIFACTDIR/{{ $sources_directory }}"
+      {{ else }}
+      dir="/scratch/src"
+      {{ end }}
+      tar -cf "$ARTIFACTDIR/{{ $sources_tarball }}" \
+        --numeric-owner \
+        --sort=name \
+        --transform='s,^./,files/,;s,^files/metadata$,metadata,' \
+        --use-compress-program="pigz -n --rsyncable" \
+        -C "$dir" \
+        .
   {{ end }}
 
   {{ if and $debug_symbols $debug_tarball }}
   - action: run
-    label: pack debug symbols
+    label: create -dbgsym tarball
     chroot: false
-    command: >
-      set -e;
-      echo;
-      install -d "$ROOTDIR/debug";
-      tar -cf "$ARTIFACTDIR/{{ $debug_tarball }}"
-      --numeric-owner
-      --sort=name
-      --transform="s,^./,,"
-      --use-compress-program="pigz -n --rsyncable"
-      -C "$ROOTDIR/debug"
-      .
+    command: |
+      set -eux
+      {{ if $ddeb_directory }}
+      ddeb_directory="$ARTIFACTDIR/{{ $ddeb_directory }}"
+      {{ else }}
+      ddeb_directory="/scratch/ddebs"
+      {{ end }}
+      rm -fr /scratch/dbgsym
+      install -d /scratch/dbgsym/sysroot/usr/lib/debug
+      "$RECIPEDIR/unpack-dbgsym" "$ddeb_directory" /scratch/dbgsym/sysroot
+      install -m644 "$ROOTDIR/debug/metadata" /scratch/dbgsym/metadata
+      mv /scratch/dbgsym/sysroot/usr/lib/debug /scratch/dbgsym/files
+      rm -fr /scratch/dbgsym/sysroot
+      "$RECIPEDIR/dbgsym-use-build-id" --debug-dir /scratch/dbgsym/files
+      tar -cf "$ARTIFACTDIR/{{ $debug_tarball }}" \
+        --numeric-owner \
+        --sort=name \
+        --use-compress-program="pigz -n --rsyncable" \
+        -C /scratch/dbgsym \
+        files metadata
+      rm -fr /scratch/dbgsym
   {{ end }}
 
   {{ if $collect_source_code }}
@@ -426,7 +440,7 @@ actions:
     command: |
       set -e
       cd "$ARTIFACTDIR"
-      dir="{{ or $sources_directory "$ROOTDIR/src/files" }}"
+      dir="{{ or $sources_directory "/scratch/src" }}"
       cp -v "$dir/Sources.gz" "{{ $sources_prefix }}.deb822.gz"
       cp -v "$dir/sources.txt" "{{ $sources_prefix }}.sources.txt"
   {{ end }}
@@ -437,7 +451,7 @@ actions:
     command: >
       set -e;
       cd "$ARTIFACTDIR";
-      dir="{{ or $sources_directory "$ROOTDIR/src/files" }}";
+      dir="{{ or $sources_directory "/scratch/src" }}"
       test ! -e "$dir/MISSING.txt" ||
       cp -v "$dir/MISSING.txt"
       "{{ $sources_prefix }}.MISSING.txt"
@@ -452,7 +466,7 @@ actions:
       head -n10000
       "$ROOTDIR/files/manifest.dpkg"
       "$ROOTDIR/files/manifest.dpkg.built-using"
-      {{ or $sources_directory "$ROOTDIR/src/files" }}/sources.txt
+      {{ or $sources_directory "/scratch/src" }}/sources.txt
       || true
 
   - action: run
@@ -468,6 +482,6 @@ actions:
       "$ROOTDIR/files/etc/apt/sources.list.d"/*
       "$ROOTDIR/files/etc/debian_chroot"
       "$ROOTDIR/files/lib/os-release"
-      {{ or $sources_directory "$ROOTDIR/src/files" }}/MISSING.txt
+      {{ or $sources_directory "/scratch/src" }}/MISSING.txt
       "$ROOTDIR/metadata"
       || true

@@ -152,7 +152,8 @@ def main():
     included = set()            # type: typing.Set[SourceRequired]
     missing_sources = set()     # type: typing.Set[SourceRequired]
 
-    for s in sources_required:
+    for s in sorted(sources_required):
+        logger.debug(s.get_source)
         get_source.append(s.get_source)
 
     options = ['-q', '-q', '-y', '--download-only']
@@ -200,16 +201,14 @@ def main():
         included = set(sources_required)
 
     parent = args.output or os.path.join(args.sysroot, 'src', 'files')
+    os.makedirs(parent, mode=0o755, exist_ok=True)
 
-    subprocess.check_call(in_chroot + [
-        'sh', '-euc',
-        'mkdir -p "$1"; cd "$1"; shift; exec >"$1"; shift; "$@"',
-        'sh',                       # argv[0]
-        '/src/files',               # working directory
-        '/src/files/Sources',
-        'dpkg-scansources',
-        '.',
-    ])
+    with open(os.path.join(parent, 'Sources'), 'wb') as binary_writer:
+        subprocess.check_call(
+            ['dpkg-scansources', '.'],
+            cwd=parent,
+            stdout=binary_writer,
+        )
 
     with open(
         os.path.join(parent, 'Sources.gz'), 'wb'

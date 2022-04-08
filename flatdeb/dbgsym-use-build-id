@@ -64,6 +64,11 @@ def main():
         if '.build-id' in subdirs:
             subdirs.remove('.build-id')
 
+        # Skip .dwz directory: items here are just referenced by name from
+        # other debug symbols
+        if '.dwz' in subdirs:
+            subdirs.remove('.dwz')
+
         for f in files:
             if f.endswith('.txt'):
                 continue

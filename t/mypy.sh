@@ -20,6 +20,7 @@ for script in \
     flatdeb/list-required-source-code \
     flatdeb/purge-conffiles \
     flatdeb/set-build-id \
+    flatdeb/unpack-dbgsym \
 ; do
     i=$((i + 1))
     if [ "${MYPY:="$(command -v mypy || echo false)"}" = false ]; then
