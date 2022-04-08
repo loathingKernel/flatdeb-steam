@@ -135,7 +135,7 @@ actions:
       {{ if $ddeb_directory }}
       target="$ARTIFACTDIR/{{ $ddeb_directory }}"
       {{ else }}
-      target="$ROOTDIR/usr/lib/debug/ddebs"
+      target="/scratch/ddebs"
       {{ end }}
       install -d "$target"
       "$RECIPEDIR/collect-dbgsym" \
@@ -415,22 +415,22 @@ actions:
       {{ if $ddeb_directory }}
       ddeb_directory="$ARTIFACTDIR/{{ $ddeb_directory }}"
       {{ else }}
-      ddeb_directory="$ROOTDIR/debug/files/ddebs"
+      ddeb_directory="/scratch/ddebs"
       {{ end }}
-      install -d "$ROOTDIR/debug/sysroot/usr/lib/debug"
-      "$RECIPEDIR/unpack-dbgsym" "$ddeb_directory" "$ROOTDIR/debug/sysroot"
-      rm -fr "$ROOTDIR/debug/files"
-      mv "$ROOTDIR/debug/sysroot/usr/lib/debug" "$ROOTDIR/debug/files"
-      rm -fr "$ROOTDIR/debug/sysroot"
-      "$RECIPEDIR/dbgsym-use-build-id" --debug-dir "$ROOTDIR/debug/files"
+      rm -fr /scratch/dbgsym
+      install -d /scratch/dbgsym/sysroot/usr/lib/debug
+      "$RECIPEDIR/unpack-dbgsym" "$ddeb_directory" /scratch/dbgsym/sysroot
+      install -m644 "$ROOTDIR/debug/metadata" /scratch/dbgsym/metadata
+      mv /scratch/dbgsym/sysroot/usr/lib/debug /scratch/dbgsym/files
+      rm -fr /scratch/dbgsym/sysroot
+      "$RECIPEDIR/dbgsym-use-build-id" --debug-dir /scratch/dbgsym/files
       tar -cf "$ARTIFACTDIR/{{ $debug_tarball }}" \
         --numeric-owner \
         --sort=name \
-        --transform="s,^./,," \
         --use-compress-program="pigz -n --rsyncable" \
-        -C "$ROOTDIR/debug" \
-        .
-      rm -fr "$ROOTDIR/debug"
+        -C /scratch/dbgsym \
+        files metadata
+      rm -fr /scratch/dbgsym
   {{ end }}
 
   {{ if $collect_source_code }}
