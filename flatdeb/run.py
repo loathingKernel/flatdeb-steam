@@ -1840,9 +1840,6 @@ class Builder:
                             raise SystemExit(
                                 'Some source code was missing: aborting'
                             )
-                    else:
-                        with open(output, 'w') as writer:
-                            writer.write('EVERYTHING\n')
 
                 if sysroot_prefix is not None:
                     assert sysroot_tarball is not None
