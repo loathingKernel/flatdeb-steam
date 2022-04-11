@@ -118,6 +118,7 @@ actions:
   # Do this after the apt-install for SDK packages, so that we can
   # re-download things like libc6-dbg
   {{ if $debug_symbols }}
+  {{ if or $dbgsym_tarball $ddeb_directory }}
   # Downloading -dbgsym packages needs the SDK manifest
   - action: run
     label: write-manifest
@@ -145,6 +146,7 @@ actions:
         --platform-manifest="$ROOTDIR/usr/manifest.dpkg.platform" \
         --sdk-manifest="$ROOTDIR/usr/manifest.dpkg" \
         ${NULL+}
+  {{ end }}
   {{ end }}
   {{ end }}
 

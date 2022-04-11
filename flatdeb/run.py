@@ -1159,47 +1159,48 @@ class Builder:
             argv.append(dest_recipe)
             subprocess.check_call(argv)
 
-            output = os.path.join(self.build_area, debug_tarball)
-            os.rename(output + '.new', output)
+            if dbgsym_tarball:
+                output = os.path.join(self.build_area, debug_tarball)
+                os.rename(output + '.new', output)
 
-            if self.ostree_commit:
-                logger.info('Committing %s to OSTree', debug_tarball)
-                subprocess.check_call([
-                    'time',
-                    'ostree',
-                    '--repo=' + self.ostree_repo,
-                    'commit',
-                    '--branch=runtime/{}.Debug/{}/{}'.format(
-                        runtime,
-                        self.flatpak_arch,
-                        self.runtime_branch,
-                    ),
-                    '--subject=Update',
-                    '--tree=tar={}'.format(output),
-                    '--fsync=false',
-                    '--tar-autocreate-parents',
-                    '--add-metadata-string',
-                    'xa.metadata=' + self.metadata_debug.to_data()[0],
-                ])
+                if self.ostree_commit:
+                    logger.info('Committing %s to OSTree', debug_tarball)
+                    subprocess.check_call([
+                        'time',
+                        'ostree',
+                        '--repo=' + self.ostree_repo,
+                        'commit',
+                        '--branch=runtime/{}.Debug/{}/{}'.format(
+                            runtime,
+                            self.flatpak_arch,
+                            self.runtime_branch,
+                        ),
+                        '--subject=Update',
+                        '--tree=tar={}'.format(output),
+                        '--fsync=false',
+                        '--tar-autocreate-parents',
+                        '--add-metadata-string',
+                        'xa.metadata=' + self.metadata_debug.to_data()[0],
+                    ])
 
-                # Don't keep the history in this working repository:
-                # if history is desired, mirror the commits into a public
-                # repository and maintain history there.
-                subprocess.check_call([
-                    'time',
-                    'ostree',
-                    '--repo=' + self.ostree_repo,
-                    'prune',
-                    '--refs-only',
-                    '--depth=1',
-                ])
+                    # Don't keep the history in this working repository:
+                    # if history is desired, mirror the commits into a public
+                    # repository and maintain history there.
+                    subprocess.check_call([
+                        'time',
+                        'ostree',
+                        '--repo=' + self.ostree_repo,
+                        'prune',
+                        '--refs-only',
+                        '--depth=1',
+                    ])
 
-                subprocess.check_call([
-                    'time',
-                    'flatpak',
-                    'build-update-repo',
-                    self.ostree_repo,
-                ])
+                    subprocess.check_call([
+                        'time',
+                        'flatpak',
+                        'build-update-repo',
+                        self.ostree_repo,
+                    ])
 
     def command_collect_source(
         self,
@@ -1882,29 +1883,32 @@ class Builder:
                     os.rename(output + '.new', output)
 
                 if sdk:
-                    if self.debug_symbols:
+                    if self.debug_symbols and dbgsym_tarball:
                         output = os.path.join(self.build_area, debug_tarball)
                         os.rename(output + '.new', output)
 
-                    if self.ostree_commit and self.debug_symbols:
-                        logger.info('Committing %s to OSTree', debug_tarball)
-                        subprocess.check_call([
-                            'time',
-                            'ostree',
-                            '--repo=' + self.ostree_repo,
-                            'commit',
-                            '--branch=runtime/{}.Debug/{}/{}'.format(
-                                runtime,
-                                self.flatpak_arch,
-                                self.runtime_branch,
-                            ),
-                            '--subject=Update',
-                            '--tree=tar={}'.format(output),
-                            '--fsync=false',
-                            '--tar-autocreate-parents',
-                            '--add-metadata-string',
-                            'xa.metadata=' + self.metadata_debug.to_data()[0],
-                        ])
+                        if self.ostree_commit:
+                            logger.info(
+                                'Committing %s to OSTree', debug_tarball,
+                            )
+                            subprocess.check_call([
+                                'time',
+                                'ostree',
+                                '--repo=' + self.ostree_repo,
+                                'commit',
+                                '--branch=runtime/{}.Debug/{}/{}'.format(
+                                    runtime,
+                                    self.flatpak_arch,
+                                    self.runtime_branch,
+                                ),
+                                '--subject=Update',
+                                '--tree=tar={}'.format(output),
+                                '--fsync=false',
+                                '--tar-autocreate-parents',
+                                '--add-metadata-string',
+                                ('xa.metadata='
+                                 + self.metadata_debug.to_data()[0]),
+                            ])
 
                     if self.collect_source_code and generate_source_tarball:
                         output = os.path.join(self.build_area, sources_tarball)
