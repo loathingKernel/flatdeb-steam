@@ -9,7 +9,7 @@ apt_components:
   - non-free
 can_merge_usr: after_sysroot
 has_automatic_dbgsym: true
-strip_source_version_suffix: '\+bsrt[34]\..*'
+strip_source_version_suffix: '\+bsrt[34][.~].*'
 bootstrap_keyring: '8dd47936-debian-archive-bullseye-automatic.gpg'
 sources:
   - label: debian
