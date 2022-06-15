@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: MIT
 additional_base_packages:
   - apt-transport-https
+  - apt
+  - libapt-pkg4.12
 apt_components:
   - main
 can_merge_usr: after_sysroot
