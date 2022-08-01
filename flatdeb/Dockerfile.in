@@ -1,4 +1,4 @@
-# Copyright 2019 Collabora Ltd.
+# Copyright 2019-2022 Collabora Ltd.
 # SPDX-License-Identifier: MIT
 
 FROM scratch
@@ -12,6 +12,7 @@ if [ "@nopasswd@" = true ]; then \
 fi; \
 :
 
+@os_release_labels@
 @comment_if_not_toolbx@LABEL com.github.containers.toolbox="true"
 @comment_if_not_toolbx@LABEL com.github.debarshiray.toolbox="true"
 

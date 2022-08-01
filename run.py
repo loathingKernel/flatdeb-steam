@@ -3,7 +3,7 @@
 # flatdeb — build Flatpak runtimes from Debian packages
 #
 # Copyright 2015-2017 Simon McVittie
-# Copyright 2017-2021 Collabora Ltd.
+# Copyright 2017-2022 Collabora Ltd.
 #
 # SPDX-License-Identifier: MIT
 #
@@ -1874,6 +1874,26 @@ class Builder:
                             '@comment_if_not_toolbx@',
                             '# ',
                         )
+
+                    os_release_labels = []      # type: typing.List[str]
+                    os_release = os.path.join(
+                        self.build_area,
+                        artifact_prefix + '.os-release.txt',
+                    )
+
+                    with open(os_release, 'r', encoding='utf-8') as reader:
+                        for line in reader:
+                            assert '=' in line
+                            key, value = line.split('=', 1)
+                            value.rstrip('\n')
+                            os_release_labels.append(
+                                f'os_release.{key.lower()}={value}'
+                            )
+
+                    content = content.replace(
+                        '@os_release_labels@',
+                        'LABEL ' + ' '.join(sorted(os_release_labels)) + '\n',
+                    )
 
                     with open(
                         output + '.new', 'w', encoding='utf-8'
