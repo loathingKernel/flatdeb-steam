@@ -1018,6 +1018,7 @@ class Builder:
                     self.yaml_dump_one_line(components)))
 
             argv.append(dest_recipe)
+            logger.info('%r', argv)
             subprocess.check_call(argv)
 
             os.rename(output + '.new', output)
@@ -1157,6 +1158,7 @@ class Builder:
             )
 
             argv.append(dest_recipe)
+            logger.info('%r', argv)
             subprocess.check_call(argv)
 
             if dbgsym_tarball:
@@ -1336,6 +1338,7 @@ class Builder:
             )
 
             argv.append(dest_recipe)
+            logger.info('%r', argv)
             subprocess.check_call(argv)
 
             output = os.path.join(
@@ -1828,6 +1831,7 @@ class Builder:
                 )
 
                 argv.append(dest_recipe)
+                logger.info('%r', argv)
                 subprocess.check_call(argv)
 
                 if sdk:
@@ -1888,6 +1892,7 @@ class Builder:
                     )
 
                     with open(output + '.new', 'wb') as writer:
+                        logger.info('%r', cpp)
                         subprocess.run(
                             cpp,
                             check=True,
