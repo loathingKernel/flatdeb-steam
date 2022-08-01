@@ -1850,30 +1850,15 @@ class Builder:
                     output = os.path.join(
                         self.build_area, sysroot_prefix + '.Dockerfile')
 
-                    with open(
-                        os.path.join(
-                            os.path.dirname(__file__), 'flatdeb',
-                            'Dockerfile.in'),
-                        'r',
-                        encoding='utf-8',
-                    ) as reader:
-                        content = reader.read()
-
-                    content = content.replace(
-                        '@sysroot_tarball@', sysroot_tarball)
+                    cpp = ['cpp', '-E', '-P']
+                    cpp.append(f'-DSYSROOT_TARBALL={sysroot_tarball}')
 
                     if sdk and sdk_details.get('toolbx', False):
-                        content = content.replace('@nopasswd@', 'true')
-                        content = content.replace(
-                            '@comment_if_not_toolbx@',
-                            '',
-                        )
+                        cpp.append('-DNOPASSWD')
+                        cpp.append('-DTOOLBX')
                     else:
-                        content = content.replace('@nopasswd@', '')
-                        content = content.replace(
-                            '@comment_if_not_toolbx@',
-                            '# ',
-                        )
+                        cpp.append('-UNOPASSWD')
+                        cpp.append('-UTOOLBX')
 
                     os_release_labels = []      # type: typing.List[str]
                     os_release = os.path.join(
@@ -1885,20 +1870,29 @@ class Builder:
                         for line in reader:
                             assert '=' in line
                             key, value = line.split('=', 1)
-                            value.rstrip('\n')
+                            value = value.rstrip('\n')
                             os_release_labels.append(
                                 f'os_release.{key.lower()}={value}'
                             )
 
-                    content = content.replace(
-                        '@os_release_labels@',
-                        'LABEL ' + ' '.join(sorted(os_release_labels)) + '\n',
+                    cpp.append(
+                        '-DOS_RELEASE_LABELS=LABEL '
+                        + ' '.join(sorted(os_release_labels))
                     )
 
-                    with open(
-                        output + '.new', 'w', encoding='utf-8'
-                    ) as writer:
-                        writer.write(content)
+                    cpp.append(
+                        os.path.join(
+                            os.path.dirname(__file__), 'flatdeb',
+                            'Dockerfile.in',
+                        ),
+                    )
+
+                    with open(output + '.new', 'wb') as writer:
+                        subprocess.run(
+                            cpp,
+                            check=True,
+                            stdout=writer,
+                        )
 
                     os.rename(output + '.new', output)
 
