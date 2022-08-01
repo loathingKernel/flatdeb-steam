@@ -7,10 +7,11 @@ from Debian packages.
 Walkthrough
 -----------
 
-On a Debian 10 'buster' machine:
+On a Debian 11 'bullseye' machine:
 
     apt install \
     binutils \
+    bsdtar \
     debootstrap \
     debos \
     dpkg-dev \
@@ -25,11 +26,6 @@ On a Debian 10 'buster' machine:
     systemd-container \
     time \
     ${NULL}
-
-(Or use Debian 9 'stretch' and get flatpak, flatpak-builder and ostree
-from stretch-backports, and install
-[fakemachine](https://github.com/go-debos/fakemachine)
-and [debos](https://github.com/go-debos/debos) from upstream source code.)
 
 Also edit org.debian.packages.openarena.yaml to specify where you have
 put local clones of ioquake3 and openarena if you can't (or don't

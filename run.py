@@ -31,6 +31,7 @@ Create Flatpak runtimes from Debian packages.
 """
 
 import argparse
+import gzip
 import json
 import logging
 import os
@@ -38,6 +39,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import urllib.parse
 from contextlib import ExitStack
 from tempfile import TemporaryDirectory
@@ -247,6 +249,7 @@ class Builder:
         self.debug_symbols = True
         self.automatic_dbgsym = True
         self.collect_source_code = True
+        self.do_mtree = False
         self.strict = False
         self.do_platform = False
         self.do_sdk = False
@@ -499,6 +502,16 @@ class Builder:
             const='',
         )
         parser.add_argument(
+            '--generate-mtree',
+            action='store_true',
+            default=True,
+        )
+        parser.add_argument(
+            '--no-generate-mtree',
+            dest='generate_mtree',
+            action='store_false',
+        )
+        parser.add_argument(
             '--build-id', default=None)
         parser.add_argument(
             '--variant-name', default=None)
@@ -679,6 +692,7 @@ class Builder:
         self.export_bundles = args.export_bundles
         self.ostree_mode = args.ostree_mode
         self.strict = args.strict
+        self.do_mtree = args.generate_mtree
 
         if args.platform is None and args.sdk is None:
             self.do_platform = True
@@ -860,6 +874,19 @@ class Builder:
         os.makedirs(self.build_area, 0o755, exist_ok=True)
         os.makedirs(os.path.join(self.build_area, 'tmp'), exist_ok=True)
 
+    def octal_escape_char(self, match: 're.Match') -> str:
+        ret = []    # type: List[str]
+
+        for byte in match.group(0).encode('utf-8', 'surrogateescape'):
+            ret.append('\\%03o' % byte)
+
+        return ''.join(ret)
+
+    _NEEDS_OCTAL_ESCAPE = re.compile(r'[^-A-Za-z0-9+,./:@_]')
+
+    def octal_escape(self, s: str) -> str:
+        return self._NEEDS_OCTAL_ESCAPE.sub(self.octal_escape_char, s)
+
     def command_base(self, **kwargs):
         # type: (...) -> None
         with ExitStack() as stack:
@@ -916,6 +943,11 @@ class Builder:
                 ','.join(self.dpkg_archs),
             )
             output = os.path.join(self.build_area, tarball)
+            mtree = 'base-{}-{}.mtree.gz'.format(
+                self.apt_suite,
+                ','.join(self.dpkg_archs),
+            )
+            mtree = os.path.join(self.build_area, mtree)
 
             self.configure_apt(
                 os.path.join(scratch, 'suites', apt_suite, 'overlay'),
@@ -1022,6 +1054,51 @@ class Builder:
             subprocess.check_call(argv)
 
             os.rename(output + '.new', output)
+
+            if self.do_mtree:
+                self.generate_mtree(output, mtree)
+
+    def generate_mtree(self, output: str, mtree: str) -> None:
+        with gzip.open(mtree + '.new', 'wb') as writer:
+            logger.info('Summarizing archive as mtree...')
+            proc = subprocess.Popen(
+                [
+                    'bsdtar',
+                    ('--options='
+                     '!all,type,device,uid,gid,time,size,sha256'),
+                    '--format=mtree',
+                    '-cf',
+                    '-',
+                    '@' + output,
+                ],
+                stdout=subprocess.PIPE,
+            )
+
+            for line in proc.stdout:
+                writer.write(line)
+
+            # Unfortunately mtree doesn't have an equivalent of tar
+            # LNKTYPE, and we can only infer which files are hard-linked
+            # together from their (resdevice,inode) tuples (which we don't
+            # want to record here because that would be non-reproducible).
+            # Generating a flatdeb-specific record is a bit ugly, but
+            # at least it means we can compare successive builds.
+            logger.info('Checking for hard links in archive...')
+            with tarfile.open(
+                output, 'r'
+            ) as tar_reader:
+                for entry in tar_reader:
+                    if entry.islnk():
+                        name = self.octal_escape(entry.name)
+                        target = self.octal_escape(entry.linkname)
+                        writer.write(
+                            f'./{name} x-flatdeb-hardlink={target}\n'.encode(
+                                'ascii'
+                            ),
+                        )
+
+        logger.info('Finished writing mtree')
+        os.rename(mtree + '.new', mtree)
 
     def command_collect_dbgsym(
         self,
@@ -1665,6 +1742,7 @@ class Builder:
                     if generate_sdk_sysroot_tarball:
                         sysroot_prefix = artifact_prefix + '-sysroot'
                         sysroot_tarball = sysroot_prefix + '.tar.gz'
+                        sysroot_mtree = sysroot_prefix + '.mtree.gz'
                         argv.append('-t')
                         argv.append('sysroot_prefix:{}'.format(sysroot_prefix))
                         argv.append('-t')
@@ -1795,6 +1873,7 @@ class Builder:
                     if generate_platform_sysroot_tarball:
                         sysroot_prefix = artifact_prefix + '-sysroot'
                         sysroot_tarball = sysroot_prefix + '.tar.gz'
+                        sysroot_mtree = sysroot_prefix + '.mtree.gz'
                         argv.append('-t')
                         argv.append('sysroot_prefix:{}'.format(sysroot_prefix))
                         argv.append('-t')
@@ -1848,8 +1927,14 @@ class Builder:
 
                 if sysroot_prefix is not None:
                     assert sysroot_tarball is not None
+                    assert sysroot_mtree is not None
                     output = os.path.join(self.build_area, sysroot_tarball)
                     os.rename(output + '.new', output)
+
+                    mtree = os.path.join(self.build_area, sysroot_mtree)
+
+                    if self.do_mtree:
+                        self.generate_mtree(output, mtree)
 
                     output = os.path.join(
                         self.build_area, sysroot_prefix + '.Dockerfile')
