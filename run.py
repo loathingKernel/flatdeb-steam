@@ -1059,7 +1059,11 @@ class Builder:
                 self.generate_mtree(output, mtree)
 
     def generate_mtree(self, output: str, mtree: str) -> None:
-        with gzip.open(mtree + '.new', 'wb') as writer:
+        with open(
+            mtree + '.new', 'wb'
+        ) as binary_writer, gzip.GzipFile(
+            os.path.basename(mtree), 'wb', fileobj=binary_writer, mtime=0
+        ) as writer:
             logger.info('Summarizing archive as mtree...')
             proc = subprocess.Popen(
                 [
