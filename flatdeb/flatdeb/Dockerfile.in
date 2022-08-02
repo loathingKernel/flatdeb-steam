@@ -1,20 +1,26 @@
-# Copyright 2019 Collabora Ltd.
-# SPDX-License-Identifier: MIT
+// Copyright 2019-2022 Collabora Ltd.
+// SPDX-License-Identifier: MIT
+
+#ifndef SYSROOT_TARBALL
+#   error SYSROOT_TARBALL must be defined
+#endif
 
 FROM scratch
-ADD @sysroot_tarball@ /
-RUN \
-set -e; \
-if [ "@nopasswd@" = true ]; then \
-    mkdir -p /etc/sudoers.d; \
-    echo "%sudo ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/flatdeb; \
-    chmod 0440 /etc/sudoers.d/flatdeb; \
-fi; \
-:
+ADD SYSROOT_TARBALL /
 
-@comment_if_not_toolbx@LABEL com.github.containers.toolbox="true"
-@comment_if_not_toolbx@LABEL com.github.debarshiray.toolbox="true"
+#ifdef NOPASSWD
+RUN mkdir -p /etc/sudoers.d && echo "%sudo ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/flatdeb && chmod 0440 /etc/sudoers.d/flatdeb
+#endif
+
+#ifdef OS_RELEASE_LABELS
+OS_RELEASE_LABELS
+#endif
+
+#ifdef TOOLBX
+LABEL com.github.containers.toolbox="true"
+LABEL com.github.debarshiray.toolbox="true"
+#endif
 
 CMD ["/bin/bash"]
 
-# vim:set sw=4 sts=4 et:
+// vim:set sw=4 sts=4 et:
