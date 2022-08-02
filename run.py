@@ -2043,6 +2043,13 @@ class Builder:
                 output = os.path.join(self.build_area, out_tarball)
                 os.rename(output + '.new', output)
 
+                mtree = os.path.join(
+                    self.build_area,
+                    ostree_prefix + '.mtree.gz')
+
+                if self.do_mtree:
+                    self.generate_mtree(output, mtree)
+
                 if self.ostree_commit:
                     logger.info('Committing %s to OSTree', out_tarball)
                     subprocess.check_call([
