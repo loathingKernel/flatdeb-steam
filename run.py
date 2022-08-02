@@ -1065,7 +1065,7 @@ class Builder:
                 [
                     'bsdtar',
                     ('--options='
-                     '!all,type,device,uid,gid,time,size,sha256'),
+                     '!all,type,link,device,mode,uid,gid,time,size,sha256'),
                     '--format=mtree',
                     '-cf',
                     '-',
