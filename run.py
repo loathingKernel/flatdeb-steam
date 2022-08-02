@@ -875,7 +875,7 @@ class Builder:
         os.makedirs(os.path.join(self.build_area, 'tmp'), exist_ok=True)
 
     def octal_escape_char(self, match: 're.Match') -> str:
-        ret = []    # type: List[str]
+        ret = []    # type: typing.List[str]
 
         for byte in match.group(0).encode('utf-8', 'surrogateescape'):
             ret.append('\\%03o' % byte)
@@ -1078,7 +1078,10 @@ class Builder:
                 stdout=subprocess.PIPE,
             )
 
-            for line in proc.stdout:
+            stdout = proc.stdout
+            assert stdout is not None
+
+            for line in stdout:
                 writer.write(line)
 
             # Unfortunately mtree doesn't have an equivalent of tar
