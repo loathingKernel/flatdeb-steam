@@ -37,6 +37,10 @@ add_packages:
 post_script: |
   set -eux
 
+  if ! [ -L /bin ]; then
+    dpkg --purge usr-is-merged || :
+  fi
+
   for bin in xdg-email xdg-open; do
     if [ -e "/usr/libexec/flatpak-xdg-utils/$bin" ] && ! [ -e "/usr/bin/$bin" ]; then
       ln -fnsv "/usr/libexec/flatpak-xdg-utils/$bin" "/usr/bin/$bin"
