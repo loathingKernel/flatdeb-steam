@@ -33,8 +33,8 @@ How this fits into the overall Steam Runtime project
     with the runtime itself, the pressure-vessel container runtime tool,
     all of the pressure-vessel tool's dependencies except glibc, and some
     scripts and Steam manifests to hold the whole thing together.
-    This is controlled by
-    [steamlinuxruntime](https://gitlab.steamos.cloud/steamrt/steamlinuxruntime).
+    This is controlled by the `populate-depot.py` script in
+    [steam-runtime-tools](https://gitlab.steamos.cloud/steamrt/steam-runtime-tools).
 
 Building Flatpak-style runtimes
 -------------------------------
