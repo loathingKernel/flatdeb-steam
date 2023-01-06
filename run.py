@@ -3,7 +3,7 @@
 # flatdeb — build Flatpak runtimes from Debian packages
 #
 # Copyright 2015-2017 Simon McVittie
-# Copyright 2017-2022 Collabora Ltd.
+# Copyright 2017-2023 Collabora Ltd.
 #
 # SPDX-License-Identifier: MIT
 #
@@ -544,6 +544,10 @@ class Builder:
             action='store_false', default=None,
             help='Do not include corresponding automatic -dbgsym packages '
                  'for each package in the Platform',
+        )
+        parser.add_argument(
+            '--ddeb-include-executables', action='store_true', default=False,
+            help='Include executable code in --ddeb-directory',
         )
         parser.add_argument(
             '--dbgsym-tarball', action='store_true', default=None,
@@ -1112,6 +1116,7 @@ class Builder:
         *,
         runtime_yaml_file,                      # type: str
         ddeb_directory='',
+        ddeb_include_executables=False,
         dbgsym_tarball=None,                    # type: typing.Optional[bool]
         platform_manifest=[],                   # type: typing.List[str]
         sdk_manifest=[],                        # type: typing.List[str]
@@ -1223,6 +1228,12 @@ class Builder:
                 argv.append(
                     'ddeb_directory:{}'.format(
                         ddeb_directory))
+                argv.append('-t')
+
+                if ddeb_include_executables:
+                    argv.append('ddeb_include_executables:yes')
+                else:
+                    argv.append('ddeb_include_executables:')
 
             if dbgsym_tarball is None:
                 dbgsym_tarball = not ddeb_directory
@@ -1541,6 +1552,7 @@ class Builder:
         *,
         yaml_file,                          # type: str
         ddeb_directory='',
+        ddeb_include_executables=False,
         dbgsym_tarball=None,
         generate_source_directory='',
         generate_source_tarball=True,
@@ -1818,6 +1830,12 @@ class Builder:
                         argv.append(
                             'ddeb_directory:{}'.format(
                                 ddeb_directory))
+                        argv.append('-t')
+
+                        if ddeb_include_executables:
+                            argv.append('ddeb_include_executables:yes')
+                        else:
+                            argv.append('ddeb_include_executables:')
 
                     if dbgsym_tarball is None:
                         dbgsym_tarball = not ddeb_directory
