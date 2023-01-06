@@ -222,6 +222,15 @@ def main():
                     want.binary_version,
                 )
             )
+            # A somewhat common convention in older distribution branches
+            # was to put libfoo1 debug symbols in libfoo1-dbg
+            to_inspect.add(
+                '{}-dbg:{}={}'.format(
+                    want.binary,
+                    want.architecture,
+                    want.binary_version,
+                )
+            )
 
             if args.include_executables:
                 names.add(want.binary)
