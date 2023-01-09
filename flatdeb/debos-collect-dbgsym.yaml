@@ -1,5 +1,5 @@
 {{/*
-Copyright 2018-2022 Collabora Ltd.
+Copyright 2018-2023 Collabora Ltd.
 SPDX-License-Identifier: MIT
 */}}
 
@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 {{- $artifact_prefix := or .artifact_prefix (printf "%s-%s-%s" $runtime $flatpak_arch $runtime_branch) -}}
 {{- $automatic_dbgsym := or .automatic_dbgsym false -}}
 {{- $ddeb_directory := or .ddeb_directory "" -}}
+{{- $ddeb_include_executables := or .ddeb_include_executables "" -}}
 {{- $debug_prefix := or .debug_prefix (printf "%s-debug" $artifact_prefix) -}}
 {{- $debug_tarball := or .debug_tarball "" -}}
 {{- $ospack := or .ospack (printf "base-%s-%s.tar.gz" $suite $architecture) -}}
@@ -39,6 +40,7 @@ actions:
       "$RECIPEDIR/collect-dbgsym" \
         {{ if $apt_debug }}--debug{{ end }} \
         --download="$target" \
+        {{ if $ddeb_include_executables }}--include-executables{{ end }} \
         --sysroot="$ROOTDIR" \
         --platform-manifest="$RECIPEDIR/manifest.dpkg.platform" \
         --sdk-manifest="$RECIPEDIR/manifest.dpkg" \
