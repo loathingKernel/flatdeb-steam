@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # Copyright 2016-2017 Simon McVittie
-# Copyright 2017-2021 Collabora Ltd.
+# Copyright 2017-2023 Collabora Ltd.
 #
 # SPDX-License-Identifier: MIT
 #
@@ -33,6 +33,7 @@ import logging
 import os
 import subprocess
 import sys
+from itertools import product
 
 try:
     import typing
@@ -155,6 +156,13 @@ def main():
         '--download', metavar='DIR', default='',
         help='Download to DIR [default: install]',
     )
+    parser.add_argument(
+        '--include-executables', action='store_true', default=False,
+        help=(
+            'Download executables, not just detached debug symbols. '
+            'Only useful with --download.'
+        ),
+    )
     parser.add_argument('--platform-manifest', action='append', default=[])
     parser.add_argument('--sdk-manifest', action='append', default=[])
     parser.add_argument('--sysroot', default='/')
@@ -199,6 +207,7 @@ def main():
 
     wanted_packages = set()     # type: typing.Set[InstalledPackage]
     to_inspect = set()          # type: typing.Set[str]
+    names = set()               # type: typing.Set[str]
 
     for platform_manifest in args.platform_manifest:
         platform_packages = read_manifest(platform_manifest)
@@ -206,12 +215,31 @@ def main():
         for want in platform_packages:
             logger.info('Package in Platform: %s from %s', want, want.source)
             wanted_packages.add(want)
+            names.add(want.dbgsym_package)
             to_inspect.add(
                 '{}={}'.format(
                     want.qualified_dbgsym_package,
                     want.binary_version,
                 )
             )
+            # A somewhat common convention in older distribution branches
+            # was to put libfoo1 debug symbols in libfoo1-dbg
+            to_inspect.add(
+                '{}-dbg:{}={}'.format(
+                    want.binary,
+                    want.architecture,
+                    want.binary_version,
+                )
+            )
+
+            if args.include_executables:
+                names.add(want.binary)
+                to_inspect.add(
+                    '{}={}'.format(
+                        want.qualified_binary,
+                        want.binary_version,
+                    )
+                )
 
     for sdk_manifest in args.sdk_manifest:
         sdk_packages = read_manifest(sdk_manifest)
@@ -242,20 +270,55 @@ def main():
 
     binaries = []       # type: typing.List[Packages]
     to_get = set()      # type: typing.Set[str]
+    lines = result.stdout.splitlines(keepends=True)
+    dbgsym_found = set()    # type: typing.Set[str]
 
     for binary_stanza in Packages.iter_paragraphs(
-        sequence=result.stdout.splitlines(keepends=True),
+        sequence=lines,
         encoding='utf-8',
     ):
         if 'Filename' not in binary_stanza:
             # locally-installed but not available from apt
             continue
 
-        if binary_stanza['Package'].endswith('-dbgsym'):
+        name = binary_stanza['Package']
+
+        if name.endswith('-dbgsym'):
+            dbgsym_found.add(name)
             binaries.append(binary_stanza)
 
-        if binary_stanza['Package'].endswith('-dbg'):
+        if name.endswith('-dbg'):
+            dbgsym_found.add(name)
             binaries.append(binary_stanza)
+
+    # Only fetch executables if the package they come from has a
+    # corresponding -dbg or -dbgsym package, to avoid wasting space on
+    # things that don't include any ELF executables/libraries anyway
+    if args.include_executables:
+        for binary_stanza in Packages.iter_paragraphs(
+            sequence=lines,
+            encoding='utf-8',
+        ):
+            if 'Filename' not in binary_stanza:
+                continue
+
+            name = binary_stanza['Package']
+
+            if (
+                name + '-dbgsym' in dbgsym_found
+                or name + '-dbg' in dbgsym_found
+                # Special cases for a few libraries that continued to use
+                # legacy -dbg for a while even after -dbgsym became available,
+                # with a legacy -dbg package not matching the name of the
+                # library package
+                or name in (
+                    'libdbus-1-3',
+                    'libogg0',
+                    'libopus0',
+                    'libstdc++6',
+                )
+            ):
+                binaries.append(binary_stanza)
 
     if args.download:
         parent = args.download
@@ -272,25 +335,38 @@ def main():
         os.path.join(parent, 'dbgsym-packages-not-installed.txt'),
         'w',
     ) as missing_writer:
-        for want in sorted(wanted_packages):
+        if args.include_executables:
+            exe_modes = [True, False]
+        else:
+            exe_modes = [False]
+
+        for want, exe in product(sorted(wanted_packages), exe_modes):
+            if exe:
+                if want.is_debug:
+                    continue
+
+                name = want.binary
+                qualified = want.qualified_binary
+                label = 'executable code'
+            else:
+                name = want.dbgsym_package
+                qualified = want.qualified_dbgsym_package
+                label = '-dbgsym package'
+
             same_name = []      # type: typing.List[Packages]
 
             for binary_stanza in binaries:
-                if want.dbgsym_package == binary_stanza['Package']:
+                if name == binary_stanza['Package']:
                     same_name.append(binary_stanza)
 
             if not same_name:
                 logger.info(
-                    'Skipped nonexistent -dbgsym package: %s',
-                    want.dbgsym_package,
+                    'Skipped nonexistent %s: %s', label, name,
                 )
                 continue
 
             for binary_stanza in same_name:
-                source = binary_stanza.get(
-                    'Source',
-                    binary_stanza['Package'],
-                )
+                source = binary_stanza.get('Source', name)
 
                 # It's important to check this to avoid including debug
                 # symbols that would require new source code that is not
@@ -314,38 +390,39 @@ def main():
                     and binary_stanza.get('Multi-Arch', 'no') != 'same'
                 ):
                     logger.info(
-                        'Not installing %s: not Multi-Arch: same even '
-                        'though the library is',
-                        want.qualified_dbgsym_package,
+                        'Not installing %s %s: not Multi-Arch: same',
+                        label, qualified,
                     )
                     continue
 
                 logger.info(
-                    'Will install debug symbols from %s:%s_%s',
-                    binary_stanza['Package'],
+                    'Will install %s from %s:%s_%s',
+                    label,
+                    name,
                     binary_stanza['Architecture'],
                     binary_stanza['Version'],
                 )
                 writer.write('{}:{}\t{}\n'.format(
-                    binary_stanza['Package'],
+                    name,
                     binary_stanza['Architecture'],
                     binary_stanza['Version'],
                 ))
                 to_get.add('{}:{}={}'.format(
-                    binary_stanza['Package'],
+                    name,
                     binary_stanza['Architecture'],
                     binary_stanza['Version'],
                 ))
                 break
             else:
                 logger.warning(
-                    'Unable to install -dbgsym package: %s_%s from %s',
-                    want.qualified_dbgsym_package,
+                    'Unable to install %s: %s_%s from %s',
+                    label,
+                    qualified,
                     want.binary_version,
                     want.source,
                 )
                 missing_writer.write('{}\t{}\n'.format(
-                    want.qualified_dbgsym_package,
+                    qualified,
                     want.binary_version,
                 ))
 
