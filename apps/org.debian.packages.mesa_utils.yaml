@@ -17,7 +17,7 @@ modules:
       - mesa-utils
     sources:
       - type: file
-        path: flatdeb/deb-buildapi/configure
+        path: subprojects/flatdeb/deb-buildapi/configure
       - type: file
-        path: flatdeb/deb-buildapi/Makefile
+        path: subprojects/flatdeb/deb-buildapi/Makefile
 ...

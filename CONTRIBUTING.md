@@ -25,14 +25,14 @@ result of those steps, and the actual result). That way, even if the
 patch you propose isn't suitable, we can think about other solutions to
 the issue.
 
-The flatdeb/ directory
-----------------------
+The subprojects/flatdeb/ directory
+----------------------------------
 
 The actual flatdeb program is maintained in Debian's infrastructure:
 [flatdeb](https://salsa.debian.org/smcv/flatdeb). You can create a fork
 and open merge requests there. Our policy is that all changes to the
-`flatdeb/` directory in the `flatdeb-steam` project should usually be
-merges from the `flatdeb` project.
+`subprojects/flatdeb/` directory in the `flatdeb-steam` project should
+usually be merges from the `flatdeb` project.
 
 If a bug in flatdeb is causing Steam Runtime issues, please report an
 issue at <https://gitlab.steamos.cloud/steamrt/flatdeb-steam/-/issues>

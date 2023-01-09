@@ -67,8 +67,8 @@ as usual).
 
 Then you can run something like this:
 
-    flatdeb/run.py --suite=scout_beta --arch=amd64,i386 base
-    flatdeb/run.py --suite=scout_beta --arch=amd64,i386 \
+    subprojects/flatdeb/run.py --suite=scout_beta --arch=amd64,i386 base
+    subprojects/flatdeb/run.py --suite=scout_beta --arch=amd64,i386 \
         --no-collect-source-code \
         --no-debug-symbols \
         --no-generate-source-tarball \
@@ -164,13 +164,13 @@ First, you'll need to build runtimes with `--ostree-commit`, to get a
 Flatpak runtime to work from. Then you can try building apps on top
 of that:
 
-    flatdeb/run.py --arch=amd64,i386 app \
+    subprojects/flatdeb/run.py --arch=amd64,i386 app \
         apps/org.debian.packages.mesa_utils.yaml
-    flatdeb/run.py --arch=i386 app \
+    subprojects/flatdeb/run.py --arch=i386 app \
         apps/org.debian.packages.mesa_utils.yaml
-    flatdeb/run.py --arch=amd64,i386 app \
+    subprojects/flatdeb/run.py --arch=amd64,i386 app \
         apps/com.valvesoftware.Steam.yaml
-    flatdeb/run.py --arch=i386 app \
+    subprojects/flatdeb/run.py --arch=i386 app \
         apps/com.valvesoftware.Steam.yaml
 
 On the host, or a test machine onto which you have copied
