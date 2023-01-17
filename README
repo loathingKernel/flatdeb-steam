@@ -11,12 +11,12 @@ On a Debian 11 'bullseye' machine:
 
     apt install \
     binutils \
-    bsdtar \
     debootstrap \
     debos \
     dpkg-dev \
     flatpak \
     flatpak-builder \
+    libarchive-tools \
     ostree \
     pigz \
     python3 \
