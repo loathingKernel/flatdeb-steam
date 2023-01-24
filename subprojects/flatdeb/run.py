@@ -986,6 +986,9 @@ class Builder:
                 ),
             ]
 
+            if os.geteuid() == 0:
+                argv.append('--disable-fakemachine')
+
             if self.apt_debug:
                 argv.append('-t')
                 argv.append('apt_debug:true')
@@ -1201,6 +1204,9 @@ class Builder:
                 '-t', 'runtime_branch:{}'.format(self.runtime_branch),
             ]
 
+            if os.geteuid() == 0:
+                argv.append('--disable-fakemachine')
+
             debug_prefix = artifact_prefix + '-debug'
             debug_tarball = debug_prefix + '.tar.gz'
 
@@ -1392,6 +1398,9 @@ class Builder:
                 '-t', 'runtime:{}'.format(runtime),
                 '-t', 'runtime_branch:{}'.format(self.runtime_branch),
             ]
+
+            if os.geteuid() == 0:
+                argv.append('--disable-fakemachine')
 
             sources_tarball = sources_prefix + '.tar.gz'
 
@@ -1674,6 +1683,9 @@ class Builder:
                     '-t', 'strip_source_version_suffix:{}'.format(
                         self.strip_source_version_suffix),
                 ]
+
+                if os.geteuid() == 0:
+                    argv.append('--disable-fakemachine')
 
                 if self.apt_debug:
                     argv.append('-t')
