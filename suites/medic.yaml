@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 additional_base_packages:
   - steamrt-customizations
+  - usr-is-merged
 apt_components:
   - main
   - contrib
