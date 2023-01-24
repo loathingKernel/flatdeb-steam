@@ -906,6 +906,7 @@ class Builder:
             shutil.copyfile(_DEBOS_BASE_RECIPE, dest_recipe)
 
             for helper in (
+                'apt-install',
                 'clean-up-base',
                 'clean-up-before-pack',
                 'disable-services',

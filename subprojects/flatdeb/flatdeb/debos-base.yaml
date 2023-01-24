@@ -3,6 +3,7 @@ Copyright 2018-2021 Collabora Ltd.
 SPDX-License-Identifier: MIT
 */}}
 
+{{- $apt_debug := or .apt_debug false -}}
 {{- $architecture := or .architecture "amd64" -}}
 {{- /* Use a YAML list here */ -}}
 {{- $components := or .components "" -}}
@@ -89,13 +90,12 @@ actions:
   {{ if $additional_base_packages_sh }}
   - action: run
     label: additional base packages
-    chroot: true
+    chroot: false
     command: |
       set -eux
-      apt-get -y -q -oAcquire::Retries=3 update
-      apt-get -y -q -oAcquire::Retries=3 --no-install-recommends \
-        install \
-        {{ $additional_base_packages_sh }}
+      head -n1000 /etc/resolv.conf /etc/nsswitch.conf || :
+      chroot "$ROOTDIR" head -n1000 /etc/resolv.conf /etc/nsswitch.conf || :
+      $RECIPEDIR/apt-install --update {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR" --packages {{ $additional_base_packages_sh }}
   {{ end }}
 
   - action: run
