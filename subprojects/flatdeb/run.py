@@ -36,6 +36,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -1009,6 +1010,10 @@ class Builder:
                 argv.append('-t')
                 argv.append('additional_base_packages:{}'.format(
                     self.yaml_dump_one_line(add_pkgs)
+                ))
+                argv.append('-t')
+                argv.append('additional_base_packages_sh:{}'.format(
+                    ' '.join(shlex.quote(x) for x in add_pkgs)
                 ))
 
             apt_keyrings = list(self.build_apt_keyrings)

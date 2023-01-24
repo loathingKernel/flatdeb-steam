@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 {{- $mergedusr := or .mergedusr "false" }}
 {{- $keyring := or .keyring "" -}}
 {{- $additional_base_packages := or .additional_base_packages "" -}}
+{{- $additional_base_packages_sh := or .additional_base_packages_sh "" -}}
 {{- $build_id := or .build_id "" -}}
 {{- $variant := or .variant "Minimal base system" -}}
 {{- $variant_id := or .variant_id "base" -}}
@@ -85,10 +86,16 @@ actions:
     chroot: false
     command: 'find "$ROOTDIR/etc/apt" -ls'
 
-  {{ if $additional_base_packages }}
-  - action: apt
-    recommends: false
-    packages: {{ $additional_base_packages }}
+  {{ if $additional_base_packages_sh }}
+  - action: run
+    label: additional base packages
+    chroot: true
+    command: |
+      set -eux
+      apt-get -y -q -oAcquire::Retries=3 update
+      apt-get -y -q -oAcquire::Retries=3 --no-install-recommends \
+        install \
+        {{ $additional_base_packages_sh }}
   {{ end }}
 
   - action: run
