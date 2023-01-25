@@ -64,6 +64,8 @@ def main():
         default=False)
     parser.add_argument(
         '--debug', action='store_true', default=False)
+    parser.add_argument(
+        '--update', action='store_true', default=False)
     parser.add_argument('sysroot')
     parser.add_argument('package_files', nargs='+')
 
@@ -98,6 +100,11 @@ def main():
     for p in args.package_files:
         with open(p, encoding='utf-8') as reader:
             packages.extend(yaml.safe_load(reader))
+
+    if args.update:
+        subprocess.check_call(in_chroot + [
+            'apt-get', '-y',
+        ] + options + ['update'])
 
     subprocess.check_call(in_chroot + [
         'apt-get', '-y',
