@@ -88,37 +88,59 @@ actions:
   - action: run
     label: fakemachine /etc/resolv.conf
     chroot: false
-    command: 'head -n1000 /etc/resolv.conf || :'
+    command: 'head -n1000 /etc/resolv.conf || :; echo EOF'
 
   - action: run
     label: fakemachine /etc/hosts
     chroot: false
-    command: 'head -n1000 /etc/hosts || :'
+    command: 'head -n1000 /etc/hosts || :; echo EOF'
 
   - action: run
     label: fakemachine getent
     chroot: false
-    command: 'getent hosts deb.debian.org || :'
+    command: 'getent hosts deb.debian.org || :; echo EOF'
+
+  - action: run
+    label: container /etc/resolv.conf from outside
+    chroot: false
+    command: 'head -n1000 "$ROOTDIR/etc/resolv.conf" || :; echo EOF'
+
+  - action: run
+    label: container /etc/hosts from outside
+    chroot: false
+    command: 'head -n1000 "$ROOTDIR/etc/hosts" || :; echo EOF'
 
   - action: run
     label: container /etc/resolv.conf
     chroot: true
-    command: 'head -n1000 /etc/resolv.conf || :'
+    command: 'head -n1000 /etc/resolv.conf || :; echo EOF'
 
   - action: run
     label: container /etc/hosts
     chroot: true
-    command: 'head -n1000 /etc/hosts || :'
+    command: 'head -n1000 /etc/hosts || :; echo EOF'
 
   - action: run
     label: container getent
     chroot: true
-    command: 'getent hosts deb.debian.org || :'
+    command: 'getent hosts deb.debian.org || :; echo EOF'
 
   {{ if $additional_base_packages }}
-  - action: apt
-    recommends: false
-    packages: {{ $additional_base_packages }}
+  - action: run
+    label: additional base packages
+    chroot: false
+    command: |
+      set -eux
+      echo
+      install -d -m755 "$ROOTDIR/run"
+      echo "{{ $additional_base_packages }}" > "$ROOTDIR/run/packages.yaml"
+      "$RECIPEDIR/apt-install" \
+          --debug \
+          --update \
+          --without-recommends \
+          "$ROOTDIR" \
+          "$ROOTDIR/run/packages.yaml"
+      echo "end"
   {{ end }}
 
   - action: run
