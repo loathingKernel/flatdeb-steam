@@ -183,6 +183,7 @@ def main():
             'systemd-nspawn',
             '--directory={}'.format(args.sysroot),
             '--as-pid2',
+            '--pipe',
             '--tmpfs=/run/lock',
             '--register=no',
         ]
