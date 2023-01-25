@@ -3,7 +3,6 @@ Copyright 2018-2021 Collabora Ltd.
 SPDX-License-Identifier: MIT
 */}}
 
-{{- $apt_debug := or .apt_debug false -}}
 {{- $architecture := or .architecture "amd64" -}}
 {{- /* Use a YAML list here */ -}}
 {{- $components := or .components "" -}}
@@ -13,7 +12,6 @@ SPDX-License-Identifier: MIT
 {{- $mergedusr := or .mergedusr "false" }}
 {{- $keyring := or .keyring "" -}}
 {{- $additional_base_packages := or .additional_base_packages "" -}}
-{{- $additional_base_packages_sh := or .additional_base_packages_sh "" -}}
 {{- $build_id := or .build_id "" -}}
 {{- $variant := or .variant "Minimal base system" -}}
 {{- $variant_id := or .variant_id "base" -}}
@@ -87,15 +85,40 @@ actions:
     chroot: false
     command: 'find "$ROOTDIR/etc/apt" -ls'
 
-  {{ if $additional_base_packages_sh }}
   - action: run
-    label: additional base packages
+    label: fakemachine /etc/resolv.conf
     chroot: false
-    command: |
-      set -eux
-      head -n1000 /etc/resolv.conf /etc/nsswitch.conf || :
-      chroot "$ROOTDIR" head -n1000 /etc/resolv.conf /etc/nsswitch.conf || :
-      $RECIPEDIR/apt-install --update {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR" --packages {{ $additional_base_packages_sh }}
+    command: 'head -n1000 /etc/resolv.conf || :'
+
+  - action: run
+    label: fakemachine /etc/hosts
+    chroot: false
+    command: 'head -n1000 /etc/hosts || :'
+
+  - action: run
+    label: fakemachine getent
+    chroot: false
+    command: 'getent hosts deb.debian.org || :'
+
+  - action: run
+    label: container /etc/resolv.conf
+    chroot: true
+    command: 'head -n1000 /etc/resolv.conf || :'
+
+  - action: run
+    label: container /etc/hosts
+    chroot: true
+    command: 'head -n1000 /etc/hosts || :'
+
+  - action: run
+    label: container getent
+    chroot: true
+    command: 'getent hosts deb.debian.org || :'
+
+  {{ if $additional_base_packages }}
+  - action: apt
+    recommends: false
+    packages: {{ $additional_base_packages }}
   {{ end }}
 
   - action: run

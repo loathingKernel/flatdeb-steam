@@ -64,10 +64,6 @@ def main():
         default=False)
     parser.add_argument(
         '--debug', action='store_true', default=False)
-    parser.add_argument(
-        '--update', action='store_true', default=False)
-    parser.add_argument(
-        '--packages', action='store_true', default=False)
     parser.add_argument('sysroot')
     parser.add_argument('package_files', nargs='+')
 
@@ -99,17 +95,9 @@ def main():
     if not args.recommends:
         options.append('--no-install-recommends')
 
-    if args.packages:
-        packages.extend(args.package_files)
-    else:
-        for p in args.package_files:
-            with open(p, encoding='utf-8') as reader:
-                packages.extend(yaml.safe_load(reader))
-
-    if args.update:
-        subprocess.check_call(in_chroot + [
-            'apt-get', '-y',
-        ] + options + ['update'])
+    for p in args.package_files:
+        with open(p, encoding='utf-8') as reader:
+            packages.extend(yaml.safe_load(reader))
 
     subprocess.check_call(in_chroot + [
         'apt-get', '-y',

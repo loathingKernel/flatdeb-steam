@@ -36,7 +36,6 @@ import json
 import logging
 import os
 import re
-import shlex
 import shutil
 import subprocess
 import sys
@@ -906,7 +905,6 @@ class Builder:
             shutil.copyfile(_DEBOS_BASE_RECIPE, dest_recipe)
 
             for helper in (
-                'apt-install',
                 'clean-up-base',
                 'clean-up-before-pack',
                 'disable-services',
@@ -964,6 +962,7 @@ class Builder:
 
             argv = [
                 'debos',
+                '--verbose',
                 '--artifactdir={}'.format(self.build_area),
                 '-t', 'architecture:{}'.format(self.primary_dpkg_arch),
                 '-t', 'suite:{}'.format(apt_suite),
@@ -1011,10 +1010,6 @@ class Builder:
                 argv.append('-t')
                 argv.append('additional_base_packages:{}'.format(
                     self.yaml_dump_one_line(add_pkgs)
-                ))
-                argv.append('-t')
-                argv.append('additional_base_packages_sh:{}'.format(
-                    ' '.join(shlex.quote(x) for x in add_pkgs)
                 ))
 
             apt_keyrings = list(self.build_apt_keyrings)
@@ -1196,6 +1191,7 @@ class Builder:
 
             argv = [
                 'debos',
+                '--verbose',
                 '--artifactdir={}'.format(self.build_area),
                 '--scratchsize=8G',
                 '-t', 'architecture:{}'.format(self.primary_dpkg_arch),
@@ -1388,6 +1384,7 @@ class Builder:
 
             argv = [
                 'debos',
+                '--verbose',
                 '--artifactdir={}'.format(self.build_area),
                 '--scratchsize=8G',
                 '-t', 'architecture:{}'.format(self.primary_dpkg_arch),
@@ -1662,6 +1659,7 @@ class Builder:
 
                 argv = [
                     'debos',
+                    '--verbose',
                     '--artifactdir={}'.format(self.build_area),
                     '--scratchsize=8G',
                     '-t', 'architecture:{}'.format(self.primary_dpkg_arch),
