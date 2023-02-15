@@ -135,6 +135,7 @@ for package in \
     lsb-base \
     module-init-tools \
     plymouth \
+    sudo \
     tcpd \
     udev \
 ; do \
