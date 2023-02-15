@@ -143,23 +143,6 @@ actions:
   {{ end }}{{/* $debug_symbols */}}
   {{ end }}
 
-  {{ if not $sdk }}
-  - action: run
-    label: usrmerge
-    chroot: false
-    command: 'echo; "$RECIPEDIR/usrmerge" "$ROOTDIR"'
-
-  - action: run
-    label: platformize
-    chroot: false
-    command: 'echo; "$RECIPEDIR/platformize" "$ROOTDIR"'
-  {{ end }}{{/* not $sdk */}}
-
-  - action: run
-    label: purge-conffiles
-    chroot: false
-    command: 'echo; "$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
-
   {{ if $post_script }}
   - action: run
     label: post_script
@@ -184,7 +167,7 @@ actions:
   {{ end }}{{/* platform */}}
 
   - action: run
-    label: purge-conffiles again
+    label: purge-conffiles
     chroot: false
     command: 'echo; "$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
 
@@ -253,10 +236,6 @@ actions:
     label: copy manifest for SDK
     chroot: false
     command: 'echo; mv "$ROOTDIR/usr/manifest.deb822.gz" "$RECIPEDIR/manifest.platform.deb822.gz"'
-  - action: run
-    label: dpkg --purge dpkg
-    chroot: true
-    command: 'echo; dpkg --purge --force-remove-essential --force-depends dpkg'
   {{ end }}{{/* platform */}}
 
   - action: run
@@ -339,6 +318,24 @@ actions:
     label: usrmerge
     chroot: false
     command: 'echo; "$RECIPEDIR/usrmerge" "$ROOTDIR"'
+
+  {{ if not $sdk }}
+  - action: run
+    label: platformize
+    chroot: false
+    command: 'echo; "$RECIPEDIR/platformize" "$ROOTDIR"'
+
+  # platformize might have removed packages: remove their conffiles too
+  - action: run
+    label: purge-conffiles
+    chroot: false
+    command: 'echo; "$RECIPEDIR/purge-conffiles" "$ROOTDIR"'
+
+  - action: run
+    label: dpkg --purge dpkg
+    chroot: true
+    command: 'echo; dpkg --purge --force-remove-essential --force-depends dpkg'
+  {{ end }}{{/* platform */}}
 
   - action: overlay
     source: runtimes/{{ $runtime }}/flatpak-overlay
