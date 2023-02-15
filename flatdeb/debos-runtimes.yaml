@@ -81,7 +81,7 @@ actions:
 
   {{ if $sdk }}
   - action: run
-    label: copy manifest from platform
+    label: copy manifests from platform
     chroot: false
     command: |
       set -e
@@ -89,21 +89,9 @@ actions:
       if [ -e "$RECIPEDIR/manifest.dpkg.platform" ]; then
         cp "$RECIPEDIR/manifest.dpkg.platform" "$ROOTDIR/usr"
       fi
-  - action: run
-    label: copy manifest from platform
-    chroot: false
-    command: |
-      set -e
-      echo
       if [ -e "$RECIPEDIR/manifest.dpkg.built-using.platform" ]; then
         cp "$RECIPEDIR/manifest.dpkg.built-using.platform" "$ROOTDIR/usr"
       fi
-  - action: run
-    label: copy manifest from platform
-    chroot: false
-    command: |
-      set -e
-      echo
       if [ -e "$RECIPEDIR/manifest.platform.deb822.gz" ]; then
         cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"
       fi
