@@ -106,7 +106,7 @@ actions:
     label: apt-install
     chroot: false
     command: echo; $RECIPEDIR/apt-install {{ if $apt_debug }}--debug{{ end }} "$ROOTDIR" "$RECIPEDIR/runtimes/{{ $runtime }}/sdk_packages.yaml"
-  {{ end }}
+  {{ end }}{{/* sdk_packages */}}
   # Do this after the apt-install for SDK packages, so that we can
   # re-download things like libc6-dbg
   {{ if $debug_symbols }}
@@ -139,8 +139,8 @@ actions:
         --platform-manifest="$ROOTDIR/usr/manifest.dpkg.platform" \
         --sdk-manifest="$ROOTDIR/usr/manifest.dpkg" \
         ${NULL+}
-  {{ end }}
-  {{ end }}
+  {{ end }}{{/* $debug_tarball or $ddeb_directory */}}
+  {{ end }}{{/* $debug_symbols */}}
   {{ end }}
 
   {{ if not $sdk }}
@@ -153,7 +153,7 @@ actions:
     label: platformize
     chroot: false
     command: 'echo; "$RECIPEDIR/platformize" "$ROOTDIR"'
-  {{ end }}
+  {{ end }}{{/* not $sdk */}}
 
   - action: run
     label: purge-conffiles
@@ -165,7 +165,7 @@ actions:
     label: post_script
     chroot: true
     script: '{{ $post_script }}'
-  {{ end }}
+  {{ end }}{{/* $post_script */}}
 
   {{ if $sdk }}
   {{ if $sdk_post_script }}
@@ -173,15 +173,15 @@ actions:
     label: sdk_post_script
     chroot: true
     script: '{{ $sdk_post_script }}'
-  {{ end }}
-  {{ else }}
+  {{ end }}{{/* $sdk_post_script */}}
+  {{ else }}{{/* platform */}}
   {{ if $platform_post_script }}
   - action: run
     label: platform_post_script
     chroot: true
     script: '{{ $platform_post_script }}'
-  {{ end }}
-  {{ end }}
+  {{ end }}{{/* $platform_post_script */}}
+  {{ end }}{{/* platform */}}
 
   - action: run
     label: purge-conffiles again
@@ -238,7 +238,7 @@ actions:
         "$ARTIFACTDIR/{{ $ospack_source_required }}" \
         "$ARTIFACTDIR/{{ $artifact_prefix }}.source-required.txt" \
         ${NULL+}
-  {{ end }}
+  {{ end }}{{/* $sdk and $collect_source_code */}}
 
   {{ if not $sdk }}
   - action: run
@@ -257,7 +257,7 @@ actions:
     label: dpkg --purge dpkg
     chroot: true
     command: 'echo; dpkg --purge --force-remove-essential --force-depends dpkg'
-  {{ end }}
+  {{ end }}{{/* platform */}}
 
   - action: run
     label: distrust build-only apt keys
@@ -333,7 +333,7 @@ actions:
       --exclude="./usr/lib/debug"
       --transform="s,^./,,"
       .
-  {{ end }}
+  {{ end }}{{/* $sysroot_tarball */}}
 
   - action: run
     label: usrmerge
@@ -353,12 +353,12 @@ actions:
     label: make-flatpak-friendly --sdk
     chroot: false
     command: 'echo; "$RECIPEDIR/make-flatpak-friendly" --sdk "$ROOTDIR"'
-  {{ else }}
+  {{ else }}{{/* platform */}}
   - action: run
     label: make-flatpak-friendly
     chroot: false
     command: 'echo; "$RECIPEDIR/make-flatpak-friendly" "$ROOTDIR"'
-  {{ end }}
+  {{ end }}{{/* platform */}}
 
   # TODO: Move zoneinfo, locales into extensions
   # TODO: Hook point for GL, instead of just Mesa
@@ -400,7 +400,7 @@ actions:
         --use-compress-program="pigz -n --rsyncable" \
         -C "$dir" \
         .
-  {{ end }}
+  {{ end }}{{/* $collect_source_code and $sources_tarball */}}
 
   {{ if and $debug_symbols $debug_tarball }}
   - action: run
@@ -427,7 +427,7 @@ actions:
         -C /scratch/dbgsym \
         files metadata
       rm -fr /scratch/dbgsym
-  {{ end }}
+  {{ end }}{{/* $debug_symbols and $debug_tarball */}}
 
   {{ if $collect_source_code }}
   - action: run
@@ -439,7 +439,7 @@ actions:
       dir="{{ or $sources_directory "/scratch/src" }}"
       cp -v "$dir/Sources.gz" "{{ $sources_prefix }}.deb822.gz"
       cp -v "$dir/sources.txt" "{{ $sources_prefix }}.sources.txt"
-  {{ end }}
+  {{ end }}{{/* $collect_source_code */}}
 
   - action: run
     label: list of missing source code
@@ -451,7 +451,7 @@ actions:
       test ! -e "$dir/MISSING.txt" ||
       cp -v "$dir/MISSING.txt"
       "{{ $sources_prefix }}.MISSING.txt"
-  {{ end }}
+  {{ end }}{{/* $sdk */}}
 
   - action: run
     label: manifests
