@@ -95,9 +95,12 @@ actions:
       if [ -e "$RECIPEDIR/manifest.platform.deb822.gz" ]; then
         cp "$RECIPEDIR/manifest.platform.deb822.gz" "$ROOTDIR/usr"
       fi
+  {{ end }}
+
   # We do this as a separate step in case it involves removing any
   # of the common packages, or replacing automatic debug symbols with
   # legacy debug symbols that might have more coverage
+  {{ if $sdk }}
   {{ if $sdk_packages }}
   - action: run
     label: apt-install
