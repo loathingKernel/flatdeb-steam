@@ -3,9 +3,18 @@
 # SPDX-License-Identifier: MIT
 id_prefix: net.debian.flatpak.Base
 
+# These packages are required by Toolbx
+add_packages:
+  - libcap2-bin
+  - mount
+  - passwd
+  - sudo
+
 add_packages_multiarch:
   - libc6
   - libstdc++6
+
+toolbx: true
 
 sdk:
   add_packages:
@@ -22,5 +31,4 @@ sdk:
     - python3-debian
     - strace
     - valgrind
-  toolbx: true
 ...

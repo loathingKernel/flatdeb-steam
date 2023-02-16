@@ -2,6 +2,17 @@
 # Copyright 2017-2020 Collabora Ltd.
 # SPDX-License-Identifier: MIT
 id_prefix: net.debian.flatpak.Games
+toolbx: true
+
+add_packages:
+  # These packages are required by Toolbx
+  - libcap2-bin
+  - mount
+  - passwd
+  - sudo
+
+  - libopusfile0
+  - x11-utils
 
 add_packages_multiarch:
   - libcurl3-gnutls
@@ -20,10 +31,6 @@ add_packages_multiarch:
   - libxcb-randr0
   - libxcb-render0
   - zlib1g
-
-add_packages:
-  - libopusfile0
-  - x11-utils
 
 platform:
   null: null
@@ -54,7 +61,6 @@ sdk:
     - strace
     - valgrind
     - zlib1g-dev
-  toolbx: true
 
 add-extensions:
   # FIXME: This is not properly multiarch-aware, but it's enough for a
