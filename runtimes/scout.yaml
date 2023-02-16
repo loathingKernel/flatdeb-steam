@@ -26,6 +26,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 id_prefix: com.valvesoftware.SteamRuntime
+toolbx: true
 
 add_packages_multiarch:
   - steamrt-container-host-compat
@@ -33,6 +34,15 @@ add_packages_multiarch:
 
 add_packages:
   - steamrt-container
+
+  # These packages are required by Toolbx
+  - libcap2-bin
+  - mount
+  - passwd
+  - sudo
+
+  # This needs to be installed to be able to remove sudo
+  - sysv-rc
 
 post_script: |
   set -eux
@@ -116,7 +126,6 @@ platform:
     fi
 
 sdk:
-  toolbx: true
   add_packages_multiarch:
     - steamrt-libdebug:
         debug_symbols: true

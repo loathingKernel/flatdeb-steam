@@ -23,6 +23,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 id_prefix: com.valvesoftware.SteamRuntime
+toolbx: true
 
 add_packages_multiarch:
   - steamrt-container-host-compat
@@ -30,6 +31,12 @@ add_packages_multiarch:
 
 add_packages:
   - steamrt-container
+
+  # These packages are required by Toolbx
+  - libcap2-bin
+  - mount
+  - passwd
+  - sudo
 
 post_script: |
   set -eux
@@ -128,7 +135,6 @@ post_script: |
   done
 
 sdk:
-  toolbx: true
   add_packages_multiarch:
     - steamrt-libdebug:
         debug_symbols: true
