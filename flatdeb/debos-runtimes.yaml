@@ -237,6 +237,7 @@ actions:
       {{ else }}
       dir="/scratch/src"
       {{ end }}
+      install -d "$dir"
       install -m644 \
         "$RECIPEDIR/runtimes/{{ $runtime }}/flatpak-overlay/src/metadata" \
         "$dir/metadata"
