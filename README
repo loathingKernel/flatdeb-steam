@@ -7,7 +7,7 @@ from Debian packages.
 Walkthrough
 -----------
 
-On a Debian 11 'bullseye' machine:
+On a Debian 11 'bullseye' or Debian 12 'bookworm' machine:
 
     apt install \
     binutils \
@@ -29,6 +29,9 @@ On a Debian 11 'bullseye' machine:
     systemd-container \
     time \
     ${NULL}
+
+    # Required in Debian >= bookworm
+    test -x /lib/systemd/systemd-resolved || apt install systemd-resolved
 
 Also edit org.debian.packages.openarena.yaml to specify where you have
 put local clones of ioquake3 and openarena if you can't (or don't
