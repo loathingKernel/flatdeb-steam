@@ -905,6 +905,7 @@ class Builder:
             shutil.copyfile(_DEBOS_BASE_RECIPE, dest_recipe)
 
             for helper in (
+                'apt-install',
                 'clean-up-base',
                 'clean-up-before-pack',
                 'disable-services',
@@ -1967,7 +1968,14 @@ class Builder:
                     cpp = ['cpp', '-E', '-P']
                     cpp.append(f'-DSYSROOT_TARBALL={sysroot_tarball}')
 
-                    if sdk and sdk_details.get('toolbx', False):
+                    toolbx = self.runtime_details.get('toolbx', False)
+
+                    if sdk:
+                        toolbx = sdk_details.get('toolbx', toolbx)
+                    else:
+                        toolbx = platform_details.get('toolbx', toolbx)
+
+                    if toolbx:
                         cpp.append('-DNOPASSWD')
                         cpp.append('-DTOOLBX')
                     else:

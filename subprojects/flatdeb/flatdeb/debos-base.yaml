@@ -86,9 +86,20 @@ actions:
     command: 'find "$ROOTDIR/etc/apt" -ls'
 
   {{ if $additional_base_packages }}
-  - action: apt
-    recommends: false
-    packages: {{ $additional_base_packages }}
+  - action: run
+    label: additional base packages
+    chroot: false
+    command: |
+      set -eux
+      install -d -m755 "$ROOTDIR/run"
+      echo "{{ $additional_base_packages }}" > "$ROOTDIR/run/packages.yaml"
+      "$RECIPEDIR/apt-install" \
+          --debug \
+          --update \
+          --without-recommends \
+          "$ROOTDIR" \
+          "$ROOTDIR/run/packages.yaml"
+      echo "end"
   {{ end }}
 
   - action: run

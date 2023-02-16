@@ -1,0 +1,25 @@
+---
+# Copyright 2017-2021 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+additional_base_packages:
+  - usr-is-merged
+apt_components:
+  - main
+  - contrib
+can_merge_usr: true
+has_automatic_dbgsym: true
+sources:
+  - label: debian
+    apt_uri: 'http://deb.debian.org/debian'
+  - label: debug
+    apt_uri: 'http://deb.debian.org/debian-debug'
+    apt_suite: '*-debug'
+  - label: security
+    apt_uri: 'http://deb.debian.org/debian-security'
+    apt_suite: '*-security'
+  # Contains detached debug symbols for security updates, so is useful
+  # to have even if we are not installing content from proposed-updates
+  - label: pu-debug
+    apt_uri: 'http://deb.debian.org/debian-debug'
+    apt_suite: '*-proposed-updates-debug'
+...
