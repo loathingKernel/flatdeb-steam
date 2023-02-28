@@ -32,12 +32,6 @@ add_packages_multiarch:
 add_packages:
   - steamrt-container
 
-  # These packages are required by Toolbx
-  - libcap2-bin
-  - mount
-  - passwd
-  - sudo
-
 post_script: |
   set -eux
 

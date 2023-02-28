@@ -29,12 +29,6 @@ add_packages:
   - steamrt-container
   - steamrt-libs
 
-  # These packages are required by Toolbx
-  - libcap2-bin
-  - mount
-  - passwd
-  - sudo
-
 post_script: |
   set -eux
 

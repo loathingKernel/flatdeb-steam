@@ -35,12 +35,6 @@ add_packages_multiarch:
 add_packages:
   - steamrt-container
 
-  # These packages are required by Toolbx
-  - libcap2-bin
-  - mount
-  - passwd
-  - sudo
-
   # This needs to be installed to be able to remove sudo
   - sysv-rc
 
