@@ -35,12 +35,6 @@ add_packages:
 post_script: |
   set -eux
 
-  for bin in xdg-email xdg-open; do
-    if [ -e "/usr/libexec/flatpak-xdg-utils/$bin" ] && ! [ -e "/usr/bin/$bin" ]; then
-      ln -fnsv "/usr/libexec/flatpak-xdg-utils/$bin" "/usr/bin/$bin"
-    fi
-  done
-
   if [ -e /usr/share/i18n/locales/en_US ]; then
     echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
     localedef -v -i en_US -c -f UTF-8 en_US.UTF-8 || :
