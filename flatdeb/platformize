@@ -163,7 +163,6 @@ if [ -n "${unwanted[*]}" ]; then
         "${unwanted[@]}"
 fi
 
-# Second round of removals
 unwanted=()
 
 for package in \
@@ -192,12 +191,24 @@ for package in \
     fi
 done
 
+if [ -n "${unwanted[*]}" ]; then
+    echo "Packages we will forcibly remove (second round):"
+    for p in "${unwanted[@]}"; do
+        echo "- $p"
+    done
+
+    in_chroot dpkg --purge --force-remove-essential --force-depends \
+        "${unwanted[@]}"
+fi
+
+unwanted=()
+
 if ! is_installed perl; then
     unwanted+=(perl-base)
 fi
 
 if [ -n "${unwanted[*]}" ]; then
-    echo "Packages we will forcibly remove (second round):"
+    echo "Packages we will forcibly remove (third round):"
     for p in "${unwanted[@]}"; do
         echo "- $p"
     done
