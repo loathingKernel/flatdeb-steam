@@ -120,7 +120,8 @@ unwanted=()
 # These are Essential (or at least important) but serve no
 # purpose in an immutable runtime with no init. Note that
 # order is important: adduser needs to be removed before
-# debconf. We remove these particular packages first because
+# debconf, and sudo before lsb-base.
+# We remove these particular packages first because
 # they try to invoke other packages we want to remove in
 # their postrm maintainer scripts.
 for package in \
@@ -132,10 +133,10 @@ for package in \
     initramfs-tools \
     initramfs-tools-bin \
     initscripts \
+    sudo \
     lsb-base \
     module-init-tools \
     plymouth \
-    sudo \
     tcpd \
     udev \
 ; do \
