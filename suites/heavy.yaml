@@ -10,7 +10,7 @@ has_automatic_dbgsym: false
 strip_source_version_suffix: '\+srthb.*'
 sources:
   - label: debian
-    apt_uri: 'http://deb.debian.org/debian'
+    apt_uri: 'http://archive.debian.org/debian'
     apt_suite: 'jessie'
     keyrings:
       - '2b90d010-debian-archive-jessie-automatic.gpg'
@@ -20,7 +20,7 @@ sources:
       - '8ae22ba9-debian-archive-stretch-security-automatic.gpg'
       - '1a7b6500-debian-archive-stretch-stable.gpg'
   - label: security
-    apt_uri: 'http://security.debian.org'
+    apt_uri: 'http://archive.debian.org/debian-security'
     apt_suite: 'jessie/updates'
   - label: steamrt
     apt_uri: 'http://repo.steampowered.com/steamrt-heavy'
