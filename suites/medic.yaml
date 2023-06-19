@@ -45,7 +45,7 @@ sources:
       - '4aad5c5d-debian-archive-bullseye-security-automatic.gpg'
       - '0d6c9793-debian-archive-bullseye-stable.gpg'
   - label: steamrt
-    apt_uri: 'http://repo.steampowered.com/steamrt-medic'
+    apt_uri: 'http://repo.steampowered.com/steamrt4/apt'
     keyrings:
       - 'd0bbf5ae-valve-archive-builder.gpg'
       - '8abddd96-valve-archive-steamos-release-key.gpg'
