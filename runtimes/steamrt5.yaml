@@ -1,0 +1,130 @@
+---
+# Copyright © 2013-2016 Valve Corporation
+# Copyright © 2017-2023 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+
+id_prefix: com.valvesoftware.SteamRuntime
+toolbx: true
+
+add_packages_multiarch:
+  - steamrt-container-host-compat
+  - steamrt-libs
+
+add_packages:
+  - steamrt-container
+
+post_script: |
+  set -eux
+
+  if [ -e /usr/share/i18n/locales/en_US ]; then
+    echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+    localedef -v -i en_US -c -f UTF-8 en_US.UTF-8 || :
+    test -e /usr/lib/locale/locale-archive
+  fi
+
+  # Convert hard links to symlinks, saving a huge amount of space when
+  # deployed as an unpacked directory. swrast_dri.so is one of several
+  # Gallium drivers (internally libgallium_dri.so) that are often
+  # hard-links to each other, and i915_dri.so is one of several
+  # non-Gallium drivers (internally libmesa_dri_drivers.so).
+  for dri in /usr/lib/*/dri/*_dri.so; do
+    for ref in "${dri%/*}/swrast_dri.so" "${dri%/*}/i915_dri.so"; do
+      if [ "$dri" != "$ref" ] \
+        && ! [ -L "$dri" ] \
+        && ! [ -L "$ref" ] \
+        && cmp "$dri" "$ref" \
+      ; then
+        ln -fns "${ref#**/}" "$dri"
+      fi
+    done
+  done
+
+  # Convert hard link to symlink, saving around 3M
+  for perl in /usr/bin/perl5.*; do
+    if cmp "$perl" /usr/bin/perl \
+      && ! [ -L /usr/bin/perl ] \
+      && ! [ -L "$perl" ] \
+    ; then
+      ln -fnsv perl "$perl"
+    fi
+  done
+
+  test -d /usr/lib/gconv
+  test -d /usr/lib/locale
+  test -d /usr/share/i18n
+  test -d /usr/share/libdrm
+  if dpkg-query -W steamrt-container-host-compat:amd64; then
+    test -d /usr/lib64
+    test -d /usr/lib64/gconv
+    test -d /usr/lib64/locale
+    test -d /usr/lib/x86_64-linux-gnu/gconv
+    # Arch Linux uses a non-standard ELF interpreter for some binaries in
+    # the glibc package. We can't create this from
+    # steamrt-container-host-compat, because that breaks dpkg-shlibdeps.
+    ln -fns /lib64/ld-linux-x86-64.so.2 /usr/lib/ld-linux-x86-64.so.2
+    if ! [ -e /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 ] \
+      && ! [ -L /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 ] \
+    ; then
+      install -d /usr/lib/x86_64-linux-gnu
+      ln -s /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 \
+        /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+    fi
+    test -e /usr/x86_64-pc-linux-gnu/lib/ld-linux-x86-64.so.2
+  fi
+  if dpkg-query -W steamrt-container-host-compat:i386; then
+    test -d /usr/lib32
+    test -d /usr/lib32/gconv
+    test -d /usr/lib32/locale
+    test -d /usr/lib/i386-linux-gnu/gconv
+    if ! [ -e /usr/lib/i386-linux-gnu/ld-linux.so.2 ] \
+      && ! [ -L /usr/lib/i386-linux-gnu/ld-linux.so.2 ] \
+    ; then
+      install -d /usr/lib/i386-linux-gnu
+      ln -s /lib/i386-linux-gnu/ld-linux.so.2 \
+        /usr/lib/i386-linux-gnu/ld-linux.so.2
+    fi
+    test -e /usr/i686-pc-linux-gnu/lib/ld-linux.so.2
+  fi
+  # https://github.com/ValveSoftware/steam-runtime/issues/302
+  # https://github.com/ValveSoftware/steam-for-linux/issues/6310
+  for prefix in /usr /usr/local; do
+    install -d "${prefix}/share/steam"
+    ln -fns "/run/host${prefix}/share/steam/compatibilitytools.d" \
+                     "${prefix}/share/steam/compatibilitytools.d"
+  done
+
+sdk:
+  add_packages_multiarch:
+    - steamrt-libdebug:
+        debug_symbols: true
+    - steamrt-libdevel
+
+  add_packages:
+    - steamrt-dev
+    - steamrt-libdebug-non-multiarch:
+        debug_symbols: true
+
+  post_script: |
+    set -eux
+
+    for bin in \
+      dos2unix \
+      ifconfig \
+      ip \
+      nc \
+      ping \
+      ping6 \
+      route \
+      telnet \
+      traceroute \
+      traceroute6 \
+      unix2dos \
+      vi \
+      xxd \
+    ; do
+      if [ -e /bin/busybox ] && ! [ -e "/bin/$bin" ] && ! [ -e "/usr/bin/$bin" ]; then
+        ln -fnsv busybox "/bin/$bin"
+      fi
+    done
+
+...

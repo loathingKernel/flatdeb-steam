@@ -1,0 +1,67 @@
+---
+# Copyright 2017-2023 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+additional_base_packages:
+  - steamrt-customizations
+  - usr-is-merged
+apt_components:
+  - main
+  - contrib
+  - non-free
+can_merge_usr: true
+has_automatic_dbgsym: true
+strip_source_version_suffix: '\+bsrt[345][.~].*'
+bootstrap_keyring: '350947f8-debian-archive-bookworm-automatic.gpg'
+sources:
+  - label: debian
+    apt_uri: 'http://deb.debian.org/debian'
+    apt_suite: 'trixie'
+    keyrings:
+      - '350947f8-debian-archive-bookworm-automatic.gpg'
+      - 'aec0a8f0-debian-archive-bookworm-security-automatic.gpg'
+      - '8783d481-debian-archive-bookworm-stable.gpg'
+  - label: debian-debug
+    apt_uri: 'http://deb.debian.org/debian-debug'
+    apt_suite: 'trixie-debug'
+    keyrings:
+      - '350947f8-debian-archive-bookworm-automatic.gpg'
+      - 'aec0a8f0-debian-archive-bookworm-security-automatic.gpg'
+      - '8783d481-debian-archive-bookworm-stable.gpg'
+    deb-src: false
+  # For security updates' detached debug symbols
+  - label: debian-pu-debug
+    apt_uri: 'http://deb.debian.org/debian-debug'
+    apt_suite: 'trixie-proposed-updates-debug'
+    keyrings:
+      - '350947f8-debian-archive-bookworm-automatic.gpg'
+      - 'aec0a8f0-debian-archive-bookworm-security-automatic.gpg'
+      - '8783d481-debian-archive-bookworm-stable.gpg'
+    deb-src: false
+  - label: debian-unstable
+    apt_uri: 'http://deb.debian.org/debian'
+    apt_suite: 'unstable'
+    keyrings:
+      - '350947f8-debian-archive-bookworm-automatic.gpg'
+      - 'aec0a8f0-debian-archive-bookworm-security-automatic.gpg'
+      - '8783d481-debian-archive-bookworm-stable.gpg'
+  - label: debian-unstable-debug
+    apt_uri: 'http://deb.debian.org/debian-debug'
+    apt_suite: 'unstable-debug'
+    keyrings:
+      - '350947f8-debian-archive-bookworm-automatic.gpg'
+      - 'aec0a8f0-debian-archive-bookworm-security-automatic.gpg'
+      - '8783d481-debian-archive-bookworm-stable.gpg'
+    deb-src: false
+  - label: debian-security
+    apt_uri: 'http://security.debian.org/debian-security'
+    apt_suite: 'trixie-security'
+    keyrings:
+      - '350947f8-debian-archive-bookworm-automatic.gpg'
+      - 'aec0a8f0-debian-archive-bookworm-security-automatic.gpg'
+      - '8783d481-debian-archive-bookworm-stable.gpg'
+  - label: steamrt
+    apt_uri: 'http://repo.steampowered.com/steamrt5/apt'
+    keyrings:
+      - 'd0bbf5ae-valve-archive-builder.gpg'
+      - '8abddd96-valve-archive-steamos-release-key.gpg'
+...
