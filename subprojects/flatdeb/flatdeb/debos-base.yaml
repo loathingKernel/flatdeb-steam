@@ -198,6 +198,21 @@ actions:
       .
 
   - action: run
+    label: pack apt tarball
+    chroot: false
+    command: >
+      set -e;
+      echo;
+      tar -cf "$ARTIFACTDIR/{{ $artifact_prefix }}.apt.tar.gz"
+      --numeric-owner
+      --sort=name
+      --use-compress-program="pigz -n --rsyncable"
+      -C "$ROOTDIR"
+      --transform="s,^./,,"
+      etc/apt
+      var/lib/apt/lists
+
+  - action: run
     label: manifests
     chroot: false
     command: >
