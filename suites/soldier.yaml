@@ -57,7 +57,7 @@ sources:
       - 'caa96dfa-debian-archive-buster-security-automatic.gpg'
       - '77e11517-debian-archive-buster-stable.gpg'
   - label: steamrt
-    apt_uri: 'http://repo.steampowered.com/steamrt-soldier'
+    apt_uri: 'https://repo.steampowered.com/steamrt2/apt'
     keyrings:
       - 'd0bbf5ae-valve-archive-builder.gpg'
       - '8abddd96-valve-archive-steamos-release-key.gpg'

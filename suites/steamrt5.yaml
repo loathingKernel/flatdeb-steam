@@ -60,7 +60,7 @@ sources:
       - 'aec0a8f0-debian-archive-bookworm-security-automatic.gpg'
       - '8783d481-debian-archive-bookworm-stable.gpg'
   - label: steamrt
-    apt_uri: 'http://repo.steampowered.com/steamrt5/apt'
+    apt_uri: 'https://repo.steampowered.com/steamrt5/apt'
     keyrings:
       - 'd0bbf5ae-valve-archive-builder.gpg'
       - '8abddd96-valve-archive-steamos-release-key.gpg'

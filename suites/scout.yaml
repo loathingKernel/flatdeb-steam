@@ -12,14 +12,14 @@ has_automatic_dbgsym: true
 strip_source_version_suffix: '\+b?srt[0-9~].*'
 sources:
   - label: steamrt
-    apt_uri: 'http://repo.steampowered.com/steamrt'
+    apt_uri: 'https://repo.steampowered.com/steamrt1/apt'
     keyrings:
       - 'd0bbf5ae-valve-archive-builder.gpg'
       - '8abddd96-valve-archive-steamos-release-key.gpg'
     apt_components:
       - main
   - label: steamrt-debug
-    apt_uri: 'http://repo.steampowered.com/steamrt'
+    apt_uri: 'https://repo.steampowered.com/steamrt1/apt'
     keyrings:
       - 'd0bbf5ae-valve-archive-builder.gpg'
       - '8abddd96-valve-archive-steamos-release-key.gpg'
@@ -30,7 +30,7 @@ sources:
   - label: steam
     for_build: false
     for_final: true
-    apt_uri: 'http://repo.steampowered.com/steam'
+    apt_uri: 'https://repo.steampowered.com/steam'
     apt_suite: 'precise'
     keyrings:
       - 'b05498b7-valve-archive-steam.gpg'
