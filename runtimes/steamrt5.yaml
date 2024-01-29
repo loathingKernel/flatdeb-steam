@@ -34,7 +34,7 @@ post_script: |
         && ! [ -L "$ref" ] \
         && cmp "$dri" "$ref" \
       ; then
-        ln -fns "${ref#**/}" "$dri"
+        ln -fns "${ref##*/}" "$dri"
       fi
     done
   done
