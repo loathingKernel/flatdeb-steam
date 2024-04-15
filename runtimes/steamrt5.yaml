@@ -22,33 +22,6 @@ post_script: |
     test -e /usr/lib/locale/locale-archive
   fi
 
-  # Convert hard links to symlinks, saving a huge amount of space when
-  # deployed as an unpacked directory. swrast_dri.so is one of several
-  # Gallium drivers (internally libgallium_dri.so) that are often
-  # hard-links to each other, and i915_dri.so is one of several
-  # non-Gallium drivers (internally libmesa_dri_drivers.so).
-  for dri in /usr/lib/*/dri/*_dri.so; do
-    for ref in "${dri%/*}/swrast_dri.so" "${dri%/*}/i915_dri.so"; do
-      if [ "$dri" != "$ref" ] \
-        && ! [ -L "$dri" ] \
-        && ! [ -L "$ref" ] \
-        && cmp "$dri" "$ref" \
-      ; then
-        ln -fns "${ref##*/}" "$dri"
-      fi
-    done
-  done
-
-  # Convert hard link to symlink, saving around 3M
-  for perl in /usr/bin/perl5.*; do
-    if cmp "$perl" /usr/bin/perl \
-      && ! [ -L /usr/bin/perl ] \
-      && ! [ -L "$perl" ] \
-    ; then
-      ln -fnsv perl "$perl"
-    fi
-  done
-
   test -d /usr/lib/gconv
   test -d /usr/lib/locale
   test -d /usr/share/i18n

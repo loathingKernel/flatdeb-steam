@@ -51,16 +51,6 @@ post_script: |
     test -e /usr/lib/locale/locale-archive
   fi
 
-  # Convert hard link to symlink, saving around 4M
-  for python in python3.5; do
-    if cmp "/usr/bin/${python}m" "/usr/bin/${python}" \
-      && ! [ -L "/usr/bin/${python}m" ] \
-      && ! [ -L "/usr/bin/${python}" ] \
-    ; then
-      ln -fnsv "${python}" "/usr/bin/${python}m"
-    fi
-  done
-
   test -d /usr/lib/gconv
   test -d /usr/lib/locale
   test -d /usr/share/i18n
