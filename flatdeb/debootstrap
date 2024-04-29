@@ -1,0 +1,92 @@
+#!/usr/bin/python3
+
+# flatdeb — build Flatpak runtimes from Debian packages
+# Copyright © 2016-2017 Simon McVittie
+# Copyright © 2017-2024 Collabora Ltd.
+# SPDX-License-Identifier: MIT
+
+"""
+Install the given packages.
+
+This is basically debos' debootstrap action, but with more options.
+"""
+
+import argparse
+import logging
+import os
+import subprocess
+import sys
+
+
+logger = logging.getLogger('flatdeb.debootstrap')
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description='Create a basic chroot'
+    )
+    parser.add_argument('--components', default='')
+    parser.add_argument('--exclude', default='')
+    parser.add_argument('--include', default='')
+    parser.add_argument('--keyring-file', default='')
+    parser.add_argument('--merged-usr', action='store_true', default=None)
+    parser.add_argument('suite')
+    parser.add_argument('sysroot')
+    parser.add_argument('mirror')
+
+    args = parser.parse_args()
+    argv = ['debootstrap']
+
+    if args.components:
+        argv.append(f'--components={args.components}')
+
+    if args.exclude:
+        argv.append(f'--exclude={args.exclude}')
+
+    if args.include:
+        argv.append(f'--include={args.include}')
+
+    if args.keyring_file:
+        if args.keyring_file.startswith('/'):
+            prefix = ''
+        else:
+            prefix = os.environ['RECIPEDIR'] + '/'
+
+        argv.append(f'--keyring={prefix}{args.keyring_file}')
+    else:
+        argv.append('--no-check-gpg')
+
+    if args.merged_usr:
+        argv.append('--merged-usr')
+
+    argv.append('--variant=minbase')
+    argv.append(args.suite)
+    argv.append(args.sysroot)
+    argv.append(args.mirror)
+    subprocess.check_call(argv)
+
+
+if __name__ == '__main__':
+    if sys.stderr.isatty():
+        try:
+            import colorlog
+        except ImportError:
+            logging.basicConfig()
+        else:
+            formatter = colorlog.ColoredFormatter(
+                '%(log_color)s%(levelname)s:%(name)s:%(reset)s %(message)s')
+            handler = logging.StreamHandler()
+            handler.setFormatter(formatter)
+            logging.getLogger().addHandler(handler)
+    else:
+        logging.basicConfig()
+
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        raise SystemExit(130)
+    except subprocess.CalledProcessError as e:
+        logger.error('%s', e)
+        raise SystemExit(1)
