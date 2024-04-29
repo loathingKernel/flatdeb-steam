@@ -85,9 +85,9 @@ def main():
         stdout = dpkg_query.stdout
         assert stdout is not None
         for line in stdout:
-            line = line.replace('\r', '')
+            line = line.rstrip()
 
-            if line == '\n':
+            if not line:
                 continue
 
             if ':' not in line:
