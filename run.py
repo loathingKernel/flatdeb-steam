@@ -900,27 +900,28 @@ class Builder:
             signed_by: typing.List[SignedBy] = []
             trusted = source.get('apt_trusted', False)
 
-            for token in signed_by_str:
-                if token.startswith('/'):
-                    signed_by.append(SignedByKeyring(token))
-                elif re.match(r'^[0-9A-Fa-f]+$', token):
-                    signed_by.append(SignedByFingerprint(token))
-                elif re.match(r'^[0-9A-Fa-f]+!$', token):
-                    signed_by.append(
-                        SignedByFingerprint(token, subkeys=False)
-                    )
-                elif for_build:
-                    signed_by.append(
-                        SignedByKeyring(
-                            f'/etc/apt/keyrings/flatdeb-build-{token}'
+            if self.use_signed_by:
+                for token in signed_by_str:
+                    if token.startswith('/'):
+                        signed_by.append(SignedByKeyring(token))
+                    elif re.match(r'^[0-9A-Fa-f]+$', token):
+                        signed_by.append(SignedByFingerprint(token))
+                    elif re.match(r'^[0-9A-Fa-f]+!$', token):
+                        signed_by.append(
+                            SignedByFingerprint(token, subkeys=False)
                         )
-                    )
-                else:
-                    signed_by.append(
-                        SignedByKeyring(
-                            f'/etc/apt/keyrings/{token}'
+                    elif for_build:
+                        signed_by.append(
+                            SignedByKeyring(
+                                f'/etc/apt/keyrings/flatdeb-build-{token}'
+                            )
                         )
-                    )
+                    else:
+                        signed_by.append(
+                            SignedByKeyring(
+                                f'/etc/apt/keyrings/{token}'
+                            )
+                        )
 
             if 'label' in source:
                 replaced = False
