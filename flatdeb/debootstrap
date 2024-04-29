@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 from contextlib import suppress
+from pathlib import Path
 
 
 logger = logging.getLogger('flatdeb.debootstrap')
