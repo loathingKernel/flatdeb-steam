@@ -76,7 +76,17 @@ actions:
   - action: run
     label: list apt configuration
     chroot: false
-    command: 'find "$ROOTDIR/etc/apt" -ls'
+    command: >
+      set -e;
+      find "$ROOTDIR/etc/apt" -ls;
+      head -n10000
+      "$ROOTDIR/etc/apt/apt.conf"
+      "$ROOTDIR/etc/apt/apt.conf.d"/*
+      "$ROOTDIR/etc/apt/sources.list"
+      "$ROOTDIR/etc/apt/sources.list.d"/*
+      "$ROOTDIR/etc/debian_chroot"
+      "$ROOTDIR/lib/os-release"
+      || true
 
   {{ if $additional_base_packages }}
   - action: run
