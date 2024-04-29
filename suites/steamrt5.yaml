@@ -1,9 +1,12 @@
 ---
 # Copyright 2017-2023 Collabora Ltd.
 # SPDX-License-Identifier: MIT
+debootstrap_include:
+  - libdb5.3t64
+  - libssl3t64
+  - usr-is-merged
 additional_base_packages:
   - steamrt-customizations
-  - usr-is-merged
 apt_components:
   - main
   - contrib
