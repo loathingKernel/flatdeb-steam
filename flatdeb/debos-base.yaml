@@ -34,28 +34,17 @@ actions:
       ln -fns /run "$ROOTDIR/var/run"
       ln -fns /dev/shm "$ROOTDIR/run/shm"
 
-  - action: debootstrap
-    suite: {{ $suite }}
-    {{ if $components }}
-    components: {{ $components }}
-    {{ end }}
-    mirror: {{ $mirror }}
-    {{ if $keyring }}
-    keyring-file: {{ $keyring }}
-    {{ else }}
-    check-gpg: false
-    {{ end }}
-    {{ if eq $mergedusr "true" }}
-    merged-usr: true
-    {{ else }}
-    merged-usr: false
-    {{ end }}
-    variant: minbase
-    # TODO: flatdeb has historically used a configurable
-    # debootstrap_script, but debos doesn't support scripts other
-    # than 'unstable'. Does the Debian script work for precise and
-    # produce the same results as the 'precise' script?
-    # https://github.com/go-debos/debos/issues/16
+  - action: run
+    label: debootstrap
+    chroot: false
+    command: |
+      set -e
+      "$RECIPEDIR/debootstrap" \
+          --components "{{ $components }}" \
+          --keyring-file "{{ $keyring }}" \
+          "{{ $suite }}" \
+          "$ROOTDIR" \
+          "{{ $mirror }}"
 
   - action: overlay
     source: suites/{{ $suite }}/overlay
