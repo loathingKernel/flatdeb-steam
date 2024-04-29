@@ -16,6 +16,7 @@ import logging
 import os
 import subprocess
 import sys
+from contextlib import suppress
 
 
 logger = logging.getLogger('flatdeb.debootstrap')
@@ -63,7 +64,22 @@ def main() -> None:
     argv.append(args.suite)
     argv.append(args.sysroot)
     argv.append(args.mirror)
-    subprocess.check_call(argv)
+
+    try:
+        subprocess.check_call(argv)
+    except subprocess.CalledProcessError:
+        with open(
+            str(Path(args.sysroot, 'debootstrap', 'debootstrap.log'))
+        ) as reader:
+            for line in reader:
+                logger.error(line)
+
+        raise
+
+    with suppress(FileNotFoundError):
+        Path(args.sysroot, 'etc', 'resolv.conf').unlink()
+
+    subprocess.call(['chroot', args.sysroot, 'apt-get', 'clean'])
 
 
 if __name__ == '__main__':
