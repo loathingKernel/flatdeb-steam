@@ -1006,6 +1006,16 @@ class Builder:
                     self.escape_variant_id(self.variant_id)
                 ))
 
+            exclude = self.suite_details.get('debootstrap_exclude')
+            if exclude:
+                argv.append('-t')
+                argv.append('exclude:{}'.format(','.join(exclude)))
+
+            include = self.suite_details.get('debootstrap_include')
+            if include:
+                argv.append('-t')
+                argv.append('include:{}'.format(','.join(include)))
+
             add_pkgs = self.suite_details.get('additional_base_packages')
             if add_pkgs:
                 argv.append('-t')

@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 {{- $keyring := or .keyring "" -}}
 {{- $additional_base_packages := or .additional_base_packages "" -}}
 {{- $build_id := or .build_id "" -}}
+{{- $exclude := or .exclude "" -}}
+{{- $include := or .include "" -}}
 {{- $variant := or .variant "Minimal base system" -}}
 {{- $variant_id := or .variant_id "base" -}}
 {{- $artifact_prefix := or .artifact_prefix (printf "base-%s-%s" $suite $architecture) -}}
@@ -41,6 +43,8 @@ actions:
       set -e
       "$RECIPEDIR/debootstrap" \
           --components "{{ $components }}" \
+          --include "{{ $include }}" \
+          --exclude "{{ $exclude }}" \
           --keyring-file "{{ $keyring }}" \
           "{{ $suite }}" \
           "$ROOTDIR" \

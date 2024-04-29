@@ -26,6 +26,8 @@ def main() -> None:
         description='Create a basic chroot'
     )
     parser.add_argument('--components', default='')
+    parser.add_argument('--exclude', default='')
+    parser.add_argument('--include', default='')
     parser.add_argument('--keyring-file', default='')
     parser.add_argument('--merged-usr', action='store_true', default=None)
     parser.add_argument('suite')
@@ -37,6 +39,12 @@ def main() -> None:
 
     if args.components:
         argv.append(f'--components={args.components}')
+
+    if args.exclude:
+        argv.append(f'--exclude={args.exclude}')
+
+    if args.include:
+        argv.append(f'--include={args.include}')
 
     if args.keyring_file:
         if args.keyring_file.startswith('/'):
