@@ -18,6 +18,9 @@ can_merge_usr: true
 
 has_automatic_dbgsym: true
 
+signed_by:
+  - /usr/share/keyrings/debian-archive-keyring.gpg
+
 sources:
   - label: debian
     apt_uri: 'http://deb.debian.org/debian'
