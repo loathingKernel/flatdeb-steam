@@ -43,6 +43,7 @@ actions:
     command: |
       set -e
       "$RECIPEDIR/debootstrap" \
+          --arch "{{ $architecture }}" \
           --components "{{ $components }}" \
           --exclude "{{ $exclude }}" \
           --include "{{ $include }}" \
