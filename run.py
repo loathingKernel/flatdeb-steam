@@ -176,7 +176,7 @@ class AptSource:
         line,       # type: str
     ):
         # type: (...) -> AptSource
-        signed_by: typing.List[str] = []
+        signed_by: typing.List[SignedBy] = []
         rest: typing.List[str] = []
         tokens = line.split()
         trusted = False
