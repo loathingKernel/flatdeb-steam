@@ -248,6 +248,8 @@ actions:
       rm -frv "$ROOTDIR/etc/apt/trusted.gpg~"
       rm -frv "$ROOTDIR/etc/apt/trusted.gpg.d"/flatdeb-build-*.asc
       rm -frv "$ROOTDIR/etc/apt/trusted.gpg.d"/flatdeb-build-*.gpg
+      rm -frv "$ROOTDIR/etc/apt/keyrings"/flatdeb-build-*.asc
+      rm -frv "$ROOTDIR/etc/apt/keyrings"/flatdeb-build-*.gpg
 
   - action: overlay
     source: runtimes/{{ $runtime }}/apt-overlay
