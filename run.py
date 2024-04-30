@@ -176,7 +176,7 @@ class AptSource:
         line,       # type: str
     ):
         # type: (...) -> AptSource
-        signed_by: typing.List[str] = []
+        signed_by: typing.List[SignedBy] = []
         rest: typing.List[str] = []
         tokens = line.split()
         trusted = False
@@ -1024,32 +1024,20 @@ class Builder:
                 )
                 os.chmod(dest, 0o755)
 
-            os.makedirs(
-                os.path.join(
-                    scratch, 'suites', apt_suite, 'overlay', 'etc',
-                    'apt', 'sources.list.d',
-                ),
-                0o755,
-                exist_ok=True,
-            )
-
-            os.makedirs(
-                os.path.join(
-                    scratch, 'suites', apt_suite, 'overlay', 'etc',
-                    'apt', 'keyrings',
-                ),
-                0o755,
-                exist_ok=True,
-            )
-
-            os.makedirs(
-                os.path.join(
-                    scratch, 'suites', apt_suite, 'overlay', 'etc',
-                    'apt', 'trusted.gpg.d',
-                ),
-                0o755,
-                exist_ok=True,
-            )
+            for d in (
+                'apt.conf.d',
+                'keyrings',
+                'sources.list.d',
+                'trusted.gpg.d',
+            ):
+                os.makedirs(
+                    os.path.join(
+                        scratch, 'suites', apt_suite, 'overlay', 'etc',
+                        'apt', d,
+                    ),
+                    0o755,
+                    exist_ok=True,
+                )
 
             tarball = 'base-{}-{}.tar.gz'.format(
                 self.apt_suite,
@@ -1122,6 +1110,11 @@ class Builder:
             if include:
                 argv.append('-t')
                 argv.append('include:{}'.format(','.join(include)))
+
+            script = self.suite_details.get('debootstrap_script')
+            if script:
+                argv.append('-t')
+                argv.append(f'debootstrap_script:{script}')
 
             add_pkgs = self.suite_details.get('additional_base_packages')
             if add_pkgs:
@@ -2280,26 +2273,17 @@ class Builder:
         created from the same base have their version numbers
         aligned.
         """
-        os.makedirs(
-            os.path.join(overlay, 'etc', 'apt', 'apt.conf.d'),
-            0o755,
-            exist_ok=True,
-        )
-        os.makedirs(
-            os.path.join(overlay, 'etc', 'apt', 'sources.list.d'),
-            0o755,
-            exist_ok=True,
-        )
-        os.makedirs(
-            os.path.join(overlay, 'etc', 'apt', 'keyrings'),
-            0o755,
-            exist_ok=True,
-        )
-        os.makedirs(
-            os.path.join(overlay, 'etc', 'apt', 'trusted.gpg.d'),
-            0o755,
-            exist_ok=True,
-        )
+        for d in (
+            'apt.conf.d',
+            'keyrings',
+            'sources.list.d',
+            'trusted.gpg.d',
+        ):
+            os.makedirs(
+                os.path.join(overlay, 'etc', 'apt', d),
+                0o755,
+                exist_ok=True,
+            )
 
         with open(
             os.path.join(overlay, 'etc', 'apt', 'sources.list'),
