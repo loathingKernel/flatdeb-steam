@@ -47,6 +47,7 @@ actions:
           --exclude "{{ $exclude }}" \
           --include "{{ $include }}" \
           --keyring-file "{{ $keyring }}" \
+          {{ if eq $mergedusr "true" }}--merged-usr{{ else }}--no-merged-usr{{ end }} \
           --script "{{ $debootstrap_script }}" \
           "{{ $suite }}" \
           "$ROOTDIR" \

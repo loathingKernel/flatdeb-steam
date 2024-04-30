@@ -32,6 +32,9 @@ def main() -> None:
     parser.add_argument('--include', default='')
     parser.add_argument('--keyring-file', default='')
     parser.add_argument('--merged-usr', action='store_true', default=None)
+    parser.add_argument(
+        '--no-merged-usr', action='store_false', dest='merged_usr',
+    )
     parser.add_argument('--script', default='')
     parser.add_argument('suite')
     parser.add_argument('sysroot')
@@ -61,6 +64,8 @@ def main() -> None:
 
     if args.merged_usr:
         argv.append('--merged-usr')
+    elif args.merged_usr is not None:
+        argv.append('--no-merged-usr')
 
     argv.append('--variant=minbase')
     argv.append(args.suite)
