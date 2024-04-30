@@ -1024,32 +1024,20 @@ class Builder:
                 )
                 os.chmod(dest, 0o755)
 
-            os.makedirs(
-                os.path.join(
-                    scratch, 'suites', apt_suite, 'overlay', 'etc',
-                    'apt', 'sources.list.d',
-                ),
-                0o755,
-                exist_ok=True,
-            )
-
-            os.makedirs(
-                os.path.join(
-                    scratch, 'suites', apt_suite, 'overlay', 'etc',
-                    'apt', 'keyrings',
-                ),
-                0o755,
-                exist_ok=True,
-            )
-
-            os.makedirs(
-                os.path.join(
-                    scratch, 'suites', apt_suite, 'overlay', 'etc',
-                    'apt', 'trusted.gpg.d',
-                ),
-                0o755,
-                exist_ok=True,
-            )
+            for d in (
+                'apt.conf.d',
+                'keyrings',
+                'sources.list.d',
+                'trusted.gpg.d',
+            ):
+                os.makedirs(
+                    os.path.join(
+                        scratch, 'suites', apt_suite, 'overlay', 'etc',
+                        'apt', d,
+                    ),
+                    0o755,
+                    exist_ok=True,
+                )
 
             tarball = 'base-{}-{}.tar.gz'.format(
                 self.apt_suite,
@@ -2280,26 +2268,17 @@ class Builder:
         created from the same base have their version numbers
         aligned.
         """
-        os.makedirs(
-            os.path.join(overlay, 'etc', 'apt', 'apt.conf.d'),
-            0o755,
-            exist_ok=True,
-        )
-        os.makedirs(
-            os.path.join(overlay, 'etc', 'apt', 'sources.list.d'),
-            0o755,
-            exist_ok=True,
-        )
-        os.makedirs(
-            os.path.join(overlay, 'etc', 'apt', 'keyrings'),
-            0o755,
-            exist_ok=True,
-        )
-        os.makedirs(
-            os.path.join(overlay, 'etc', 'apt', 'trusted.gpg.d'),
-            0o755,
-            exist_ok=True,
-        )
+        for d in (
+            'apt.conf.d',
+            'keyrings',
+            'sources.list.d',
+            'trusted.gpg.d',
+        ):
+            os.makedirs(
+                os.path.join(overlay, 'etc', 'apt', d),
+                0o755,
+                exist_ok=True,
+            )
 
         with open(
             os.path.join(overlay, 'etc', 'apt', 'sources.list'),
