@@ -1111,6 +1111,11 @@ class Builder:
                 argv.append('-t')
                 argv.append('include:{}'.format(','.join(include)))
 
+            script = self.suite_details.get('debootstrap_script')
+            if script:
+                argv.append('-t')
+                argv.append(f'debootstrap_script:{script}')
+
             add_pkgs = self.suite_details.get('additional_base_packages')
             if add_pkgs:
                 argv.append('-t')

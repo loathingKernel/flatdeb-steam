@@ -32,6 +32,7 @@ def main() -> None:
     parser.add_argument('--include', default='')
     parser.add_argument('--keyring-file', default='')
     parser.add_argument('--merged-usr', action='store_true', default=None)
+    parser.add_argument('--script', default='')
     parser.add_argument('suite')
     parser.add_argument('sysroot')
     parser.add_argument('mirror')
@@ -65,6 +66,9 @@ def main() -> None:
     argv.append(args.suite)
     argv.append(args.sysroot)
     argv.append(args.mirror)
+
+    if args.script:
+        argv.append(args.script)
 
     try:
         subprocess.check_call(argv)

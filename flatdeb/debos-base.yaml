@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 {{- $keyring := or .keyring "" -}}
 {{- $additional_base_packages := or .additional_base_packages "" -}}
 {{- $build_id := or .build_id "" -}}
+{{- $debootstrap_script := or .debootstrap_script "" -}}
 {{- $exclude := or .exclude "" -}}
 {{- $include := or .include "" -}}
 {{- $variant := or .variant "Minimal base system" -}}
@@ -43,9 +44,10 @@ actions:
       set -e
       "$RECIPEDIR/debootstrap" \
           --components "{{ $components }}" \
-          --include "{{ $include }}" \
           --exclude "{{ $exclude }}" \
+          --include "{{ $include }}" \
           --keyring-file "{{ $keyring }}" \
+          --script "{{ $debootstrap_script }}" \
           "{{ $suite }}" \
           "$ROOTDIR" \
           "{{ $mirror }}"
