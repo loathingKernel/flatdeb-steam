@@ -40,19 +40,13 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import typing
 import urllib.parse
 from contextlib import ExitStack
 from tempfile import TemporaryDirectory
 
 import yaml
 from gi.repository import GLib
-
-try:
-    import typing
-except ImportError:
-    pass
-else:
-    typing  # silence "unused" warnings
 
 
 logger = logging.getLogger('flatdeb')
@@ -89,6 +83,31 @@ _DEBOS_RUNTIMES_RECIPE = os.path.join(
     os.path.dirname(__file__), 'flatdeb', 'debos-runtimes.yaml')
 
 
+class SignedBy:
+    def __str__(self) -> str:
+        raise NotImplementedError
+
+
+class SignedByFingerprint(SignedBy):
+    def __init__(self, fingerprint: str, subkeys: bool = True) -> None:
+        self.fingerprint = fingerprint
+        self.subkeys = subkeys
+
+    def __str__(self):
+        return '{}{}'.format(
+            self.fingerprint,
+            '!' if not self.subkeys else '',
+        )
+
+
+class SignedByKeyring(SignedBy):
+    def __init__(self, path: str) -> None:
+        self.path = path
+
+    def __str__(self):
+        return self.path
+
+
 class AptSource:
     def __init__(
         self,
@@ -96,12 +115,14 @@ class AptSource:
         uri,                        # type: str
         suite,                      # type: str
         components=('main',),       # type: typing.Sequence[str]
+        signed_by=(),               # type: typing.Sequence[SignedBy]
         trusted=False
     ):
         self.kind = kind
         self.uri = uri
         self.suite = suite
         self.components = components
+        self.signed_by = set(signed_by)
         self.trusted = trusted
 
     def __eq__(self, other):
@@ -119,6 +140,9 @@ class AptSource:
             return False
 
         if set(self.components) != set(other.components):
+            return False
+
+        if set(self.signed_by) != set(other.signed_by):
             return False
 
         if self.trusted != other.trusted:
@@ -152,6 +176,8 @@ class AptSource:
         line,       # type: str
     ):
         # type: (...) -> AptSource
+        signed_by: typing.List[SignedBy] = []
+        rest: typing.List[str] = []
         tokens = line.split()
         trusted = False
 
@@ -164,25 +190,63 @@ class AptSource:
             raise ValueError(
                 'apt sources must start with "deb " or "deb-src "')
 
-        if tokens[1] == '[trusted=yes]':
-            trusted = True
-            tokens = [tokens[0]] + tokens[2:]
-        elif tokens[1].startswith('['):
-            raise ValueError(
-                'The only apt source option supported is [trusted=yes]')
+        if tokens[1].startswith('['):
+            for i in range(1, len(tokens)):
+                token = tokens[i].lstrip('[')
+                option = token.rstrip(']')
+
+                if option == 'trusted=yes':
+                    trusted = True
+                elif option.startswith('signed-by='):
+                    signed_by_str = option[len('signed-by='):].split(',')
+
+                    for signer in signed_by_str:
+                        if signer.startswith('/'):
+                            signed_by.append(SignedByKeyring(signer))
+                        elif re.match(r'^[0-9A-Fa-f]+$', signer):
+                            signed_by.append(SignedByFingerprint(signer))
+                        elif re.match(r'^[0-9A-Fa-f]+!$', signer):
+                            signed_by.append(
+                                SignedByFingerprint(signer, subkeys=False)
+                            )
+                        else:
+                            signed_by.append(
+                                SignedByKeyring(
+                                    f'/etc/apt/keyrings/{signer}'
+                                )
+                            )
+
+                if option != token:
+                    rest = tokens[i + 1:]
+                    break
+        else:
+            rest = tokens[1:]
 
         return cls(
             kind=tokens[0],
-            uri=tokens[1],
-            suite=tokens[2],
-            components=tokens[3:],
+            uri=rest[0],
+            suite=rest[1],
+            components=rest[2:],
+            signed_by=signed_by,
             trusted=trusted,
         )
 
     def __str__(self):
         # type: () -> str
+        options: typing.List[str] = []
+
+        if self.signed_by:
+            options.append(
+                'signed-by={}'.format(
+                    ','.join(map(str, self.signed_by))
+                )
+            )
+
         if self.trusted:
-            maybe_options = ' [trusted=yes]'
+            options.append('trusted=yes')
+
+        if options:
+            maybe_options = ' [{}]'.format(' '.join(options))
         else:
             maybe_options = ''
 
@@ -749,6 +813,7 @@ class Builder:
 
         self.strip_source_version_suffix = self.suite_details.get(
             'strip_source_version_suffix', '')
+        self.use_signed_by = bool(self.suite_details.get('signed_by', []))
 
         if args.automatic_dbgsym is None:
             self.automatic_dbgsym = self.suite_details.get(
@@ -825,7 +890,38 @@ class Builder:
                 'apt_components',
                 self.suite_details.get('apt_components', ['main'])
             )
+            signed_by_str = source.get(
+                'signed_by',
+                source.get(
+                    'keyrings',
+                    self.suite_details.get('signed_by', []),
+                ),
+            )
+            signed_by: typing.List[SignedBy] = []
             trusted = source.get('apt_trusted', False)
+
+            if self.use_signed_by:
+                for token in signed_by_str:
+                    if token.startswith('/'):
+                        signed_by.append(SignedByKeyring(token))
+                    elif re.match(r'^[0-9A-Fa-f]+$', token):
+                        signed_by.append(SignedByFingerprint(token))
+                    elif re.match(r'^[0-9A-Fa-f]+!$', token):
+                        signed_by.append(
+                            SignedByFingerprint(token, subkeys=False)
+                        )
+                    elif for_build:
+                        signed_by.append(
+                            SignedByKeyring(
+                                f'/etc/apt/keyrings/flatdeb-build-{token}'
+                            )
+                        )
+                    else:
+                        signed_by.append(
+                            SignedByKeyring(
+                                f'/etc/apt/keyrings/{token}'
+                            )
+                        )
 
             if 'label' in source:
                 replaced = False
@@ -853,6 +949,7 @@ class Builder:
                 apt_sources.append(AptSource(
                     'deb', uri, suite,
                     components=components,
+                    signed_by=signed_by,
                     trusted=trusted,
                 ))
 
@@ -860,6 +957,7 @@ class Builder:
                 apt_sources.append(AptSource(
                     'deb-src', uri, suite,
                     components=components,
+                    signed_by=signed_by,
                     trusted=trusted,
                 ))
 
@@ -926,23 +1024,20 @@ class Builder:
                 )
                 os.chmod(dest, 0o755)
 
-            os.makedirs(
-                os.path.join(
-                    scratch, 'suites', apt_suite, 'overlay', 'etc',
-                    'apt', 'sources.list.d',
-                ),
-                0o755,
-                exist_ok=True,
-            )
-
-            os.makedirs(
-                os.path.join(
-                    scratch, 'suites', apt_suite, 'overlay', 'etc',
-                    'apt', 'trusted.gpg.d',
-                ),
-                0o755,
-                exist_ok=True,
-            )
+            for d in (
+                'apt.conf.d',
+                'keyrings',
+                'sources.list.d',
+                'trusted.gpg.d',
+            ):
+                os.makedirs(
+                    os.path.join(
+                        scratch, 'suites', apt_suite, 'overlay', 'etc',
+                        'apt', d,
+                    ),
+                    0o755,
+                    exist_ok=True,
+                )
 
             tarball = 'base-{}-{}.tar.gz'.format(
                 self.apt_suite,
@@ -1016,6 +1111,11 @@ class Builder:
                 argv.append('-t')
                 argv.append('include:{}'.format(','.join(include)))
 
+            script = self.suite_details.get('debootstrap_script')
+            if script:
+                argv.append('-t')
+                argv.append(f'debootstrap_script:{script}')
+
             add_pkgs = self.suite_details.get('additional_base_packages')
             if add_pkgs:
                 argv.append('-t')
@@ -1038,18 +1138,23 @@ class Builder:
                 else:
                     raise RuntimeError('Cannot open {}'.format(keyring))
 
+                if self.use_signed_by:
+                    keyring_dir = 'keyrings'
+                else:
+                    keyring_dir = 'trusted.gpg.d'
+
                 dest = os.path.join(
                     scratch, 'suites', apt_suite, 'overlay',
-                    'etc', 'apt', 'trusted.gpg.d',
+                    'etc', 'apt', keyring_dir,
                     'flatdeb-build-' + os.path.basename(keyring),
                 )
                 shutil.copyfile(keyring, dest)
 
                 argv.append('-t')
                 argv.append(
-                    'keyring:suites/{}/overlay/etc/apt/trusted.gpg.d/'
-                    '{}'.format(
+                    'keyring:suites/{}/overlay/etc/apt/{}/{}'.format(
                         apt_suite,
+                        keyring_dir,
                         'flatdeb-build-' + os.path.basename(keyring),
                     )
                 )
@@ -2168,21 +2273,17 @@ class Builder:
         created from the same base have their version numbers
         aligned.
         """
-        os.makedirs(
-            os.path.join(overlay, 'etc', 'apt', 'apt.conf.d'),
-            0o755,
-            exist_ok=True,
-        )
-        os.makedirs(
-            os.path.join(overlay, 'etc', 'apt', 'sources.list.d'),
-            0o755,
-            exist_ok=True,
-        )
-        os.makedirs(
-            os.path.join(overlay, 'etc', 'apt', 'trusted.gpg.d'),
-            0o755,
-            exist_ok=True,
-        )
+        for d in (
+            'apt.conf.d',
+            'keyrings',
+            'sources.list.d',
+            'trusted.gpg.d',
+        ):
+            os.makedirs(
+                os.path.join(overlay, 'etc', 'apt', d),
+                0o755,
+                exist_ok=True,
+            )
 
         with open(
             os.path.join(overlay, 'etc', 'apt', 'sources.list'),
@@ -2200,11 +2301,16 @@ class Builder:
                 else:
                     raise RuntimeError('Cannot open {}'.format(keyring))
 
+                if self.use_signed_by:
+                    keyring_dir = 'keyrings'
+                else:
+                    keyring_dir = 'trusted.gpg.d'
+
                 shutil.copyfile(
                     os.path.abspath(keyring),
                     os.path.join(
                         overlay,
-                        'etc', 'apt', 'trusted.gpg.d',
+                        'etc', 'apt', keyring_dir,
                         apt_keyring_prefix + os.path.basename(keyring),
                     ),
                 )

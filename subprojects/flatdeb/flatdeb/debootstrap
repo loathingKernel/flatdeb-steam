@@ -16,6 +16,8 @@ import logging
 import os
 import subprocess
 import sys
+from contextlib import suppress
+from pathlib import Path
 
 
 logger = logging.getLogger('flatdeb.debootstrap')
@@ -25,17 +27,25 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description='Create a basic chroot'
     )
+    parser.add_argument('--arch', default='')
     parser.add_argument('--components', default='')
     parser.add_argument('--exclude', default='')
     parser.add_argument('--include', default='')
     parser.add_argument('--keyring-file', default='')
     parser.add_argument('--merged-usr', action='store_true', default=None)
+    parser.add_argument(
+        '--no-merged-usr', action='store_false', dest='merged_usr',
+    )
+    parser.add_argument('--script', default='')
     parser.add_argument('suite')
     parser.add_argument('sysroot')
     parser.add_argument('mirror')
 
     args = parser.parse_args()
     argv = ['debootstrap']
+
+    if args.arch:
+        argv.append(f'--arch={args.arch}')
 
     if args.components:
         argv.append(f'--components={args.components}')
@@ -58,12 +68,32 @@ def main() -> None:
 
     if args.merged_usr:
         argv.append('--merged-usr')
+    elif args.merged_usr is not None:
+        argv.append('--no-merged-usr')
 
     argv.append('--variant=minbase')
     argv.append(args.suite)
     argv.append(args.sysroot)
     argv.append(args.mirror)
-    subprocess.check_call(argv)
+
+    if args.script:
+        argv.append(args.script)
+
+    try:
+        subprocess.check_call(argv)
+    except subprocess.CalledProcessError:
+        with open(
+            str(Path(args.sysroot, 'debootstrap', 'debootstrap.log'))
+        ) as reader:
+            for line in reader:
+                logger.error(line)
+
+        raise
+
+    with suppress(FileNotFoundError):
+        Path(args.sysroot, 'etc', 'resolv.conf').unlink()
+
+    subprocess.call(['chroot', args.sysroot, 'apt-get', 'clean'])
 
 
 if __name__ == '__main__':
