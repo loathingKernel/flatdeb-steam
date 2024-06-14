@@ -18,7 +18,7 @@ How this fits into the overall Steam Runtime project
     <https://repo.steampowered.com/steamrt-images-scout/snapshots/latest-container-runtime-depot/sources/>.
     This is not part of this git repository.
 
-2. For `scout` and `heavy` only: Put together the .deb packages into the
+2. For `scout` only: Put together the .deb packages into the
     `LD_LIBRARY_PATH`-based Steam Runtime.
     This git repository is not relevant for this step.
 
